@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Active Email List Subscribers</b>: number of subscribers on our email list."}

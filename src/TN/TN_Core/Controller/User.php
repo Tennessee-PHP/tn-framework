@@ -1,0 +1,54 @@
+<?php
+
+namespace TN\TN_Core\Controller;
+
+use TN\TN_Core\Attribute\Route\Access\Restrictions\AnonymousOnly;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\UsersOnly;
+use TN\TN_Core\Attribute\Route\Component;
+use TN\TN_Core\Attribute\Route\Path;
+use TN\TN_Core\Component\Renderer\HTML\Redirect;
+use TN\TN_Core\Component\Renderer\Renderer;
+use TN\TN_Core\Model\User\User as UserModel;
+
+class User extends Controller
+{
+    #[Path('log-in')]
+    #[Path('sign-in')]
+    #[AnonymousOnly]
+    #[Component(\TN\TN_Core\Component\User\LoginForm\LoginForm::class)]
+    public function login(): void {}
+
+    #[Path('log-out')]
+    #[UsersOnly]
+    public function logout(): Renderer
+    {
+        UserModel::getActive()->logout();
+        return Redirect::getInstance(['url' => $_ENV['BASE_URL']]);
+    }
+
+    #[Path('staff/users/user/:userId/login-as-user')]
+    #[RoleOnly('super-user')]
+    public function loginAsUser(int $userId): Renderer
+    {
+        $user = UserModel::getActive();
+        $user->loginAs($userId);
+        return Redirect::getInstance(['url' => $_POST['redirect_url'] ?? $_ENV['BASE_URL']]);
+    }
+
+    #[Path('users/list')]
+    #[RoleOnly('super-user')]
+    #[Component(\TN\TN_Core\Component\User\ListUsers\ListUsers::class)]
+    public function listUsers(): void {}
+
+    #[Path('register')]
+    #[Component(\TN\TN_Core\Component\User\RegisterForm\RegisterForm::class)]
+    #[AnonymousOnly]
+    public function registerForm(): void {}
+
+    #[Path('register/suggest-username')]
+    #[AnonymousOnly]
+    #[Component(\TN\TN_Core\Component\User\RegisterForm\SuggestUsername::class)]
+    public function suggestUsername(): void {}
+}

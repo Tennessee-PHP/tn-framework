@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Fees</b> is a good estimate of the fees we will pay to payment processor/gateways for handling transactions on our behalf. Different gateways charge different amounts."}

@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Annual Run Rate</b> is income from recurring subscriptions (first payments included) over the last year. This is all income that will recur, unless the subscription is cancelled. It does not include gift subscriptions."}

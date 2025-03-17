@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Email List Cancellations</b>: number of subscribers who left our email list."}

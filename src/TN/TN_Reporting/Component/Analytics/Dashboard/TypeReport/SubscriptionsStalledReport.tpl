@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Stalled Subscriptions</b> is the number of subscriptions that entered their grace period on a specific day, due to a failed payment."}

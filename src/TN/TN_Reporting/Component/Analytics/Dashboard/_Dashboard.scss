@@ -1,0 +1,34 @@
+.tn-tn_reporting-component-analytics-dashboard-dashboard {
+  .card.card-ps {
+    padding-left: 0.625rem;
+  }
+  .form-group {
+    input[type="date"] {
+      width: 100%;
+    }
+  }
+  .nav-pills.flex-column {
+    min-width: 12rem;
+    li.nav-item {
+      margin-left: 0;
+
+    }
+    .nav-link, h3 {
+      padding: 0.5rem 1rem;
+      margin: 0;
+    }
+    h3 {
+      margin-top: 0.5rem;
+    }
+  }
+  .reporting-dashboard-component-dashboardsummary-summaryblock {
+    .component-dataseries-dataserieschart {
+      padding: 1em;
+    }
+    .chart-legend-box {
+      display: inline-block;
+      width: 2em;
+      background-color: #FFB2C1;
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>New Subscriptions</b> is the number of subscriptions that started on each day."}

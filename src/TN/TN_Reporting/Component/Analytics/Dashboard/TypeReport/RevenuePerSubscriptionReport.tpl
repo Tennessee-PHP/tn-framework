@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Revenue Per Subscription</b> is recurring revenue divided by the number of active subscriptions. It is a measure of how much we earn from each active subscription."}

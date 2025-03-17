@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Churn</b> here's how it's calculated: <i>ended subscriptions in the last 30 days</i> / <i>number of subscriptions 30 days ago</i>."}

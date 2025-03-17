@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Ended Subscriptions</b> is the number of subscriptions that ended on each day (ie, the date on which the customer lost access)"}

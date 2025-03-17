@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Daily Revenue</b> the amount of money earned. This is turnover less refunds. Fees are not deducted.</i>"}

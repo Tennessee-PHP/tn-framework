@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Lifetime Value</b> is revenue per subscription divided by the churn rate. This gives an <b><i>ESTIMATE</i></b> of a lifetime value of a new subscriber. Make sure to use the filters carefully on this page: if a marketing campaign is targeting website subscriptions, the numbers for the Braintree Gateway should be used."}

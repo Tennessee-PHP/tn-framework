@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Renewed Subscriptions</b> is the number of subscriptions that renewed on each day."}

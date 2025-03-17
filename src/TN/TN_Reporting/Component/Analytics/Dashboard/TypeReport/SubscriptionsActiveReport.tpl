@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Active Subscriptions</b>: here's how it's calculated: on the first second of each day, count subscriptions whose start time is earlier, <i>and</i> end date is later."}

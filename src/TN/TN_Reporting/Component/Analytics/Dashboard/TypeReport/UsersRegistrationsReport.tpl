@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>User Registrations</b> is the number of new customers who registered with an account on the website"}

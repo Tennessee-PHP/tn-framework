@@ -1,0 +1,52 @@
+.tn-tn_cms-component-article-listarticles-listarticles {
+  .vertical-article-card {
+    .card.content-item {
+      padding: 0;
+      a.article-link {
+        display: block;
+        height: 300px;
+        &:hover {
+          text-decoration:none;
+
+        }
+
+        @include media-breakpoint-up(lg) {
+          .description {
+            max-height: 3.9em; // 3 lines
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+
+      }
+      .thumb-bg {
+        background-repeat: no-repeat;
+        background-position: center top;
+        background-size: cover;
+        width: 100%;
+        height: 200px;
+        border-radius: 6px 6px 0 0;
+      }
+
+      @media (max-width: 768px) {
+        .thumb-bg {
+          height: 160px;
+        }
+      }
+
+      .content-text {
+        width: 100%;
+        padding: .5rem;
+      }
+      p.description {
+        font-size: 0.85em;
+        line-height: 1.3em;
+      }
+      h4 {
+        line-height: 1.2;
+        max-height: 3.6em;
+        overflow: hidden;
+      }
+    }
+  }
+}

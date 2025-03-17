@@ -1,0 +1,1 @@
+<input class="{$htmlClass} form-control" name="{$requestKey}" type="date" value="{$value}" id="{$htmlId}" data-request-key="{$requestKey}" />

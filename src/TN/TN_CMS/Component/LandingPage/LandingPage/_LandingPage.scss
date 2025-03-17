@@ -1,0 +1,52 @@
+
+section.landing-page-header-1.title-banner {
+  height: 30rem;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: auto 30rem;
+
+  .container {
+    //max-width: 1200px;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .landing-page-main-1 {
+    .container {
+      .card-ps {
+        top: -6em !important;
+      }
+    }
+  }
+}
+
+.landing-page-main-1 {
+  .roadblock {
+    box-shadow: none !important;
+  }
+
+  .container {
+    max-width: 1200px;
+
+    .card-ps {
+      top: -6em;
+      padding-top: 0;
+      position: relative;
+      min-height: 50rem;
+
+      input.landing-page-title {
+        border: 0 !important;
+        width: 100%;
+      }
+
+      .landing-page-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        text-align: center;
+        padding: .25em !important;
+      }
+    }
+  }
+}

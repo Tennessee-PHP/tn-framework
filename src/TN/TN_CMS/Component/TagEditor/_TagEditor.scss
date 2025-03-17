@@ -1,0 +1,30 @@
+.tn-tn_cms-component-tageditor-tageditor {
+  .tags {
+    padding: 5px 10px 5px 10px;
+    line-height: 1.6;
+    font-size: 16px;
+    border: 1px solid #868686;
+    border-radius: 6px;
+
+    .tag {
+      display: inline-block;
+      background-color: $bw-secondary;
+      color: $color4;
+      border: 1px solid $color4;
+      padding: .1em .25em;
+      margin: .2em;
+      text-transform: uppercase;
+      font-size: .8em;
+      a {
+        font-size: 1.2em;
+      }
+    }
+    input {
+      display: inline-block;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      width: 40px;
+    }
+  }
+}
