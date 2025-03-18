@@ -5,11 +5,26 @@ namespace TN\TN_Core\Model\Package;
 use TN\TN_Core\Model\Package\Package;
 
 /**
- * helper for getInstance methods on TN\ classes
- *
- * This allows for other packages to subclass every TN\ class; as long as the class is named the same relative to the
- * base package, it will be invoked instead of the subclassed TN\ class. This isn't dissimilar from "overriding"!
+ * The Stack class manages the hierarchical package system in the TN Framework.
  * 
+ * Key responsibilities:
+ * - Managing the package hierarchy
+ * - Class resolution and overriding
+ * - Package dependency management
+ * - Namespace-based class discovery
+ *
+ * Features:
+ * - Resolves class names across packages
+ * - Handles package overrides and inheritance
+ * - Manages class inheritance chains
+ * - Provides namespace-based class discovery
+ * - Ensures proper package loading order
+ *
+ * The Stack follows a bottom-up approach where higher packages can override
+ * or extend functionality from lower packages in the hierarchy.
+ *
+ * @see Package For package-level organization
+ * @see Module For module-level organization
  */
 class Stack
 {
@@ -108,5 +123,10 @@ class Stack
         $namespace = implode('\\', $parts);
 
         return self::getClassesInModuleNamespaces($namespace, true, '', $className);
+    }
+
+    public function __construct()
+    {
+        // ... rest of the code ...
     }
 }

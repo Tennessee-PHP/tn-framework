@@ -65,6 +65,22 @@ use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\Theme\Theme;
 
 /**
+ * Base abstract class for all components in the TN Framework.
+ * 
+ * Components are the fundamental building blocks of the application, representing
+ * reusable pieces of functionality that can be rendered and composed together.
+ * This class provides core component functionality including:
+ * 
+ * - Property injection from HTTP requests
+ * - Attribute-based parameter binding
+ * - Lifecycle management (construction, preparation, rendering)
+ * - Base component interface definition
+ *
+ * @abstract
+ * @package TN\TN_Core\Component
+ */
+
+/**
  * an HTML component (rendered via a template, and with a typescript/scss file optional)
  */
 abstract class HTMLComponent extends TemplateComponent implements PageComponent

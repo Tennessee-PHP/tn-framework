@@ -5,6 +5,11 @@ namespace TN\TN_Core\Interface;
 use TN\TN_Core\Model\PersistentModel\Search\CountAndTotalResult;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 
+/**
+ * Interface defining persistence operations for models in the TN Framework.
+ * 
+ * @see \TN\TN_Core\Model\PersistentModel\PersistentModel For implementation details
+ */
 interface Persistence {
     /** @returns static[] */
     static function searchStorage(SearchArguments $search, bool $absoluteLatest = false): array;

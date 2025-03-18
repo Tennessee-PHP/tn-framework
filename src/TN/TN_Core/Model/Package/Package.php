@@ -6,6 +6,19 @@ use TN\TN_Core\Model\PersistentModel\ReadOnlyProperties;
 use TN\TN_Core\Error\CodeException;
 
 /**
+ * Core class representing a Package in the TN Framework's modular architecture.
+ * 
+ * A Package is the highest-level organizational unit in the framework, containing
+ * multiple modules and providing namespace isolation. The Package system enables:
+ * 
+ * - Modular code organization with clear boundaries
+ * - Feature overriding through the package stack
+ * - Namespace management and class resolution
+ * - Module registration and management
+ * - Code isolation and reusability
+ *
+ * Packages are loaded in order defined by PACKAGE_STACK in .env, allowing higher
+ * packages to override functionality from lower packages.
  *
  */
 class Package extends CodeContainer

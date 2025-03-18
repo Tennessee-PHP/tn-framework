@@ -30,6 +30,41 @@ use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
 use TN\TN_Core\Attribute\Route\RouteType;
 
+/**
+ * Base controller class handling routing and request processing in the TN Framework.
+ * 
+ * Controllers are responsible for:
+ * - Route definition and handling through attributes
+ * - Request processing and response generation
+ * - Access control and authorization
+ * - Command handling for CLI operations
+ * - Component lifecycle management
+ *
+ * Key Features:
+ * - Attribute-based routing (#[Path], #[Route])
+ * - Access control (#[RoleOnly], #[UsersOnly], etc.)
+ * - Command scheduling (#[Schedule], #[CommandName])
+ * - Component integration via #[Component]
+ * - Path parameter extraction
+ * - Response type handling
+ *
+ * Example:
+ * ```php
+ * class UserController extends Controller {
+ *     #[Path('users/:id')]
+ *     #[Component(UserProfile::class)]
+ *     #[UsersOnly]
+ *     public function viewProfile(int $id): void {}
+ * }
+ * ```
+ *
+ * Controllers are organized by module and can be overridden through the package stack,
+ * allowing higher packages to extend or replace route handling from lower packages.
+ *
+ * @see \TN\TN_Core\Component\HTMLComponent For component implementation details
+ * @see HTTPRequest
+ * @see HTTPResponse
+ */
 abstract class Controller
 {
     public static function path(string $moduleName, string $controllerName, string $routeName, array $args = []): string
