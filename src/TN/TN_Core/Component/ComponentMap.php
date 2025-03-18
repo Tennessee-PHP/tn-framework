@@ -62,19 +62,15 @@ class ComponentMap
             
             // Find the package instance
             $package = Package::get($packageName);
-            echo $packageName . PHP_EOL;
             if (!$package) {
-                echo "Package not found" . PHP_EOL;
                 continue; // Skip if package not found
             }
 
             $qualified = str_replace("\\", "_", $className);
             $path = str_replace("\\", "/", $className);
-            echo $package->getDir() . "{$path}.ts" . PHP_EOL;
 
             // Check if TypeScript file exists in package directory
             if (!file_exists($package->getDir() . "{$path}.ts")) {
-                echo "File not found: " . $package->getDir() . "{$path}.ts" . PHP_EOL;
                 continue;
             }
 
@@ -161,11 +157,14 @@ TYPESCRIPT;
         // let's resolve the page class, and just plain include its file
         $pageClassName = Stack::resolveClassName(Page::class);
         $pageParts = explode("\\", $pageClassName);
+        $last = array_pop($pageParts);
+        $pageParts[] = '_' . $last;
         $pagePackage = Package::get($pageParts[0]);
-        $path = str_replace("\\", "/", $pageClassName);
+        array_shift($pageParts);
+        $path = implode('/', $pageParts);
         
-        if ($pagePackage && file_exists($pagePackage->getDir() . "src/{$path}.scss")) {
-            $str = "@import \"../{$path}\";\n\n";
+        if ($pagePackage && file_exists($pagePackage->getDir() . "{$path}.scss")) {
+            $str = "@import \"@{$pageParts[0]}/{$path}\";\n\n";
         } else {
             $str = "// Page SCSS not found\n\n";
         }
@@ -173,17 +172,18 @@ TYPESCRIPT;
         foreach ($this->map as $className) {
             $parts = explode("\\", $className);
             $packageName = array_shift($parts);
+            // put a lodash prefix on the last element of the array
             $last = array_pop($parts);
             $parts[] = '_' . $last;
             $path = implode('/', $parts);
-
+            
             $package = Package::get($packageName);
             if (!$package) {
                 continue;
             }
 
-            if (file_exists($package->getDir() . "src/{$path}.scss")) {
-                $str .= "@import \"../{$packageName}/{$path}\";\n";
+            if (file_exists($package->getDir() . "{$path}.scss")) {
+                $str .= "@import \"@{$packageName}/{$path}\";\n";
             }
         }
         
