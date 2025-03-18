@@ -37,11 +37,8 @@ class Module extends CodeContainer
     /** @var string[] */
     public array $moduleDependencies = [];
 
-    public function __construct(Package $package, string $name)
-    {
+    protected function __construct() {
         parent::__construct();
-        $this->package = $package;
-        $this->name = $name;
         $parts = explode('_', $this->name);
         $this->namespace = $parts[0] . '\\' . $this->name;
     }
