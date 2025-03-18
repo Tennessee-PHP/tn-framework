@@ -1,6 +1,6 @@
 {
   "name": "@tn/tn-framework",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "Tennessee PHP Framework",
   "main": "index.js",
   "types": "index.d.ts",

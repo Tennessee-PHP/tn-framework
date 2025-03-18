@@ -160,11 +160,12 @@ TYPESCRIPT;
         $last = array_pop($pageParts);
         $pageParts[] = '_' . $last;
         $pagePackage = Package::get($pageParts[0]);
-        array_shift($pageParts);
+        $packageName = array_shift($pageParts);
         $path = implode('/', $pageParts);
+
         
         if ($pagePackage && file_exists($pagePackage->getDir() . "{$path}.scss")) {
-            $str = "@import \"@{$pageParts[0]}/{$path}\";\n\n";
+            $str = "@import \"@" . strtolower($packageName) . "/{$path}\";\n\n";
         } else {
             $str = "// Page SCSS not found\n\n";
         }
@@ -183,7 +184,7 @@ TYPESCRIPT;
             }
 
             if (file_exists($package->getDir() . "{$path}.scss")) {
-                $str .= "@import \"@{$packageName}/{$path}\";\n";
+                $str .= "@import \"@" . strtolower($packageName) . "/{$path}\";\n";
             }
         }
         
