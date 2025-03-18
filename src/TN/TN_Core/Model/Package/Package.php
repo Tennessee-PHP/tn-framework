@@ -72,6 +72,6 @@ class Package extends CodeContainer
         if (!$filename) {
             throw new CodeException('Could not determine file location for package ' . get_class($this));
         }
-        return dirname(dirname($filename)) . '/';
+        return dirname($filename) . '/';
     }
 }
