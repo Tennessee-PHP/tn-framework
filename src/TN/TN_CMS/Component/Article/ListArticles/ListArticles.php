@@ -17,7 +17,6 @@ use \TN\TN_Core\Attribute\Components\Route;
 #[Page('Articles', 'articles', false)]
 #[Route('TN_CMS:Article:listArticles')]
 #[Reloadable]
-#[Route('TN_CMS:Article:listArticlesReload')]
 class ListArticles extends HTMLComponent
 {
     public ?string $tag = null;

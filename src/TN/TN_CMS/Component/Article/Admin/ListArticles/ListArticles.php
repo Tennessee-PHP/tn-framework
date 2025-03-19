@@ -17,7 +17,6 @@ use \TN\TN_Core\Attribute\Components\Route;
 #[Page('Edit Articles List', 'List of editable articles', false)]
 #[Route('TN_CMS:Article:adminListArticles')]
 #[Reloadable]
-#[Route('TN_CMS:Article:adminListArticlesReload')]
 class ListArticles extends HTMLComponent
 {
     public array $articles;

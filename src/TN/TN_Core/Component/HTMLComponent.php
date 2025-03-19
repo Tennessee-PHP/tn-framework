@@ -151,10 +151,14 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         $reflection = new \ReflectionClass($this);
 
         // try to read attributes of type $className
-        foreach ($reflection->getAttributes() as $attribute) {
-            if ($attribute->getName() === $className) {
-                return $attribute->newInstance();
+        try {
+            foreach ($reflection->getAttributes() as $attribute) {
+                if ($attribute->getName() === $className) {
+                    return $attribute->newInstance();
+                }
             }
+        } catch (\Error $e) {
+            throw new CodeException($e->getMessage() . ' on ' . static::class);
         }
 
         return null;
