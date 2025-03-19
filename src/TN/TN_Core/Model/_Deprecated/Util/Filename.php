@@ -1,6 +1,6 @@
 <?php
 
-namespace TN\TN_Core\Model\Util;
+namespace TN\TN_Core\Model\_Deprecated\Util;
 
 /**
  * collection of static methods to help with files
