@@ -20,13 +20,13 @@ use TN\TN_Core\Component\Renderer\HTML\Redirect as RedirectRenderer;
 class Redirect extends RouteType
 {
     public function __construct(
-        public string $path
+        public string $url
     )
     {
     }
 
     public function getRenderer(array $args = []): Renderer
     {
-        return RedirectRenderer::getInstance(['path' => $this->path]);
+        return RedirectRenderer::getInstance(['url' => $this->url]);
     }
 }
