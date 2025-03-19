@@ -9,7 +9,7 @@ use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 
 #[TableName('cms_selected_search_results')]
-class SelectedSearchResult implements Persistence
+class SearchSelectedResult implements Persistence
 {
     use MySQL;
     use PersistentModel;

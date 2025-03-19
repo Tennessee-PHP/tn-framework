@@ -1,6 +1,6 @@
 <?php
 
-namespace TN\Util;
+namespace TN\TN_Core\Model\Util;
 
 /**
  * collection of static methods to help with files
