@@ -25,6 +25,10 @@
     "autoload": {
         "psr-4": {
             "TN\\": "src/TN/"
-        }
+        },
+        "files": [
+            "src/TN/**/*.ts",
+            "src/TN/**/*.scss"
+        ]
     }
 }
