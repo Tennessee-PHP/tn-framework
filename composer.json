@@ -17,7 +17,8 @@
         "ext-curl": "*",
         "ext-pdo": "*",
         "guzzlehttp/guzzle": "^7.9.2",
-        "brick/math": "0.12.1"
+        "brick/math": "0.12.1",
+        "composer/installers": "^2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "10.5.39"
@@ -27,13 +28,14 @@
             "TN\\": "src/TN/"
         }
     },
-    "extra": {
-        "installer-paths": {
-            "src/TN": ["type:library"]
-        },
-        "files-install": {
-            "src/TN/**/*.ts": "src/TN",
-            "src/TN/**/*.scss": "src/TN"
-        }
+    "scripts": {
+        "post-install-cmd": [
+            "cp -R src/TN/**/*.ts vendor/tennessee-php/tn-framework/src/TN/",
+            "cp -R src/TN/**/*.scss vendor/tennessee-php/tn-framework/src/TN/"
+        ],
+        "post-update-cmd": [
+            "cp -R src/TN/**/*.ts vendor/tennessee-php/tn-framework/src/TN/",
+            "cp -R src/TN/**/*.scss vendor/tennessee-php/tn-framework/src/TN/"
+        ]
     }
 }
