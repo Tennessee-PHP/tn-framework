@@ -21,17 +21,15 @@ class Component extends RouteType
         public readonly string $componentClassName
     ) {}
 
-    public function getRenderer(array $args = []): ?Renderer
+    public function getRendererClass(): string
     {
         if (!$this->componentClassName) {
-            return null;
+            return Text::class;
         }
 
-        $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
-        
-        // Get the component's reflection class
+        $component = new (Stack::resolveClassName($this->componentClassName))();
         $reflection = new \ReflectionClass($component);
-        
+
         // If component extends HTMLComponent
         if ($reflection->isSubclassOf(HTMLComponent::class)) {
             $request = HTTPRequest::get();
@@ -39,25 +37,37 @@ class Component extends RouteType
             
             // If component is reloadable and request has reload=1, use HTML renderer
             if ($isReloadable && $request->getRequest('reload', false)) {
-                return HTML::getInstance(['component' => $component]);
+                return HTML::class;
             }
             
             // Otherwise use Page renderer for HTML components
-            return Page::getInstance(['component' => $component]);
+            return Page::class;
         }
         
         // For non-HTML components, determine renderer based on component's parent class
-        if ($reflection->isSubclassOf(\TN\TN_Core\Component\Renderer\JSON\JSON::class)) {
-            return JSON::getInstance(['component' => $component]);
+        if ($reflection->isSubclassOf(JSON::class)) {
+            return JSON::class;
         }
-        if ($reflection->isSubclassOf(\TN\TN_Core\Component\Renderer\XML\XML::class)) {
-            return XML::getInstance(['component' => $component]);
+        if ($reflection->isSubclassOf(XML::class)) {
+            return XML::class;
         }
-        if ($reflection->isSubclassOf(\TN\TN_Core\Component\Renderer\CSVDownload\CSVDownload::class)) {
-            return CSVDownload::getInstance(['component' => $component]);
+        if ($reflection->isSubclassOf(CSVDownload::class)) {
+            return CSVDownload::class;
         }
         
         // Default to Text renderer
-        return Text::getInstance(['component' => $component]);
+        return Text::class;
+    }
+
+    public function getRenderer(array $args = []): ?Renderer
+    {
+        if (!$this->componentClassName) {
+            return null;
+        }
+
+        $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
+        $rendererClass = $this->getRendererClass();
+        
+        return $rendererClass::getInstance(['component' => $component]);
     }
 } 

@@ -233,39 +233,37 @@ abstract class Controller
                 continue;
             }
 
+            $rendererClass = $this->getRendererClassFromMethod($method);
+
             try {
                 $this->setAccess($request, $method);
             } catch (AccessForbiddenException $e) {
-                $renderer = Text::getInstance(['text' => $e->getMessage()]);
+                $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (AccessLoginRequiredException $e) {
-                $renderer = Text::getInstance(['text' => $e->getMessage()]);
+                $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (AccessUncontrolledException $e) {
-                $renderer = Text::getInstance(['text' => $e->getMessage()]);
+                $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (FullPageRoadblockException $e) {
-                $renderer = Text::getInstance(['text' => 'Subscription required to access this content']);
+                $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (UnmatchedException) {
                 continue;
             }
 
-            try {
-                $response = $this->getResponse($request, $method, $matcher);
-                if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
-                    $renderer = Text::getInstance(['text' => 'Subscription required to access this content']);
-                    $renderer->prepare();
-                    return new HTTPResponse($renderer, 403);
-                }
-                return $response;
-            } catch (TNException $e) {
-                throw $e;
+            $response = $this->getResponse($request, $method, $matcher);
+            if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
+                $renderer = $rendererClass::roadblock();
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 403);
             }
+            return $response;
         }
 
         return null;
@@ -311,20 +309,19 @@ abstract class Controller
             try {
                 $args = $this->extractArgs($request, $matcher);
                 $argValues = array_values($args);
-                
-                // Look for any RouteType attribute
+
                 $routeTypeAttributes = $method->getAttributes(RouteType::class, \ReflectionAttribute::IS_INSTANCEOF);
                 $renderer = null;
-                
+
                 if (!empty($routeTypeAttributes)) {
                     $routeType = $routeTypeAttributes[0]->newInstance();
                     $renderer = $routeType->getRenderer($args);
                 }
-                
+
                 if (!$renderer) {
                     $renderer = $method->invoke($this, ...$argValues);
                 }
-                
+
                 $renderer->prepare();
                 return new HTTPResponse($renderer);
             } catch (\Error | \Exception $e) {
@@ -343,7 +340,8 @@ abstract class Controller
                 // do nothing
             }
 
-            $renderer = Text::getInstance(['text' => $e->getDisplayMessage()]);
+            $rendererClass = $this->getRendererClassFromMethod($method);
+            $renderer = $rendererClass::error($e->getDisplayMessage());
             $renderer->prepare();
             return new HTTPResponse($renderer, $e->httpResponseCode);
         }
@@ -389,5 +387,28 @@ abstract class Controller
         }
 
         return $args;
+    }
+
+    /**
+     * Gets the renderer class from a RouteType attribute on the given method.
+     * Defaults to Text renderer if no valid RouteType attribute is found or if any errors occur.
+     */
+    private function getRendererClassFromMethod(ReflectionMethod $method): string
+    {
+        try {
+            $routeTypeAttributes = $method->getAttributes(RouteType::class, ReflectionAttribute::IS_INSTANCEOF);
+            if (empty($routeTypeAttributes)) {
+                return Text::class;
+            }
+
+            $routeType = $routeTypeAttributes[0]->newInstance();
+            if (!method_exists($routeType, 'getRendererClass')) {
+                return Text::class;
+            }
+
+            return $routeType->getRendererClass();
+        } catch (\Throwable) {
+            return Text::class;
+        }
     }
 }

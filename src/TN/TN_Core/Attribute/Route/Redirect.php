@@ -29,4 +29,9 @@ class Redirect extends RouteType
     {
         return RedirectRenderer::getInstance(['url' => $this->url]);
     }
+
+    public function getRendererClass(): string
+    {
+        return RedirectRenderer::class;
+    }
 }

@@ -10,10 +10,13 @@ abstract class Select extends HTMLComponent
 {
     use ReadOnlyProperties;
 
-    /** @var array the options for the select */
+    /** @var string the key used to get the selected value from the request */
+    public string $requestKey;
+
+    /** @var Option[] the options for the select */
     public array $options;
 
-    /** @var mixed the selected item (if any) */
+    /** @var Option|null the selected item (if any) */
     public mixed $selected = null;
 
     /** @var bool  */
@@ -29,7 +32,6 @@ abstract class Select extends HTMLComponent
         $this->options = $this->getOptions();
         $request = HTTPRequest::get();
         $value = $request->getRequest($this->requestKey);
-        $valueKey = $this->valueKey;
         if ($value !== null) {
             foreach ($this->options as $option) {
 
@@ -44,13 +46,16 @@ abstract class Select extends HTMLComponent
     }
 
     /**
-     * @return array the options for this select
+     * @return Option[] the options for this select
      */
     abstract protected function getOptions(): array;
 
     /**
-     * @return mixed|null the default option
+     * @return Option|null the default option
      */
-    abstract protected function getDefaultOption(): mixed;
+    protected function getDefaultOption(): Option|null
+    {
+        return !empty($this->options) ? $this->options[0] : null;
+    }
 
 }
