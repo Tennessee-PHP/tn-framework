@@ -1,9 +1,9 @@
-import $, {Cash} from 'cash-dom';
-import axios, {AxiosError, AxiosResponse} from 'axios';
-import ComponentFactory from "./ComponentFactory";
-import ErrorToast from "./Toast/ErrorToast";
-import PageSingleton from "./Renderer/Page/PageSingleton";
-import Page from "./Renderer/Page/Page";
+import $, { Cash } from 'cash-dom';
+import axios, { AxiosError, AxiosResponse } from 'axios';
+import ComponentFactory from './ComponentFactory';
+import ErrorToast from './Toast/ErrorToast';
+import PageSingleton from '@tn/TN_Core/Component/Renderer/Page/PageSingleton';
+import Page from './Renderer/Page/Page';
 import _ from 'lodash';
 import { IComponentFactory } from './IComponentFactory';
 
@@ -11,7 +11,7 @@ import { IComponentFactory } from './IComponentFactory';
  * Data to be sent to the server when reloading the component
  */
 interface ReloadData {
-    [key: string]: string | string[] | number | boolean
+    [key: string]: string | string[] | number | boolean;
 }
 
 type ReloadMethod = 'get' | 'post';
@@ -60,7 +60,7 @@ abstract class HTMLComponent {
                 sitekey: TN.CLOUDFLARE_TURNSTILE_SITE_KEY,
                 callback: (token: string) => {
                     this.cloudflareTurnstileToken = token;
-                }
+                },
             });
         });
     }
@@ -88,7 +88,7 @@ abstract class HTMLComponent {
 
     protected getReloadData(): ReloadData {
         const data: ReloadData = {
-            'componentIdNum': this.$element.attr('id').substring(4)
+            componentIdNum: this.$element.attr('id').substring(4),
         };
 
         if (this.cloudflareTurnstileToken) {
@@ -97,10 +97,10 @@ abstract class HTMLComponent {
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
             let val = $control.val();
-            if (typeof(val) === 'undefined' || val === '') {
+            if (typeof val === 'undefined' || val === '') {
                 val = $control.data('value');
             }
-            if (typeof(val) === 'undefined' || val === '') {
+            if (typeof val === 'undefined' || val === '') {
                 return;
             }
             if ($control.is('input[type=checkbox]')) {
@@ -113,7 +113,6 @@ abstract class HTMLComponent {
             } else {
                 data[key] = val;
             }
-
         });
 
         return data;
@@ -127,7 +126,6 @@ abstract class HTMLComponent {
     }
 
     protected reload(): void {
-
         if (this.reloading) {
             return;
         }
@@ -149,21 +147,23 @@ abstract class HTMLComponent {
     }
 
     protected postRequest(reloadData: ReloadData): void {
-        axios.post(this.$element.data('reload-url'), reloadData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        })
-            .then(this.onReloadSuccess.bind(this, this.reloadCount))
-            .catch(this.onReloadError.bind(this, this.reloadCount));
+        axios
+            .post(this.$element.data('reload-url'), reloadData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            .catch(this.onReloadError.bind(this, this.reloadCount))
+            .then(this.onReloadSuccess.bind(this, this.reloadCount));
     }
 
     protected getRequest(reloadData: ReloadData): void {
-        axios.get(this.$element.data('reload-url'), {
-            params: reloadData
-        })
-            .then(this.onReloadSuccess.bind(this, this.reloadCount))
-            .catch(this.onReloadError.bind(this, this.reloadCount));
+        axios
+            .get(this.$element.data('reload-url'), {
+                params: reloadData,
+            })
+            .catch(this.onReloadError.bind(this, this.reloadCount))
+            .then(this.onReloadSuccess.bind(this, this.reloadCount));
     }
 
     protected updateUrlQuery(data: ReloadData): void {
@@ -174,8 +174,8 @@ abstract class HTMLComponent {
             keysToDelete.push(key);
         });
 
-        keysToDelete.forEach((key) => {
-           thisUrl.searchParams.delete(key);
+        keysToDelete.forEach(key => {
+            thisUrl.searchParams.delete(key);
         });
 
         for (key in data) {
@@ -194,7 +194,6 @@ abstract class HTMLComponent {
     }
 
     protected onReloadSuccess(reloadNumber: number, response: AxiosResponse): void {
-
         if (reloadNumber !== this.reloadCount) {
             return;
         }
@@ -223,7 +222,6 @@ abstract class HTMLComponent {
 
         let page: Page = PageSingleton();
         page.updated();
-
     }
 
     protected onReloadError(reloadNumber: number, error: AxiosError): void {
@@ -231,8 +229,7 @@ abstract class HTMLComponent {
         // @ts-ignore
         new ErrorToast(error.response.data);
     }
-
 }
 
 export default HTMLComponent;
-export {ReloadData, ReloadMethod};
+export { ReloadData, ReloadMethod };

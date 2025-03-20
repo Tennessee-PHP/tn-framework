@@ -59,7 +59,7 @@ class ComponentMap
             // Get the package name from the fully qualified class name
             $parts = explode("\\", $className);
             $packageName = $parts[0];
-            
+
             // Find the package instance
             $package = Package::get($packageName);
             if (!$package) {
@@ -67,7 +67,8 @@ class ComponentMap
             }
 
             $qualified = str_replace("\\", "_", $className);
-            $path = str_replace("\\", "/", $className);
+            array_shift($parts);
+            $path = implode("/", $parts);
 
             // Check if TypeScript file exists in package directory
             if (!file_exists($package->getDir() . "{$path}.ts")) {
@@ -75,7 +76,7 @@ class ComponentMap
             }
 
             // Convert path to use TypeScript path alias
-            $aliasPath = $this->getTypeScriptAliasPath($path);
+            $aliasPath = $this->getTypeScriptAliasPath(str_replace("\\", "/", $className));
             if ($aliasPath === null) {
                 continue; // Skip if no matching alias found
             }
@@ -88,7 +89,7 @@ class ComponentMap
         $pageClassName = Page::class;
         $pageParts = explode("\\", $pageClassName);
         $pagePackage = Package::get($pageParts[0]);
-        
+
         $pagePath = str_replace("\\", "/", Stack::resolveClassName(Page::class));
         if ($pagePackage && file_exists($pagePackage->getDir() . "src/{$pagePath}.ts")) {
             $pageAliasPath = $this->getTypeScriptAliasPath($pagePath);
@@ -163,7 +164,7 @@ TYPESCRIPT;
         $packageName = array_shift($pageParts);
         $path = implode('/', $pageParts);
 
-        
+
         if ($pagePackage && file_exists($pagePackage->getDir() . "{$path}.scss")) {
             $str = "@import \"@" . strtolower($packageName) . "/{$path}\";\n\n";
         } else {
@@ -177,7 +178,7 @@ TYPESCRIPT;
             $last = array_pop($parts);
             $parts[] = '_' . $last;
             $path = implode('/', $parts);
-            
+
             $package = Package::get($packageName);
             if (!$package) {
                 continue;
@@ -187,9 +188,7 @@ TYPESCRIPT;
                 $str .= "@import \"@" . strtolower($packageName) . "/{$path}\";\n";
             }
         }
-        
+
         file_put_contents($_ENV['TN_ROOT'] . $this->sassPath, $str);
     }
-
-
 }

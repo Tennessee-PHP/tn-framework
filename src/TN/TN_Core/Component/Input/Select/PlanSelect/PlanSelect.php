@@ -33,9 +33,4 @@ class PlanSelect extends Select
         }
         return $options;
     }
-
-    protected function getDefaultOption(): mixed
-    {
-        return $this->options[0];
-    }
 }

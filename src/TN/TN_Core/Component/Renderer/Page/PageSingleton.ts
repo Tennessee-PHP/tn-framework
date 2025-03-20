@@ -7,4 +7,4 @@ export default function PageSingleton(): Page {
         page = new pageReference();
     }
     return page;
-}
+} 

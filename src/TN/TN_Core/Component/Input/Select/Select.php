@@ -53,7 +53,7 @@ abstract class Select extends HTMLComponent
     /**
      * @return Option|null the default option
      */
-    protected function getDefaultOption(): Option|null
+    protected function getDefaultOption(): mixed
     {
         return !empty($this->options) ? $this->options[0] : null;
     }
