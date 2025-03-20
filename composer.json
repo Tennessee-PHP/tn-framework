@@ -25,10 +25,15 @@
     "autoload": {
         "psr-4": {
             "TN\\": "src/TN/"
+        }
+    },
+    "extra": {
+        "installer-paths": {
+            "src/TN": ["type:library"]
         },
-        "files": [
-            "src/TN/**/*.ts",
-            "src/TN/**/*.scss"
-        ]
+        "files-install": {
+            "src/TN/**/*.ts": "src/TN",
+            "src/TN/**/*.scss": "src/TN"
+        }
     }
 }
