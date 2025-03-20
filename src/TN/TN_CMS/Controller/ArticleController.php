@@ -12,7 +12,7 @@ use TN\TN_Core\Attribute\Route\Access\Restrictions\RolesOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\UsersOnly;
 
-class Article extends Controller
+class ArticleController extends Controller
 {
     #[Path('articles')]
     #[Component(\TN\TN_CMS\Component\Article\ListArticles\ListArticles::class)]

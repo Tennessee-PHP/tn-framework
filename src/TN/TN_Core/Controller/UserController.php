@@ -12,7 +12,7 @@ use TN\TN_Core\Component\Renderer\HTML\Redirect;
 use TN\TN_Core\Component\Renderer\Renderer;
 use TN\TN_Core\Model\User\User as UserModel;
 
-class User extends Controller
+class UserController extends Controller
 {
     #[Path('log-in')]
     #[Path('sign-in')]

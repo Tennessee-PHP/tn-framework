@@ -6,7 +6,7 @@ use TN\TN_Core\Attribute\Command\CLI;
 use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Route\Component;
 
-class CronTab extends Controller
+class CronTabController extends Controller
 {
     #[CommandName('crontab/generate')]
     #[Component(\TN\TN_Core\CLI\CronTab\All::class)]

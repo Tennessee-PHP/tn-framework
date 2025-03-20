@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class VoucherCode extends Controller
+class VoucherCodeController extends Controller
 {
     #[Path('staff/sales/voucher-codes/list')]
     #[Component(\TN\TN_Billing\Component\VoucherCode\ListVoucherCodes\ListVoucherCodes::class)]

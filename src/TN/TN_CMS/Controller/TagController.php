@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Controller\Controller;
 
-class Tag extends Controller
+class TagController extends Controller
 {
     #[Path('tags/search')]
     #[Anyone]

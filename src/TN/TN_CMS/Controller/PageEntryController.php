@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class PageEntry extends Controller
+class PageEntryController extends Controller
 {
     #[Path('staff/page-entries')]
     #[Component(\TN\TN_CMS\Component\PageEntry\Admin\ListPageEntries\ListPageEntries::class)]

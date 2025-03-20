@@ -6,7 +6,7 @@ use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 
-class PageResource extends Controller
+class PageResourceController extends Controller
 {
     #[Path('check-live-resource')]
     #[Anyone]

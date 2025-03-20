@@ -24,7 +24,7 @@ use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsRenewalEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsStalledEntry;
 use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
 
-class Analytics extends Controller
+class AnalyticsController extends Controller
 {
     #[Schedule('*/5 * * * * *')]
     #[TimeLimit(5000)]

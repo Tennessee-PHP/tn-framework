@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
 
-class Search extends Controller
+class SearchController extends Controller
 {
     #[Path('search')]
     #[Component(\TN\TN_CMS\Component\Search\SearchResults\SearchResults::class)]

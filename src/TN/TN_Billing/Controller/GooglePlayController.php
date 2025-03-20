@@ -6,7 +6,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Controller\Controller;
 
-class GooglePlay extends Controller
+class GooglePlayController extends Controller
 {
     #[Path('api/googleplay/subscription')]
     #[Component(\TN\TN_Billing\Component\GooglePlay\Api\Subscription::class)]

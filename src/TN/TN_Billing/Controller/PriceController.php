@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class Price extends Controller
+class PriceController extends Controller
 {
     #[Path('staff/sales/change-prices')]
     #[Component(\TN\TN_Billing\Component\Price\EditPrices\EditPrices::class)]

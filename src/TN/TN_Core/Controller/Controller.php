@@ -69,6 +69,11 @@ abstract class Controller
 {
     public static function path(string $moduleName, string $controllerName, string $routeName, array $args = []): string
     {
+        // Append "Controller" suffix if not already present
+        if (!str_ends_with($controllerName, 'Controller')) {
+            $controllerName .= 'Controller';
+        }
+
         $controllerClassName = Stack::resolveClassName($moduleName . '\\Controller\\' . $controllerName);
         if (!class_exists($controllerClassName)) {
             return '';

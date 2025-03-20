@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Route\FileNotFound;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Path;
 
-class Error extends Controller
+class ErrorController extends Controller
 {
     #[FileNotFound]
     #[Anyone]

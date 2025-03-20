@@ -11,7 +11,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Attribute\Route\Component;
 
-class Refund extends Controller
+class RefundController extends Controller
 {
     #[Path('staff/users/user/:userId/plans/refund')]
     #[RoleOnly('user-admin')]

@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Controller\Controller;
 
-class TinyMCEComment extends Controller
+class TinyMCECommentController extends Controller
 {
     #[Path('tinymce/comment/thread/get')]
     #[Component(\TN\TN_CMS\Component\TinyMCEComment\Thread\Get::class)]

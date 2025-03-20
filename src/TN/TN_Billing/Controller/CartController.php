@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Command\Schedule;
 use TN\TN_Core\Attribute\Command\TimeLimit;
 use TN\TN_Core\Controller\Controller;
 
-class Cart extends Controller
+class CartController extends Controller
 {
     #[Schedule('05 */2 * * * *')]
     #[TimeLimit(600)]

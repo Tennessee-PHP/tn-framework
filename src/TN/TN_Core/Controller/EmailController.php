@@ -10,7 +10,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class Email extends Controller
+class EmailController extends Controller
 {
     #[Path('staff/emails/list')]
     #[Component(\TN\TN_Core\Component\Email\ListEmailTemplates\ListEmailTemplates::class)]

@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Path;
 
-class Components extends Controller
+class ComponentsController extends Controller
 {
     #[Path('style-guide')]
     #[RoleOnly('super-user')]

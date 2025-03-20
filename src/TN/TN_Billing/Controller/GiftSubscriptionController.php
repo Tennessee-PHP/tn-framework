@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class GiftSubscription extends Controller
+class GiftSubscriptionController extends Controller
 {
     #[Path('staff/sales/comp')]
     #[Component(\TN\TN_Billing\Component\GiftSubscription\ListGiftSubscriptions\ListGiftSubscriptions::class)]

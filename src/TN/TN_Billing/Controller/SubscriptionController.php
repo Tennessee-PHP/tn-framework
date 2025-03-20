@@ -12,7 +12,7 @@ use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\Time\Time;
 
-class Subscription extends Controller
+class SubscriptionController extends Controller
 {
     #[Path('staff/users/user/:userId/plans/cancel-subscription')]
     #[UsersOnly]

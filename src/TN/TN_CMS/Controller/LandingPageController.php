@@ -8,7 +8,7 @@ use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class LandingPage extends Controller
+class LandingPageController extends Controller
 {
     #[Path('staff/landing-pages')]
     #[Component(\TN\TN_CMS\Component\LandingPage\Admin\ListLandingPages\ListLandingPages::class)]

@@ -6,7 +6,7 @@ use TN\TN_Core\Attribute\Command\CLI;
 use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Route\Component;
 
-class Schema extends Controller
+class SchemaController extends Controller
 {
     #[CommandName('schema/all')]
     #[Component(\TN\TN_Core\CLI\Schema\All::class)]

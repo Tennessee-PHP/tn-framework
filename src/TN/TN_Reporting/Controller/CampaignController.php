@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class Campaign extends Controller
+class CampaignController extends Controller
 {
     #[Path('staff/campaigns')]
     #[Component(\TN\TN_Reporting\Component\Campaign\ListCampaigns\ListCampaigns::class)]

@@ -7,7 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 
-class Admin extends Controller
+class AdminController extends Controller
 {
     #[Path('adverts/admin/list')]
     #[Component(\TN\TN_Advert\Component\Admin\ListAdverts\ListAdverts::class)]
