@@ -43,6 +43,10 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'abs', static::class . '::abs');
         $this->registerPlugin('modifier', 'urlencode', static::class . '::urlencode');
         $this->registerPlugin('modifier', 'reset', static::class . '::reset');
+        $this->registerPlugin('modifier', 'substr', static::class . '::substr');
+        $this->registerPlugin('modifier', 'strpos', static::class . '::strpos');
+        $this->registerPlugin('modifier', 'array_search', static::class . '::arraySearch');
+        $this->registerPlugin('modifier', 'strtoupper', static::class . '::strtoupper');
     }
 
     public static function reset(array $array): string
@@ -77,6 +81,26 @@ class TemplateEngine extends Smarty
     public static function urlencode(mixed $value): string
     {
         return urlencode($value);
+    }
+
+    public static function substr(string $string, int $start, ?int $length = null): string
+    {
+        return substr($string, $start, $length);
+    }
+
+    public static function strpos(string $haystack, string $needle): int|false
+    {
+        return strpos($haystack, $needle);
+    }
+
+    public static function arraySearch(mixed $needle, array $haystack): int|string|false
+    {
+        return array_search($needle, $haystack, true);
+    }
+
+    public static function strtoupper(?string $string): string
+    {
+        return $string === null ? '' : strtoupper($string);
     }
 
     /**

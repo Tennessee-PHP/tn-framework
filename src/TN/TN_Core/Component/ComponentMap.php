@@ -86,22 +86,22 @@ class ComponentMap
         }
 
         // Handle Page import
-        $pageClassName = Page::class;
-        $pageParts = explode("\\", $pageClassName);
-        $pagePackage = Package::get($pageParts[0]);
-
-        $pagePath = str_replace("\\", "/", Stack::resolveClassName(Page::class));
-        if ($pagePackage && file_exists($pagePackage->getDir() . "src/{$pagePath}.ts")) {
-            $pageAliasPath = $this->getTypeScriptAliasPath($pagePath);
-            if ($pageAliasPath !== null) {
-                $includes[] = "import Page from \"{$pageAliasPath}\";";
+        $className = Stack::resolveClassName(Page::class);
+        $parts = explode("\\", $className);
+        $package = Package::get($parts[0]);
+        array_shift($parts);
+        $path = implode("/", $parts);
+        if ($package && file_exists($package->getDir() . "{$path}.ts")) {
+            $aliasPath = $this->getTypeScriptAliasPath(str_replace("\\", "/", $className));
+            if ($aliasPath !== null) {
+                $includes[] = "import Page from \"{$aliasPath}\";";
             }
         } else {
             // Fallback to direct class path
-            $pagePath = str_replace("\\", "/", Page::class);
-            $pageAliasPath = $this->getTypeScriptAliasPath($pagePath);
-            if ($pageAliasPath !== null) {
-                $includes[] = "import Page from \"{$pageAliasPath}\";";
+            $path = str_replace("\\", "/", Page::class);
+            $aliasPath = $this->getTypeScriptAliasPath(str_replace("\\", "/", Page::class));
+            if ($aliasPath !== null) {
+                $includes[] = "import Page from \"{$aliasPath}\";";
             }
         }
 
