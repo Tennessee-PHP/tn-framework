@@ -54,7 +54,7 @@ class TrackedVisitor implements Persistence
      * @return TrackedVisitor factory method
      * @throws ValidationException
      */
-    public static function getInstance(): TrackedVisitor
+    public static function get(): TrackedVisitor
     {
         if (isset(self::$instance)) {
             return self::$instance;
@@ -107,9 +107,7 @@ class TrackedVisitor implements Persistence
     }
 
     /** set the constructor to protected */
-    protected function __construct()
-    {
-    }
+    protected function __construct() {}
 
     /**
      * gets all the funnels that this route appears in
@@ -165,7 +163,7 @@ class TrackedVisitor implements Persistence
      */
     public function getActiveVoucherCode(): ?VoucherCode
     {
-        $voucherCode = false;
+        $voucherCode = null;
         $campaign = $this->getCampaign();
         if ($campaign instanceof Campaign) {
             if ($campaign->voucherCodeId > 0) {

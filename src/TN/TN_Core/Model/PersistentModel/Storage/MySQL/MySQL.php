@@ -541,7 +541,6 @@ trait MySQL
                 }
                 $indices[$indexInstance->indexName][] = $property->getName();
             }
-
         }
 
         // add the primary key string to keyStrings, referencing each primaryKeyPropertyName inside ``
@@ -613,7 +612,6 @@ trait MySQL
             if (count($timestampAttributes) > 0) {
                 $type = 'bigint';
             }
-
         } elseif ($typeName === 'bool') {
             $type = 'tinyint';
         } elseif ($typeName === 'float') {
@@ -642,6 +640,5 @@ trait MySQL
         }
 
         return "`{$propertyName}` {$type}" . (!empty($typeOptions) ? "({$typeOptions})" : '') . ($nullable ? "" : " NOT NULL") . ($isAutoIncrement ? ' AUTO_INCREMENT' : '');
-
     }
 }

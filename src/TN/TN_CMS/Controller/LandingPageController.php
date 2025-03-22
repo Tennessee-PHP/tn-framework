@@ -7,6 +7,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
+use TN\TN_Core\Attribute\Route\DynamicPath;
 
 class LandingPageController extends Controller
 {
@@ -26,6 +27,7 @@ class LandingPageController extends Controller
     public function adminEditLandingPageProperties(): void {}
 
     #[Path('landing-page/:urlStub')]
+    #[DynamicPath(\TN\TN_CMS\Component\LandingPage\LandingPage\LandingPage::class, 'dynamicMatch')]
     #[Component(\TN\TN_CMS\Component\LandingPage\LandingPage\LandingPage::class)]
     #[Anyone]
     public function landingPage(): void {}

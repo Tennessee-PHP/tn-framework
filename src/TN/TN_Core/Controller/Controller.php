@@ -306,34 +306,30 @@ abstract class Controller
     private function getResponse(HTTPRequest $request, ReflectionMethod $method, Matcher $matcher): HTTPResponse
     {
         try {
-            try {
-                $args = $this->extractArgs($request, $matcher);
-                $argValues = array_values($args);
+            $args = $this->extractArgs($request, $matcher);
+            $argValues = array_values($args);
 
-                $routeTypeAttributes = $method->getAttributes(RouteType::class, \ReflectionAttribute::IS_INSTANCEOF);
-                $renderer = null;
+            $routeTypeAttributes = $method->getAttributes(RouteType::class, \ReflectionAttribute::IS_INSTANCEOF);
+            $renderer = null;
 
-                if (!empty($routeTypeAttributes)) {
-                    $routeType = $routeTypeAttributes[0]->newInstance();
-                    $renderer = $routeType->getRenderer($args);
-                }
-
-                if (!$renderer) {
-                    $renderer = $method->invoke($this, ...$argValues);
-                }
-
-                $renderer->prepare();
-                return new HTTPResponse($renderer);
-            } catch (\Error | \Exception $e) {
-                if ($e instanceof TNException) {
-                    throw $e;
-                } else {
-                    throw new TNException($e->getMessage(), $e->getCode(), $e);
-                }
+            if (!empty($routeTypeAttributes)) {
+                $routeType = $routeTypeAttributes[0]->newInstance();
+                $renderer = $routeType->getRenderer($args);
             }
+
+            if (!$renderer) {
+                $renderer = $method->invoke($this, ...$argValues);
+            }
+
+            $renderer->prepare();
+            return new HTTPResponse($renderer);
         } catch (ResourceNotFoundException $e) {
             throw $e;
-        } catch (TNException $e) {
+        } catch (\Error | \Exception $e) {
+            if (!($e instanceof TNException)) {
+                $e = new TNException($e->getMessage(), $e->getCode(), $e);
+            }
+
             try {
                 LoggedError::log($e, $request);
             } catch (\Exception) {

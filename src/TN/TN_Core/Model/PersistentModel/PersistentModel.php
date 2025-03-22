@@ -30,7 +30,7 @@ use TN\TN_Core\Attribute\MySQL\PrimaryKey;
  */
 trait PersistentModel
 {
-    #[AutoIncrement] #[PrimaryKey] public int $id = 0;
+    #[AutoIncrement] #[PrimaryKey] public int $id;
 
     use Factory;
     use Cache;

@@ -40,9 +40,7 @@ trait Validation
      * class specific, complex validations not covered by the standard validation attributes
      * @throws ValidationException
      */
-    protected function customValidate(): void
-    {
-    }
+    protected function customValidate(): void {}
 
     /**
      * validate
@@ -77,7 +75,6 @@ trait Validation
                     $errors[] = '(' . $property->getName() . '): ' . $constraintInstance->error;
                 }
             }
-
         }
 
         try {
@@ -89,7 +86,5 @@ trait Validation
         if (count($errors) > 0) {
             throw new ValidationException($errors);
         }
-
-
     }
 }

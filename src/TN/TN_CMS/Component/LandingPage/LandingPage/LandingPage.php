@@ -25,6 +25,17 @@ class LandingPage extends HTMLComponent
     public bool $userIsPageEntryAdmin;
     public EditPageEntry $editPageEntry;
 
+    /**
+     * Dynamically match campaign paths by checking if they exist in the database
+     * and have useBaseUrl set
+     */
+    public static function dynamicMatch(HTTPRequest $request): bool|string
+    {
+        $request = HTTPRequest::get();
+        $urlStub = trim($request->path, '/');
+        return (LandingPageModel::getPublishedMatchingUrlStub($urlStub) instanceof LandingPageModel);
+    }
+
     public function getContentPageEntry(): ?PageEntry
     {
         return $this->pageEntry;
@@ -56,7 +67,7 @@ class LandingPage extends HTMLComponent
         $this->pageEntry = PageEntry::getPageEntryForContentItem(LandingPageModel::class, $this->landingPage->id);
         $this->userIsPageEntryAdmin = User::getActive()->hasRole('pageentries-admin');
         if ($this->userIsPageEntryAdmin) {
-            $this->editPageEntry = new EditPageEntry(['pageEntryId' => $this->pageEntry->id ]);
+            $this->editPageEntry = new EditPageEntry(['pageEntryId' => $this->pageEntry->id]);
             $this->editPageEntry->prepare();
         }
     }

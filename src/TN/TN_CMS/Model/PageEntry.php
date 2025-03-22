@@ -211,7 +211,6 @@ class PageEntry implements Persistence
             ];
         }
         return $results;
-
     }
 
     public static function getPageEntries(array $filters, int $start, int $num): array
@@ -409,8 +408,8 @@ class PageEntry implements Persistence
             $timeFactor = $i;
         } else {
             $timeFactor = $i + (
-                    ($diff - $tsScale[$i - 1]) / ($tsScale[$i] - $tsScale[$i - 1])
-                );
+                ($diff - $tsScale[$i - 1]) / ($tsScale[$i] - $tsScale[$i - 1])
+            );
         }
         return $timeFactor;
     }
@@ -463,7 +462,6 @@ class PageEntry implements Persistence
                 'alwaysCurrent' => false
             ]);
         }
-
     }
 
     /**
@@ -534,7 +532,6 @@ class PageEntry implements Persistence
         }
 
         return $pageEntry;
-
     }
 
     public static function getReadableContentType(): string

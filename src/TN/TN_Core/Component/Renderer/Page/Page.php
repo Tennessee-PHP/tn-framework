@@ -18,6 +18,7 @@ use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\PersistentModel\ReadOnlyProperties;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Attribute\Components\HTMLComponent\BareRender;
+use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
 use TN\TN_Core\Component\TemplateEngine;
 
 /**
@@ -190,6 +191,10 @@ class Page extends Renderer
             $this->allowFullWidth = true;
         }
 
+        if ($reflection->getAttributes(RemoveNavigation::class)) {
+            $this->removeNavigation = true;
+        }
+
         foreach ($this->component->getPageJsVars() as $var => $value) {
             $this->addJsVar($var, $value);
         }
@@ -245,7 +250,6 @@ class Page extends Renderer
             }
 
             $this->updatePageEntryTags();
-
         } catch (\Exception $e) {
             // do nothing
         }
