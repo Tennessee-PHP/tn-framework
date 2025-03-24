@@ -20,7 +20,7 @@ class TNException extends \Exception
 
     public function canShowMessage(): bool
     {
-        return $this->messageIsUserFacing || $this->getUserIsAdmin();
+        return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
     }
 
     public function getDisplayMessage(): string
@@ -34,7 +34,7 @@ class TNException extends \Exception
         if ($this->getUserIsAdmin()) {
             $message .= PHP_EOL . PHP_EOL;
             $message .= 'Admin-only viewable error (not visible by regular users): ' . PHP_EOL;
-            
+
             if ($this->getPrevious()) {
                 $prev = $this->getPrevious();
                 $message .= get_class($prev) . ": [{$prev->getCode()}] {$prev->getMessage()} on line {$prev->getLine()} in file {$prev->getFile()}\n";
@@ -59,5 +59,5 @@ class TNException extends \Exception
             return get_class($prev) . ": [{$prev->getCode()}] {$prev->getMessage()} on line {$prev->getLine()} in file {$prev->getFile()}\n";
         }
         return __CLASS__ . ": [{$this->code}] {$this->message} on line {$this->line} in file {$this->file}\n";
-    }    
+    }
 }

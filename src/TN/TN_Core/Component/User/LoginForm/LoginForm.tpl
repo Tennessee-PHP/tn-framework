@@ -42,6 +42,8 @@
         <a class="btn btn-outline-primary change-action" data-action="login">Back To Login</a>
     {/if}
 
-    <p class="mt-3">Don't have an account with us yet? What are you waiting for!</p>
-    <a class="btn btn-primary" href="#create-account">Create Account</a>
+    <div class="create-account-wrapper">
+        <p class="mt-3">Don't have an account with us yet? What are you waiting for!</p>
+        <a class="btn btn-primary" href="#create-account">Create Account</a>
+    </div>
 </form>
