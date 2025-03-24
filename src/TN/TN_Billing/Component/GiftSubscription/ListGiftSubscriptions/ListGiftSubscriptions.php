@@ -17,7 +17,6 @@ use \TN\TN_Core\Attribute\Components\Route;
 #[Page('Complimentary Subscriptions', '', false)]
 #[Route('TN_Billing:GiftSubscription:listGiftSubscriptions')]
 #[Reloadable]
-#[Route('TN_Billing:GiftSubscription:listGiftSubscriptionsReload')]
 class ListGiftSubscriptions extends HTMLComponent
 {
     public Pagination $pagination;

@@ -7,7 +7,7 @@ class Gifter extends \TN\TN_Core\Model\Email\Template\Template
     protected string $key = 'subscription/giftsubscription/gifter';
     protected string $name = 'Gift Subscription Purchase';
     protected string $subject = 'Thank You! Your {$SITE_NAME} Gift Subscription Info';
-    protected string $defaultTemplateFile = 'TN/Model/Email/Template/Subscription/GiftSubscription/Gifter.tpl';
+    protected string $defaultTemplateFile = 'TN_Core/Model/Email/Template/Subscription/GiftSubscription/Gifter.tpl';
     protected array $sampleData = [
         'giftSubscriptionKey' => 'somelongkey',
         'recipientEmail' => 'recipientEmail@placeholder.com',

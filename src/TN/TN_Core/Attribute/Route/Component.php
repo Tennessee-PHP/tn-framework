@@ -34,16 +34,16 @@ class Component extends RouteType
         if ($reflection->isSubclassOf(HTMLComponent::class)) {
             $request = HTTPRequest::get();
             $isReloadable = !empty($reflection->getAttributes(ReloadableAttribute::class));
-            
+
             // If component is reloadable and request has reload=1, use HTML renderer
             if ($isReloadable && $request->getRequest('reload', false)) {
                 return HTML::class;
             }
-            
+
             // Otherwise use Page renderer for HTML components
             return Page::class;
         }
-        
+
         // For non-HTML components, determine renderer based on component's parent class
         if ($reflection->isSubclassOf(JSON::class)) {
             return JSON::class;
@@ -54,7 +54,7 @@ class Component extends RouteType
         if ($reflection->isSubclassOf(CSVDownload::class)) {
             return CSVDownload::class;
         }
-        
+
         // Default to Text renderer
         return Text::class;
     }
@@ -66,8 +66,11 @@ class Component extends RouteType
         }
 
         $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
+        if ($component instanceof JSON) {
+            return $component;
+        }
         $rendererClass = $this->getRendererClass();
-        
+
         return $rendererClass::getInstance(['component' => $component]);
     }
-} 
+}

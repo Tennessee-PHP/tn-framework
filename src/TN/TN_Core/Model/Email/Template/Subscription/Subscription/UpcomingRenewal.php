@@ -7,7 +7,7 @@ class UpcomingRenewal extends \TN\TN_Core\Model\Email\Template\Template
     protected string $key = 'subscription/subscription/upcomingrenewal';
     protected string $name = 'Subscription Renewal';
     protected string $subject = 'Your {$SITE_NAME} Subscription Is About To Renew';
-    protected string $defaultTemplateFile = 'TN/Model/Email/Template/Subscription/Subscription/UpcomingRenewal.tpl';
+    protected string $defaultTemplateFile = 'TN_Core/Model/Email/Template/Subscription/Subscription/UpcomingRenewal.tpl';
     protected array $sampleData = [
         'subscription' => 'Subscription',
         'username' => 'someUserName',

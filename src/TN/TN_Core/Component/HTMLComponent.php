@@ -62,6 +62,7 @@ use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Component\Title\BreadcrumbEntry;
 use TN\TN_Core\Component\Title\Title;
 use TN\TN_Core\Controller\Controller;
+use TN\TN_Core\Error\CodeException;
 use TN\TN_Core\Model\Theme\Theme;
 
 /**

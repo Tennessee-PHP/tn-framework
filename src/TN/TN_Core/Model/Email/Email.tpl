@@ -1,3 +1,3 @@
-{include file="TN/Model/Email/Header.tpl"}
+{include file="TN_Core/Model/Email/Header.tpl"}
 {$body}
-{include file="TN/Model/Email/Footer.tpl"}
+{include file="TN_Core/Model/Email/Footer.tpl"}

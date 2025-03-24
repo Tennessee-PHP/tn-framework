@@ -70,10 +70,9 @@ class Template
         try {
             $engine = TemplateEngine::getInstance();
             $engine->assignData(array_merge($data, ['body' => $body]));
-            return $engine->fetch('TN/Model/Email/Email.tpl');
+            return $engine->fetch('TN_Core/Model/Email/Email.tpl');
         } catch (\Exception $e) {
             return false;
         }
     }
-
 }

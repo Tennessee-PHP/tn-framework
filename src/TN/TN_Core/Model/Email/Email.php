@@ -7,6 +7,7 @@ use TN\TN_Core\Attribute\Constraints\EmailAddress;
 use TN\TN_Core\Attribute\MySQL\AutoIncrement;
 use TN\TN_Core\Attribute\MySQL\PrimaryKey;
 use TN\TN_Core\Attribute\MySQL\TableName;
+use TN\TN_Core\Error\CodeException;
 use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\Email\Template\Template;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
@@ -48,9 +49,9 @@ class Email implements Persistence
      * @param SmartyException $e
      * @return void
      */
-    public static function handleTemplateException(SmartyException $e): void
+    public static function handleTemplateException(\Exception $e): void
     {
-
+        throw new CodeException($e->getMessage(), 500);
     }
 
     /**
@@ -66,7 +67,7 @@ class Email implements Persistence
         try {
             $subject = $template->getSubject(array_merge(['to' => $to], $data));
             $body = $template->getBody(array_merge(['subject' => $subject, 'to' => $to], $data));
-        } catch (SmartyException $e) {
+        } catch (\Exception $e) {
             self::handleTemplateException($e);
             return false;
         }
@@ -83,7 +84,6 @@ class Email implements Persistence
         } catch (\Exception $e) {
             return false;
         }
-
     }
 
     /**
@@ -138,5 +138,4 @@ class Email implements Persistence
         }
         return $success;
     }
-
 }

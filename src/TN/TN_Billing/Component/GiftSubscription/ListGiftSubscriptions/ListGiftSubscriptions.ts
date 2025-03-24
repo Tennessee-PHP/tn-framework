@@ -52,15 +52,17 @@ export default class ListGiftSubscriptions extends HTMLComponent {
     }
 
     onSubmitSuccess(response: any): void {
+        console.log(response.data.result);
+        console.log(response.data.message);
         if (response.data.result === 'success') {
-            $('#advert_id_field').val(response.data.advertId);
             new SuccessToast(response.data.message);
         }
         this.reload();
     }
 
     onSubmitError(response: any): void {
-        new ErrorToast(response.data.message);
+        new ErrorToast(response.response.data.message);
     }
 
 }
+
