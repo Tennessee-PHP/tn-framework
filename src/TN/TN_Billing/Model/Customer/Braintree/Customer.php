@@ -24,25 +24,25 @@ class Customer implements Persistence
     use \TN\TN_Core\Trait\GetUser;
 
     /** @var int  user's id */
-    protected int $userId;
+    public int $userId;
 
     /** @var string the braintree id */
-    protected string $customerId;
+    public string $customerId;
 
     /** @var string the payment method of the customer */
-    protected string $paymentMethod = '';
+    public string $paymentMethod = '';
 
     /** @var string card expiration of the customer. empty string if unknown */
-    protected string $cardExpiration = '';
+    public string $cardExpiration = '';
 
     /** @var string card type of the customer. empty string if unknown */
-    protected string $cardType = '';
+    public string $cardType = '';
 
     /** @var string account name of the customer (e.g. paypal login). empty string if unknown */
-    protected string $accountName = '';
+    public string $accountName = '';
 
     /** @var string the vaulted token for recurring payments */
-    protected string $vaultedToken = '';
+    public string $vaultedToken = '';
 
     /**
      * gets one without creation; false otherwise
@@ -85,7 +85,6 @@ class Customer implements Persistence
             'userId' => $user->id
         ]);
         return $customer;
-
     }
 
     public function getReadablePaymentMethod(): string

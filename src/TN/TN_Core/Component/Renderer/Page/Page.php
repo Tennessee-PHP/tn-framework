@@ -18,7 +18,9 @@ use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\PersistentModel\ReadOnlyProperties;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Attribute\Components\HTMLComponent\BareRender;
+use TN\TN_Core\Attribute\Components\HTMLComponent\MetaPixelEvent;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
+use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresResource;
 use TN\TN_Core\Component\TemplateEngine;
 
 /**
@@ -139,19 +141,7 @@ class Page extends Renderer
         return $data;
     }
 
-    public function addTinyMceResources(): void
-    {
-        $cssResource = new PageResource(
-            fileUrl: 'css/index.css',
-            type: PageResourceType::CSS,
-            isRelative: true,
-            liveReload: false,
-            cacheBuster: true
-        );
-        $this->addJsVar('CSS_URL', $cssResource->url);
-        $this->addJsVar('TINYMCE_BOOTSTRAP_KEY', $_ENV['TINYMCE_BOOTSTRAP_KEY']);
-        $this->addJsUrl('https://cdn.tiny.cloud/1/' . $_ENV['TINYMCE_KEY'] . '/tinymce/6/tinymce.min.js');
-    }
+    public function addTinyMceResources(): void {}
 
     protected function addResources(): void
     {
@@ -177,14 +167,10 @@ class Page extends Renderer
             ));
         }
 
-        // do we need to add tinymce?
+        // do we need to add tinymce or other client dependencies?
         $reflection = new \ReflectionClass($this->component);
-        if ($reflection->getAttributes(RequiresTinyMCE::class)) {
-            $this->addTinyMceResources();
-        }
-
-        if ($reflection->getAttributes(RequiresChartJS::class)) {
-            $this->addJsUrl('https://cdn.jsdelivr.net/npm/chart.js');
+        foreach ($reflection->getAttributes(RequiresResource::class) as $attribute) {
+            $attribute->newInstance()->addResource($this);
         }
 
         if ($reflection->getAttributes(FullWidth::class)) {
@@ -214,6 +200,12 @@ class Page extends Renderer
 
         $this->metaPixel = new MetaPixel();
         $this->metaPixel->prepare();
+
+        $reflection = new \ReflectionClass($this->component);
+        if ($reflection->getAttributes(MetaPixelEvent::class)) {
+            $metaPixelEvent = $reflection->getAttributes(MetaPixelEvent::class)[0]->newInstance();
+            $this->metaPixel->event($metaPixelEvent->event);
+        }
 
         if (!$this->user->loggedIn) {
             $this->loginForm = new LoginForm();

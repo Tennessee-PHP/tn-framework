@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\User\UserProfile;
 
 use TN\TN_Core\Attribute\Components\HTMLComponent\Page;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresTinyMCE;
+use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Model\Package\Stack;
@@ -11,7 +12,8 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\User\User;
 
-#[Page('User Profile', 'TN_Core::Users::userProfile', 'User profile', false)]
+#[Page('User Profile', 'User profile', false)]
+#[Route('TN_Core:User:userProfile')]
 #[RequiresTinyMCE]
 class UserProfile extends HTMLComponent
 {
@@ -75,8 +77,7 @@ class UserProfile extends HTMLComponent
             $selectedTabClass = $this->tabs[0]['class'];
         }
 
-        $this->tabComponent = new $selectedTabClass([ 'user' =>  $this->user, 'username' => $this->username ]);
+        $this->tabComponent = new $selectedTabClass(['user' =>  $this->user, 'username' => $this->username]);
         $this->tabComponent->prepare();
-
     }
 }
