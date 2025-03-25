@@ -14,10 +14,12 @@ use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_CMS\Model\LandingPage as LandingPageModel;
 use TN\TN_Core\Model\User\User;
 use \TN\TN_Core\Attribute\Components\Route;
+use TN\TN_Core\Attribute\Components\HTMLComponent\HeaderImage;
 
 #[Page('Landing Page', '', 'View landing page', true)]
 #[Route('TN_CMS:LandingPage:landingPage')]
 #[FullWidth]
+#[HeaderImage]
 class LandingPage extends HTMLComponent
 {
     public ?LandingPageModel $landingPage;
