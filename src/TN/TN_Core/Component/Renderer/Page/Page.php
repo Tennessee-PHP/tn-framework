@@ -169,7 +169,7 @@ class Page extends Renderer
 
         // do we need to add tinymce or other client dependencies?
         $reflection = new \ReflectionClass($this->component);
-        foreach ($reflection->getAttributes(RequiresResource::class) as $attribute) {
+        foreach ($reflection->getAttributes(RequiresResource::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
             $attribute->newInstance()->addResource($this);
         }
 
