@@ -198,15 +198,6 @@ class Page extends Renderer
         $this->addResources();
         $this->user = User::getActive();
 
-        $this->metaPixel = new MetaPixel();
-        $this->metaPixel->prepare();
-
-        $reflection = new \ReflectionClass($this->component);
-        if ($reflection->getAttributes(MetaPixelEvent::class)) {
-            $metaPixelEvent = $reflection->getAttributes(MetaPixelEvent::class)[0]->newInstance();
-            $this->metaPixel->event($metaPixelEvent->event);
-        }
-
         if (!$this->user->loggedIn) {
             $this->loginForm = new LoginForm();
             $this->loginForm->prepare();
@@ -216,6 +207,19 @@ class Page extends Renderer
         $this->title = $this->component->getPageTitle();
         $this->description = $this->component->getPageDescription();
         $this->openGraphImage = $this->component->getPageOpenGraphImage();
+
+        $this->metaPixel = new MetaPixel();
+        $this->metaPixel->prepare();
+
+        $reflection = new \ReflectionClass($this->component);
+        if ($reflection->getAttributes(MetaPixelEvent::class)) {
+            $metaPixelEvent = $reflection->getAttributes(MetaPixelEvent::class)[0]->newInstance();
+            $arguments = [];
+            if (method_exists($this->component, 'getMetaPixelArguments')) {
+                $arguments = call_user_func([$this->component, 'getMetaPixelArguments']);
+            }
+            $this->metaPixel->event($metaPixelEvent->event, $arguments);
+        }
 
         if (static::$indexPagesToPageEntry) {
             $this->indexPageToPageEntry();
