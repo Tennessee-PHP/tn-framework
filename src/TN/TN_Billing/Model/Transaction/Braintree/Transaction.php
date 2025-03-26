@@ -103,7 +103,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             case 'VOIDED':
                 return true;
 
-            // can't void these
+                // can't void these
             default:
                 return 'unrecognized status (' . $status . ')';
         }
@@ -113,8 +113,6 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
 
         return true;
-
-
     }
 
     /** @return bool|string put the transaction to void over the braintree api */
@@ -184,9 +182,13 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
      * @throws ValidationException
      * @throws TNException
      */
-    public function execute(array        $descriptor = [], array $lineItems = [], string|false $nonce = false,
-                            string|false $deviceData = false, bool $submitForSettlement = true): void
-    {
+    public function execute(
+        array        $descriptor = [],
+        array $lineItems = [],
+        string|false $nonce = false,
+        string|false $deviceData = false,
+        bool $submitForSettlement = true
+    ): void {
         $braintree = Gateway::getInstanceByKey('braintree');
         $options = [
             'amount' => round($this->amount, 2),
@@ -234,8 +236,35 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
 
         $result = $braintree->getApiGateway()->transaction()->sale($options);
 
+        $errorMessage = '';
+        if (!$result->success && isset($result->transaction)) {
+            $t = $result->transaction;
+            $errorMessage = $result->message;
+
+            // Add customer details if available
+            if (isset($t->customer)) {
+                $errorMessage .= sprintf(
+                    " | Customer: %s %s (%s)",
+                    $t->customer['firstName'] ?? 'Unknown',
+                    $t->customer['lastName'] ?? 'Unknown',
+                    $t->customer['email'] ?? 'No email'
+                );
+            }
+
+            // Add payment method details if available
+            if (isset($t->creditCard)) {
+                $errorMessage .= sprintf(
+                    " | Card: %s ending in %s (exp: %s/%s)",
+                    $t->creditCard['cardType'] ?? 'Unknown',
+                    $t->creditCard['last4'] ?? 'xxxx',
+                    $t->creditCard['expirationMonth'] ?? 'xx',
+                    $t->creditCard['expirationYear'] ?? 'xxxx'
+                );
+            }
+        }
+
         $this->update([
-            'encodedResponse' => serialize($result)
+            'encodedResponse' => $result->success ? 'success' : ($errorMessage ?: ($result->message ?? 'Unknown error'))
         ]);
 
         if (!$result->transaction) {
@@ -255,16 +284,12 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         } else {
             $this->declined($transaction);
         }
-
     }
 
     /**
      * may wish to override this inside a package higher up the stack e.g. for monitoring
      */
-    protected function onFailure(): void
-    {
-
-    }
+    protected function onFailure(): void {}
 
     /**
      * get the card details!
@@ -499,7 +524,6 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
 
         $this->update($update);
-
     }
 
     protected function maybeEndSubscriptionAfterRefund(): void
@@ -586,5 +610,4 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     {
         return ($this->amount * 0.0275); // aggregate of 2.75% as per May 2022 braintree invoice
     }
-
 }
