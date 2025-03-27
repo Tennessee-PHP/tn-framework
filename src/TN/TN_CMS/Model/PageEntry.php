@@ -28,7 +28,7 @@ use TN\TN_Core\Model\User\User;
  * @property-read string $finalThumbnailSrc
  * @property-read string $finalVThumbnailSrc
  */
-#[TableName('cms_page_entries_2')]
+#[TableName('cms_page_entries')]
 #[CacheAttribute('v1.3')]
 class PageEntry implements Persistence
 {
