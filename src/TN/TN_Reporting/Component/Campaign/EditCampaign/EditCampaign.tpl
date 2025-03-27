@@ -32,7 +32,7 @@
             </div>
         </div>
 
-        <div class="row my-3 d-none">
+        <div class="row my-3">
             <div class="col-12 col-md-6 d-flex flex-column">
                 <label for="editfunnelkey_field" class="form-label">Funnel Name</label>
                 <select name="funnelKey" id="editfunnelkey_field"

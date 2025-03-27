@@ -259,11 +259,13 @@ abstract class Controller
             }
 
             $response = $this->getResponse($request, $method, $matcher);
+
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             }
+            
             return $response;
         }
 
@@ -321,14 +323,13 @@ abstract class Controller
             if (!$renderer) {
                 $renderer = $method->invoke($this, ...$argValues);
             }
-
             $renderer->prepare();
             return new HTTPResponse($renderer);
         } catch (ResourceNotFoundException $e) {
             throw $e;
         } catch (\Error | \Exception $e) {
             if (!($e instanceof TNException)) {
-                $e = new TNException($e->getMessage(), $e->getCode(), $e);
+                $e = new TNException($e->getMessage(), (int)$e->getCode(), $e);
             }
 
             try {

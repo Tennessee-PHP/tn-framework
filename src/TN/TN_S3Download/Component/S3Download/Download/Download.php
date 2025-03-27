@@ -1,6 +1,7 @@
 <?php
 
 namespace TN\TN_S3Download\Component\S3Download\Download;
+
 use TN\TN_Billing\Component\Roadblock\Roadblock\Roadblock;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\ContentOwnersOnly;
 use \TN\TN_Core\Component\HTMLComponent;
@@ -19,11 +20,12 @@ use TN\TN_S3Download\Model\File;
 class Download extends HTMLComponent
 {
     public Roadblock $roadblock;
+    public ?string $file = null;
 
     public function prepare(): void
     {
         $bucket = new Bucket($_ENV['DOWNLOADS_AWS_S3_BUCKET'], $_ENV['DOWNLOADS_AWS_S3_REGION'], $_ENV['DOWNLOADS_AWS_S3_KEY'], $_ENV['DOWNLOADS_AWS_S3_SECRET']);
-        $file = File::getInstanceFromProperties($bucket, $_GET['file'] ?? '');
+        $file = File::getInstanceFromProperties($bucket, $this->file ?? $_GET['file']);
         $user = User::getActive();
 
         $res = $file->exists();

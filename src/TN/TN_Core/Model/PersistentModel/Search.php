@@ -91,5 +91,4 @@ trait Search
             conditions: $conditions
         ), $absoluteLatest);
     }
-
 }
