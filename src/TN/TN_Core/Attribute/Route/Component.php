@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Attribute\Route;
 
 use TN\TN_Core\Component\HTMLComponent;
+use TN\TN_Core\Component\PageComponent;
 use TN\TN_Core\Component\Renderer\CSVDownload\CSVDownload;
 use TN\TN_Core\Component\Renderer\HTML\HTML;
 use TN\TN_Core\Component\Renderer\JSON\JSON;
@@ -30,8 +31,8 @@ class Component extends RouteType
         $component = new (Stack::resolveClassName($this->componentClassName))();
         $reflection = new \ReflectionClass($component);
 
-        // If component extends HTMLComponent
-        if ($reflection->isSubclassOf(HTMLComponent::class)) {
+        // If component implements PageComponent
+        if ($reflection->implementsInterface(PageComponent::class)) {
             $request = HTTPRequest::get();
             $isReloadable = !empty($reflection->getAttributes(ReloadableAttribute::class));
 

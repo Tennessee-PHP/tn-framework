@@ -1,6 +1,7 @@
 <?php
 
 namespace TN\TN_Core\Model\Request;
+
 use TN\TN_Billing\Model\Subscription\Content\Content;
 use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\ContentOwnersOnly;
@@ -218,7 +219,6 @@ class HTTPRequest extends Request
                     break;
             }
         }
-
     }
 
     /**
@@ -257,7 +257,7 @@ class HTTPRequest extends Request
 
         if (!$response) {
             $response = new HTTPResponse(
-                new Text(['text' => '404 Not Found' ]),
+                new Text(['text' => '404 Not Found']),
                 404
             );
         }

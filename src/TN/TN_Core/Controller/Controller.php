@@ -229,6 +229,7 @@ abstract class Controller
         // let's iterate through all the methods on the reflection class
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             $matcher = $this->routeMatches($request, $method);
+
             if (!$matcher) {
                 continue;
             }
