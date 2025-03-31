@@ -16,7 +16,7 @@ use TN\TN_Core\Model\User\PasswordResetType;
 use TN\TN_Core\Model\User\User;
 
 #[Page('Login')]
-#[Route('TN_Core:Users:login')]
+#[Route('TN_Core:User:login')]
 #[Reloadable]
 class LoginForm extends HTMLComponent
 {
@@ -80,6 +80,5 @@ class LoginForm extends HTMLComponent
         } catch (Exception $e) {
             $this->error = 'An unknown error occurred (' . $e->getMessage() . ')';
         }
-
     }
 }
