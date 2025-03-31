@@ -14,8 +14,8 @@ trait Search
 {
     public static function search(SearchArguments $search, bool $absoluteLatest = false): array
     {
+        $cacheIdentifier = $search->getCacheIdentifier();
         if (!$absoluteLatest) {
-            $cacheIdentifier = $search->getCacheIdentifier();
             $result = static::searchCache($cacheIdentifier);
             if ($result !== null) {
                 return array_filter($result);
