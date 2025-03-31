@@ -26,9 +26,7 @@ class ArticleController extends Controller
 
     #[Path('staff/articles')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\ListArticles\ListArticles::class)]
-    #[RoleOnly('backend-article-list-viewer')]
-    #[RoleOnly('article-editor')]
-    #[RoleOnly('article-author')]
+    #[RolesOnly(['backend-article-list-viewer', 'article-editor', 'article-author'])]
     public function adminListArticles(): void {}
 
     #[Path('staff/articles/weight')]
@@ -43,19 +41,16 @@ class ArticleController extends Controller
 
     #[Path('staff/articles/edit')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\EditArticle::class)]
-    #[RoleOnly('article-editor')]
-    #[RoleOnly('article-author')]
+    #[RolesOnly(['article-editor', 'article-author'])]
     public function adminEditArticle(): void {}
 
     #[Path('staff/articles/edit/save')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\SaveProperties::class)]
-    #[RoleOnly('article-editor')]
-    #[RoleOnly('article-author')]
+    #[RolesOnly(['article-editor', 'article-author'])]
     public function adminSaveArticleProperties(): void {}
 
     #[Path('staff/articles/edit/image/alt')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\GetImageAlt::class)]
-    #[RoleOnly('article-editor')]
-    #[RoleOnly('article-author')]
+    #[RolesOnly(['article-editor', 'article-author'])]
     public function adminGetImageAlt(): void {}
 }
