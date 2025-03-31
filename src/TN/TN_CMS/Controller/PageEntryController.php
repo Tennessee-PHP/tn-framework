@@ -11,17 +11,17 @@ class PageEntryController extends Controller
 {
     #[Path('staff/page-entries')]
     #[Component(\TN\TN_CMS\Component\PageEntry\Admin\ListPageEntries\ListPageEntries::class)]
-    #[RoleOnly('content-editor')]
+    #[RoleOnly('pageentries-admin')]
     public function adminListPageEntries(): void {}
 
     #[Path('staff/page-entries/edit')]
     #[Component(\TN\TN_CMS\Component\PageEntry\Admin\EditPageEntry\EditPageEntry::class)]
-    #[RoleOnly('content-editor')]
+    #[RoleOnly('pageentries-admin')]
     public function adminEditPageEntry(): void {}
 
     #[Path('staff/page-entries/edit/save')]
     #[Component(\TN\TN_CMS\Component\PageEntry\Admin\EditPageEntry\SavePageEntry::class)]
-    #[RoleOnly('content-editor')]
+    #[RoleOnly('pageentries-admin')]
     public function adminSavePageEntry(): void {}
 
     #[Path('cms/page-entries/sitemap')]
