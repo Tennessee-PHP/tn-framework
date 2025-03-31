@@ -14,12 +14,15 @@ trait Search
 {
     public static function search(SearchArguments $search, bool $absoluteLatest = false): array
     {
-        $cacheIdentifier = $search->getCacheIdentifier();
-        $result = static::searchCache($cacheIdentifier);
-        if ($result !== null) {
-            return $result;
+        if (!$absoluteLatest) {
+            $cacheIdentifier = $search->getCacheIdentifier();
+            $result = static::searchCache($cacheIdentifier);
+            if ($result !== null) {
+                return array_filter($result);
+            }
         }
         $result = static::searchStorage($search, $absoluteLatest);
+        $result = array_filter($result);
         static::searchCacheSet($cacheIdentifier, $result);
         return $result;
     }

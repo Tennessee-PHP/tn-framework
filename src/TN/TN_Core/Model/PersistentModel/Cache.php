@@ -70,7 +70,13 @@ trait Cache
 
         $results = [];
         foreach ($ids as $id) {
-            $results[] = static::objectCache($id);
+            $result = static::objectCache($id);
+            if (!$result) {
+                $result = static::readFromId($id, true);
+            }
+            if ($result) {
+                $results[] = $result;
+            }
         }
 
         return $results;
