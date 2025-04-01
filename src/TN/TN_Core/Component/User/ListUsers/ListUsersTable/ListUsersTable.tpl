@@ -14,7 +14,7 @@
             {foreach $users as $user}
                 <tr>
                     <td>
-                        <a href="{$BASE_URL}staff/users/user/{$user->id}/profile">{$user->username}</a>
+                        <a href="{$BASE_URL}{$user->username}/profile">{$user->username}</a>
 
                         {if $user->inactive}<i class="bi bi-person-fill-x text-danger"></i>{/if}
                         {if $user->locked}<i class="bi bi-person-fill-lock text-warning"></i>{/if}
@@ -22,7 +22,7 @@
                     <td>{$user->email}</td>
                     <td>
                         <a class="btn btn-outline-primary btn-sm"
-                           href="{$BASE_URL}staff/users/user/{$user->id}/profile"><i class="bi bi-pen-fill"></i>
+                           href="{$BASE_URL}{$user->username}/profile"><i class="bi bi-pen-fill"></i>
                         </a>
                     </td>
                     <td>

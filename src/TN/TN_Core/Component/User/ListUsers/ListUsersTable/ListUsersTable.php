@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\User\ListUsers\ListUsersTable;
 
 use TN\TN_Core\Attribute\Components\FromQuery;
 use TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
+use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Component\Input\Select\RoleSelect\RoleSelect;
 use TN\TN_Core\Component\Pagination\Pagination;
@@ -16,7 +17,8 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchSorterDirection;
 use TN\TN_Core\Model\Role\OwnedRole;
 use TN\TN_Core\Model\User\User;
 
-#[Reloadable('TN_Core:User:listUsersTableReload')]
+#[Reloadable]
+#[Route('TN_Core:User:listUsersTable')]
 class ListUsersTable extends HTMLComponent
 {
     public Pagination $pagination;

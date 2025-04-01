@@ -42,6 +42,11 @@ class UserController extends Controller
     #[Component(\TN\TN_Core\Component\User\ListUsers\ListUsers::class)]
     public function listUsers(): void {}
 
+    #[Path('users/list/table')]
+    #[RoleOnly('super-user')]
+    #[Component(\TN\TN_Core\Component\User\ListUsers\ListUsersTable\ListUsersTable::class)]
+    public function listUsersTable(): void {}
+
     #[Path('register')]
     #[Component(\TN\TN_Core\Component\User\RegisterForm\RegisterForm::class)]
     #[AnonymousOnly]

@@ -136,7 +136,7 @@
                         <td>{$userInactiveChange->ts|date_format:"%B %e, %Y %H:%I:%S"}</td>
                         <td class="table-{if $userInactiveChange->active}success{else}danger{/if}">{if $userInactiveChange->active}Active{else}Inactive{/if}</td>
                         <td>{$userInactiveChange->comment}</td>
-                        <td>{$userInactiveChange->byUser->name}</td>
+                        <td>{if isset($userInactiveChange->byUser)}{$userInactiveChange->byUser->name}{else}System{/if}</td>
                     </tr>
                 {/foreach}
                 </tbody>

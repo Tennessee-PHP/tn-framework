@@ -26,42 +26,39 @@ class UserInactiveChange implements Persistence
     /** properties */
 
     /** @var int the user's id */
-    protected int $userId;
+    public int $userId;
 
     /** @var bool whether this user was changed to active, or changed to inactive */
-    protected bool $active;
+    public bool $active = false;
 
     /** @var int the user who affected the change */
-    protected int $byUserId;
+    public int $byUserId;
 
     /** @var string comment supplied by $this->byUserId */
-    public string $comment;
+    public string $comment = '';
 
     /** @var int when did this happen? */
-    protected int $ts;
+    public int $ts = 0;
 
     /** @var User */
     #[Impersistent]
-    protected User $user;
+    public User $user;
 
     /*** @var User */
     #[Impersistent]
-    protected User $byUser;
+    public User $byUser;
 
     /** methods */
 
     /** protect the constructor */
-    protected function __construct()
-    {
-
-    }
+    protected function __construct() {}
 
     /**
      * returns all changes for a specific user
      * @param User $user
      * @return array
      */
-    public static function getUserChanges(User $user) : array
+    public static function getUserChanges(User $user): array
     {
         $changes = static::search(new SearchArguments(
             new SearchComparison('`userId`', '=', $user->id),
@@ -69,7 +66,9 @@ class UserInactiveChange implements Persistence
         ));
         foreach ($changes as &$change) {
             $change->user = $user;
-            $change->byUser = User::readFromId($change->byUserId);
+            if (isset($change->byUserId)) {
+                $change->byUser = User::readFromId($change->byUserId);
+            }
         }
         return $changes;
     }
@@ -104,5 +103,4 @@ class UserInactiveChange implements Persistence
         $change->comment = $comment;
         $change->save();
     }
-
 }

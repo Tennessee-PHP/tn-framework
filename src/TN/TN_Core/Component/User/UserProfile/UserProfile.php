@@ -20,8 +20,9 @@ class UserProfile extends HTMLComponent
     public string $username;
     public ?User $user;
     public array $tabs = [];
-    public ?string $tab;
+    public ?string $tab = null;
     public UserProfileTab $tabComponent;
+    public bool $canLoginAsUser = false;
 
     public function getPageTitle(): string
     {
@@ -43,16 +44,14 @@ class UserProfile extends HTMLComponent
             throw new ResourceNotFoundException('Cannot find this user');
         }
 
+        $this->canLoginAsUser = User::getActive()->hasRole('super-user');
+
         $selectedTabClass = null;
         $tabSortOrders = [];
         foreach (Stack::getChildClasses(UserProfileTab::class) as $class) {
             $class = Stack::resolveClassName($class);
             if (!$class::enabled($this->user)) {
                 return;
-            }
-
-            if (empty($this->tab)) {
-                $this->tab = $class::$tabKey;
             }
 
             $this->tabs[] = [
