@@ -15,9 +15,8 @@ class VoucherCodeController extends Controller
     #[RoleOnly('marketing-admin')]
     public function listVoucherCodes(): void {}
 
-    #[Path('')]
-    #[Path('ststaff/sales/voucher-codes/newaff/sales/voucher-codes/edit/:id')]
-    #[Path('staff/sales/voucher-codes/edit/:id/:deactivate')]
+    #[Path('staff/sales/voucher-codes/edit/:id')]
+    #[Path('staff/sales/voucher-codes/new')]
     #[Component(\TN\TN_Billing\Component\VoucherCode\EditVoucherCode\EditVoucherCode::class)]
     #[RoleOnly('marketing-admin')]
     public function editVoucherCode(): void {}
