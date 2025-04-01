@@ -6,7 +6,8 @@ use TN\TN_Core\Component\User\UserProfile\UserProfileTab;
 use TN\TN_Core\Model\Role\Role;
 use TN\TN_Core\Model\User\User;
 
-class RolesTab extends UserProfileTab {
+class RolesTab extends UserProfileTab
+{
     public static string $tabKey = 'roles';
     public static string $tabReadable = 'Roles';
     public static int $sortOrder = 2;

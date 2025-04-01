@@ -277,9 +277,11 @@ class User implements Persistence
 
         $users = [];
         $userIds = [];
-        foreach (self::search(new SearchArguments(
-            conditions: $conditions
-        )) as $user) {
+        foreach (
+            self::search(new SearchArguments(
+                conditions: $conditions
+            )) as $user
+        ) {
             if (!in_array($user->id, $userIds)) {
                 $users[] = $user;
                 $userIds[] = $user->id;
@@ -339,8 +341,10 @@ class User implements Persistence
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id');
 
         // do we have a loginAs in play?
-        if (!empty($tnLoginAsUserId) &&
-            $user->hasRole('user-admin')) {
+        if (
+            !empty($tnLoginAsUserId) &&
+            $user->hasRole('user-admin')
+        ) {
             $otherUser = User::readFromId((int)$tnLoginAsUserId);
             if ($otherUser instanceof User) {
                 $user = $otherUser;
@@ -648,7 +652,7 @@ class User implements Persistence
             ]);
             if ($locked) {
                 Email::sendFromTemplate(
-//                    'Locked Account for ' . $_ENV['SITE_NAME'],
+                    //                    'Locked Account for ' . $_ENV['SITE_NAME'],
                     'user/locked',
                     $this->email,
                     [
@@ -859,8 +863,7 @@ class User implements Persistence
 
         $roleGroups = [];
         $usedKeys = [];
-
-        $ownedRoles = OwnedRole::searchByProperty('userId', $this->id);
+        $ownedRoles = OwnedRole::searchByProperty('userId', $this->id, true);
         $roles = [];
         foreach ($ownedRoles as $ownedRole) {
             $role = Role::getInstanceByKey($ownedRole->roleKey);
@@ -1017,5 +1020,4 @@ class User implements Persistence
         }
         return $roles;
     }
-
 }
