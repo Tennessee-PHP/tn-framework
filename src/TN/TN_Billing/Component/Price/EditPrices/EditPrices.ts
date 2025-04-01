@@ -1,7 +1,7 @@
 import $, {Cash} from 'cash-dom';
 import HTMLComponent, {ReloadData} from '@tn/TN_Core/Component/HTMLComponent';
 import _ from "lodash";
-import axios from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import SuccessToast from "@tn/TN_Core/Component/Toast/SuccessToast";
 import ErrorToast from "@tn/TN_Core/Component/Toast/ErrorToast";
 import {Modal} from "bootstrap";
@@ -19,7 +19,7 @@ export default class EditPrices extends HTMLComponent {
         let data: ReloadData = this.$form.getFormData();
 
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/sales/change-prices/submit', {
+        axios.post(TN.BASE_URL + 'staff/sales/change-prices/submit', data, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -28,19 +28,21 @@ export default class EditPrices extends HTMLComponent {
             .catch(this.onSaveError.bind(this));
     }
 
-    onSaveSuccess(response: any) {
+    onSaveSuccess(response: AxiosResponse) {
         this.onSaveComplete();
-        if (response.data.result === 'success') {
-            $('#advert_id_field').val(response.data.advertId);
+        if (response.data.success) {
             new SuccessToast(response.data.message);
         }
     }
-    onSaveError(response: any) {
+    onSaveError(error: AxiosError) {
         this.onSaveComplete();
-        new ErrorToast(response.data.message);
+        // @ts-ignore
+        new ErrorToast(error.response.data.message);
     }
 
     onSaveComplete() {
-        new Modal(document.getElementById('change_price_modal')).hide();
+        console.log($('#change_price_modal').get(0));
+        console.log(new Modal($('#change_price_modal').get(0)));
+        new Modal($('#change_price_modal').get(0)).hide();
     }
 }

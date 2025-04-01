@@ -111,7 +111,7 @@ class Email implements Persistence
     /** @return bool send the email */
     public function send(): bool
     {
-        if (!in_array($_ENV['ENV'], ['production', 'staging'])) {
+        if (!in_array($_ENV['ENV'], ['production'])) {
             return true;
         }
 

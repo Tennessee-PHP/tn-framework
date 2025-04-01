@@ -73,7 +73,7 @@ class LoginForm extends HTMLComponent
                 $this->success = true;
                 return;
             }
-            $passwordResetClassName::startFromUser($this, PasswordResetType::Reset);
+            $passwordResetClassName::startFromUser($user, PasswordResetType::Reset);
             $this->success = true;
         } catch (ResetPasswordTimeoutException) {
             $this->error = 'Too many password reset attempts.';

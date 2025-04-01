@@ -4,6 +4,7 @@ namespace TN\TN_Core\Model\User;
 
 use TN\TN_Core\Attribute\Constraints\Strlen;
 use TN\TN_Core\Attribute\MySQL\TableName;
+use TN\TN_Core\Error\Login\LoginErrorMessage;
 use TN\TN_Core\Error\Login\ResetPasswordTimeoutException;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
@@ -53,17 +54,14 @@ class PasswordReset implements Persistence
         $ip = IP::getInstance();
         $event = self::class . ':login-attempt';
         if (!$ip->eventAllowed($event, static::PASSWORD_RESET_REQUESTS_ALLOWED, static::PASSWORD_RESET_REQUEST_TIMEOUT)) {
-            throw new ResetPasswordTimeoutException();
+            throw new ResetPasswordTimeoutException(LoginErrorMessage::TooManyPasswordResetAttempts);
         }
         $ip->recordEvent($event);
         self::$checkedIp = true;
     }
 
     /** protect the constructor */
-    protected function __construct()
-    {
-
-    }
+    protected function __construct() {}
 
     /**
      * starts the password reset process given a user
@@ -120,6 +118,11 @@ class PasswordReset implements Persistence
         ]);
     }
 
+    public function getUser(): User
+    {
+        return User::readFromId($this->userId);
+    }
+
     /**
      * send the email to the user's username, with the correct link
      * @return bool
@@ -150,5 +153,4 @@ class PasswordReset implements Persistence
         }
         return [];
     }
-
 }

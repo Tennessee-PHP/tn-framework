@@ -27,7 +27,7 @@ export default class BillingTab extends HTMLComponent {
             .then((response: AxiosResponse): void => {
                 if (response.data.result === 'success') {
                     new SuccessToast(response.data.message);
-                    new Modal(document.getElementById('cancelPlanModal')).hide();
+                    new Modal(document.getElementById('cancelplan_modal')).hide();
                     _.delay(() => {
                         window.location.reload();
                     }, 2000);
