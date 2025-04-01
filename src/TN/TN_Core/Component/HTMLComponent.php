@@ -192,7 +192,13 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     public function getPageIndexPath(): string
     {
         $route = $this->getFirstAttributeInstance(Route::class)?->route ?? '';
+        if (empty($route)) {
+            throw new CodeException('Route is not set for ' . static::class);
+        }
         $parts = explode(':', $route);
+        if (count($parts) !== 3) {
+            throw new CodeException('Route ' . $route . ' is not a valid route on ' . static::class);
+        }
         $queryData = $this->getPropertiesFrom(FromQuery::class);
         if (!empty($queryData)) {
             $query = '?' . http_build_query($queryData);
