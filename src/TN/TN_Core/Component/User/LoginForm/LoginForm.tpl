@@ -44,6 +44,6 @@
 
     <div class="create-account-wrapper">
         <p class="mt-3">Don't have an account with us yet? What are you waiting for!</p>
-        <a class="btn btn-primary" href="#create-account">Create Account</a>
+        <a class="btn btn-primary create-account-button" data-url="{path route="TN_Core:User:registerForm"}" href="#create-account">Create Account</a>
     </div>
 </form>

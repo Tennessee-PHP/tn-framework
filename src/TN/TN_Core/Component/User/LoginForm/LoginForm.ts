@@ -25,6 +25,16 @@ export default class LoginForm extends HTMLComponent {
 
         // observe change action buttons
         this.$element.find('a.change-action').on('click', this.onChangeAction.bind(this));
+
+        // observe create account button
+        this.$element.find('a.create-account-button').on('click', this.onCreateAccount.bind(this));
+    }
+
+    protected onCreateAccount(e: Event) {
+        e.preventDefault();
+        const target = e.currentTarget as HTMLElement;
+        this.$element.data('reload-url', $(target).data('url'));
+        this.reload();
     }
 
     protected onChangeAction(e: any) {
