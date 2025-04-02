@@ -31,6 +31,7 @@ class UserProfile extends HTMLComponent
 
     public function prepare(): void
     {
+
         if ($this->username === 'me') {
             $this->user = User::getActive();
         } else {
@@ -43,7 +44,6 @@ class UserProfile extends HTMLComponent
         if (!$this->user) {
             throw new ResourceNotFoundException('Cannot find this user');
         }
-
         $this->canLoginAsUser = User::getActive()->hasRole('super-user');
 
         $selectedTabClass = null;
@@ -51,7 +51,7 @@ class UserProfile extends HTMLComponent
         foreach (Stack::getChildClasses(UserProfileTab::class) as $class) {
             $class = Stack::resolveClassName($class);
             if (!$class::enabled($this->user)) {
-                return;
+                continue;
             }
 
             $this->tabs[] = [
@@ -67,7 +67,6 @@ class UserProfile extends HTMLComponent
                 $selectedTabClass = $class;
             }
         }
-
         array_multisort($tabSortOrders, SORT_ASC, $this->tabs);
 
         if (!$selectedTabClass) {
