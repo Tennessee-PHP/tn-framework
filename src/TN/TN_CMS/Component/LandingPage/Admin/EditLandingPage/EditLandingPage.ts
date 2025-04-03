@@ -23,7 +23,7 @@ declare global {
 export default class EditLandingPage extends HTMLComponent {
     protected $element: Cash;
     private editRequests: Array<{data: any, options: any}> = [];
-    private landingPageId: string | number = 'new';
+    private landingPageId: string | number;
     private editRequestLoading: boolean = false;
     private $saveStatusContainer: Cash;
     private $saveBtn: Cash;
@@ -41,9 +41,11 @@ export default class EditLandingPage extends HTMLComponent {
         this.$landingPageTitleEditor = this.$element.find('.tn-tn_cms-component-landingpage-admin-editlandingpage-landingpagetitleeditor-landingpagetitleeditor');
         this.$tagEditor = this.$element.find('.tn-tn_cms-component-tageditor-tageditor');
         this.landingPageId = this.$element.data('landingpageid');
+        if (!this.landingPageId) {
+            this.landingPageId = 'new';
+        }
         this.editRequests = [];
         this.editRequestLoading = false;
-
         this.addLandingPageIdToHref(this.landingPageId);
 
         const $form = this.$element.find('form');
@@ -89,6 +91,8 @@ export default class EditLandingPage extends HTMLComponent {
                 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
             ]
         });
+
+        this.initTinyMce();
 
         this.$element.find('input.landing-page-title').on('change', this.onUnsavedChange.bind(this));
         this.$element.find('#landing_page_state').on('change', this.onUnsavedChange.bind(this));
@@ -214,7 +218,7 @@ export default class EditLandingPage extends HTMLComponent {
         this.setSaveStatus('saving');
 
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/landingpages/edit/properties' + (this.landingPageId !== 'new' ? '?landingpageid=' + this.landingPageId : ''), data, {
+        axios.post(TN.BASE_URL + 'staff/landingpages/edit/save' + (this.landingPageId !== 'new' ? '?landingpageid=' + this.landingPageId : ''), data, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
