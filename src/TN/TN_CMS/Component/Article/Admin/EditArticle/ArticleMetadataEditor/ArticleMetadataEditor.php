@@ -8,9 +8,9 @@ use TN\TN_CMS\Model\Article;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Model\User\User;
 
-class ArticleMetadataEditor extends HTMLComponent {
+class ArticleMetadataEditor extends HTMLComponent
+{
     public Article $article;
-    public ?object $weekBySeasonSelect = null;
     public ArticleUrlStubEditor $articleUrlStubEditor;
     public bool $canEdit = false;
     public array $contentOptions = [];

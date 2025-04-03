@@ -20,6 +20,7 @@ use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Model\User\User;
 use \TN\TN_Core\Attribute\Components\Route;
+use TN\TN_Core\Model\Package\Stack;
 
 #[Page('Edit Article', '', false)]
 #[Route('TN_CMS:Article:adminEditArticle')]
@@ -65,17 +66,17 @@ class EditArticle extends HTMLComponent
             throw new ValidationException('Cannot edit article');
         }
 
-        $this->articleTitleEditor = new ArticleTitleEditor([
+        $this->articleTitleEditor = new (Stack::resolveClassName(ArticleTitleEditor::class))([
             'article' => $this->article
         ]);
         $this->articleTitleEditor->prepare();
-        $this->articleStatusEditor = new ArticleStatusEditor(['article' => $this->article]);
+        $this->articleStatusEditor = new (Stack::resolveClassName(ArticleStatusEditor::class))(['article' => $this->article]);
         $this->articleStatusEditor->prepare();
-        $this->articleSeoChecklist = new ArticleSeoChecklist(['article' => $this->article]);
+        $this->articleSeoChecklist = new (Stack::resolveClassName(ArticleSeoChecklist::class))(['article' => $this->article]);
         $this->articleSeoChecklist->prepare();
-        $this->articleMetadataEditor = new ArticleMetadataEditor(['article' => $this->article]);
+        $this->articleMetadataEditor = new (Stack::resolveClassName(ArticleMetadataEditor::class))(['article' => $this->article]);
         $this->articleMetadataEditor->prepare();
-        $this->articleThumbnailEditor = new ArticleThumbnailEditor(['article' => $this->article]);
+        $this->articleThumbnailEditor = new (Stack::resolveClassName(ArticleThumbnailEditor::class))(['article' => $this->article]);
         $this->articleThumbnailEditor->prepare();
         $this->tagEditor = new TagEditor($this->article);
         $this->tagEditor->prepare();
@@ -161,6 +162,5 @@ class EditArticle extends HTMLComponent
             $this->tagEditor->contentId = $this->article->id;
             $this->tagEditor->updateTags(json_decode($data['tags'], true));
         }
-
     }
 }

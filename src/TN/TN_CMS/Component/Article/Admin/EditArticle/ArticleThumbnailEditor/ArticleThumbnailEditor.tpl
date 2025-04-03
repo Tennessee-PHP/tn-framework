@@ -1,4 +1,4 @@
-<div class="card mb-3 {$classAttribute}" id="{$idAttribute}" data-article-id="{$article->id}" data-reload-url="{path route=$reloadRoute}">
+<div class="card mb-3 {$classAttribute}" id="{$idAttribute}" data-article-id="{isset($article->id) ? $article->id : ''}" data-reload-url="{path route=$reloadRoute}">
     <div class="card-body">
         <h3>Thumbnail</h3>
 

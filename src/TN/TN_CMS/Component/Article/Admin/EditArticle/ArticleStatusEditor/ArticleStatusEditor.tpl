@@ -1,5 +1,5 @@
 <div class="{$classAttribute}" id="{$idAttribute}" data-reload-url="{path route=$reloadRoute}"
-     data-article-id="{$article->id}">
+     data-article-id="{isset($article->id) ? $article->id : ''}">
 
     {include file="TN_Core/Component/Loading/Loading.tpl" 
         title="Loading Article Status" 

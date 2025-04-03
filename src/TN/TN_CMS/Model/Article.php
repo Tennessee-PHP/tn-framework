@@ -17,7 +17,7 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Attribute\Cache as CacheAttribute;
-use TN\TN_Core\Model\Cache\Cache;
+use TN\TN_Core\Model\Storage\Cache;
 use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Model\User\User;
@@ -113,9 +113,14 @@ class Article extends Content implements Persistence
      * @example Article::getArticles([ 'tag' => 'idp' ], 'weight', SORT_ASC, 0, 50);
      * @example Article::getArticles([ 'authorId' => 54, 'state' => Article::STATE_PUBLISHED, 'category' => 'dynasty' ], null, null, 0, 50);
      */
-    public static function getArticles(array $filters = [], ?string $sortProperty = null, ?int $sortDirection = null,
-                                       int   $start = 0, int $num = 100, bool $count = false): array|int
-    {
+    public static function getArticles(
+        array $filters = [],
+        ?string $sortProperty = null,
+        ?int $sortDirection = null,
+        int   $start = 0,
+        int $num = 100,
+        bool $count = false
+    ): array|int {
         if (!$sortDirection) {
             $sortDirection = SORT_DESC;
         }
@@ -200,7 +205,6 @@ class Article extends Content implements Persistence
             if ($sortProperty === null) {
                 $sortFactors[] = self::getSortFactor($item['weight'], $item['publishedTs'], $item['id']);
             }
-
         }
 
         if ($sortProperty === null) {
@@ -412,7 +416,6 @@ class Article extends Content implements Persistence
         if (!empty($errors)) {
             throw new ValidationException($errors);
         }
-
     }
 
     /**
@@ -456,7 +459,6 @@ class Article extends Content implements Persistence
         if (!empty($errors)) {
             throw new ValidationException($errors);
         }
-
     }
 
     /**
@@ -522,9 +524,11 @@ class Article extends Content implements Persistence
      */
     protected static function isUrlStubUnique(string $urlStub, ?int $id): bool
     {
-        foreach (self::searchByProperties([
-            'urlStub' => $urlStub
-        ]) as $match) {
+        foreach (
+            self::searchByProperties([
+                'urlStub' => $urlStub
+            ]) as $match
+        ) {
             if (!isset($id)) {
                 return false;
             }
@@ -702,5 +706,4 @@ class Article extends Content implements Persistence
     {
         return $this->authorId;
     }
-
 }
