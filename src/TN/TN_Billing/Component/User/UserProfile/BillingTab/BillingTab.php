@@ -11,12 +11,13 @@ use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Core\Component\User\UserProfile\UserProfileTab;
 use TN\TN_Core\Model\User\User;
 
-class BillingTab extends UserProfileTab {
+class BillingTab extends UserProfileTab
+{
     public static string $tabKey = 'billing';
     public static string $tabReadable = 'Plans &amp; Payments';
     public static int $sortOrder = 4;
     public User $observer;
-    public string $activePlan;
+    public ?string $activePlan;
     public array $refundReasons;
     public array $historicalSubscriptions;
     public array $planPrices;
@@ -46,8 +47,6 @@ class BillingTab extends UserProfileTab {
             // todo: $page->addJsUrl($url);
         }
         // todo: $page->addJsVar('braintreeClientToken', $braintree->generateClientToken(isset($user->loggedIn) ? $user : false));
-
-
         if (Subscription::getUserActiveSubscription($this->user)) {
             $subscriptionPrices = Subscription::getSubscriptionPrices($this->user->getActiveSubscription());
         } else {
@@ -70,6 +69,5 @@ class BillingTab extends UserProfileTab {
         $this->endReasonDescriptions = Subscription::getEndReasonOptions();
         $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
         $this->subscriptionsReorganized = $subscriptionsReorganized;
-
     }
 }

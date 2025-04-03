@@ -83,7 +83,7 @@ class User implements Persistence
     protected static string $defaultHashMethodKey = 'tn';
     protected static User $activeUser;
 
-    #[Impersistent] public bool $loggedIn;
+    #[Impersistent] public bool $loggedIn = false;
     #[Timestamp] public int $createdTs;
     public bool $locked = false;
     public bool $inactive = false;
