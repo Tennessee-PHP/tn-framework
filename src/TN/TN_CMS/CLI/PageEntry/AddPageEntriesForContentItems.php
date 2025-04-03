@@ -20,9 +20,6 @@ class AddPageEntriesForContentItems extends CLI
 
     public function addPageEntriesForClass(string $class): void
     {
-        if ($class::getReadableContentType() !== 'Article') {
-            return;
-        }
         $this->out('Adding page entries for: ' . $class::getReadableContentType() . ', class: ' . $class);
         $search = new SearchArguments();
         $count = $class::count($search);

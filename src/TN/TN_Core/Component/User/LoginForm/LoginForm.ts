@@ -27,7 +27,7 @@ export default class LoginForm extends HTMLComponent {
         this.$element.find('a.change-action').on('click', this.onChangeAction.bind(this));
 
         // observe create account button
-        this.$element.find('a.create-account-button').on('click', this.onCreateAccount.bind(this));
+        //this.$element.find('a.create-account-button').on('click', this.onCreateAccount.bind(this));
     }
 
     protected onCreateAccount(e: Event) {

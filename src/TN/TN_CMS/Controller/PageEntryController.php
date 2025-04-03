@@ -2,6 +2,7 @@
 
 namespace TN\TN_CMS\Controller;
 
+use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
@@ -28,7 +29,7 @@ class PageEntryController extends Controller
     #[Component(\TN\TN_CMS\CLI\PageEntry\Sitemap::class)]
     public function sitemap(): void {}
 
-    #[Path('cms/page-entries/add-from-content-items')]
+    #[CommandName('cms/page-entries/add-from-content-items')]
     #[Component(\TN\TN_CMS\CLI\PageEntry\AddPageEntriesForContentItems::class)]
     public function addPageEntriesForContentItems(): void {}
 }
