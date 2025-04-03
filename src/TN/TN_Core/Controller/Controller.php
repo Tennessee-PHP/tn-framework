@@ -265,7 +265,7 @@ abstract class Controller
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             }
-            
+
             return $response;
         }
 
