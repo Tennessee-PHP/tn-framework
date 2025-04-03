@@ -307,6 +307,14 @@ class User implements Persistence
     {
         $request = HTTPRequest::get();
 
+        if ($request->getSession('TN_LoggedIn_User_Id', null) !== null) {
+            $user = self::readFromId($request->getSession('TN_LoggedIn_User_Id'));
+            if ($user instanceof User) {
+                self::setUserAsActive($user);
+                return;
+            }
+        }
+
         $tnTokenCookie = $request->getCookie('TN_token');
         if (empty($tnTokenCookie)) {
             static::setNoActiveUser();
@@ -320,30 +328,21 @@ class User implements Persistence
         }
 
         $user = $users[0];
-        $tnLoggedInUserId = $request->getSession('TN_LoggedIn_User_Id');
-        if ($user->hasRole('admin') && !empty($tnLoggedInUserId)) {
-            $user = self::readFromId((int)$tnLoggedInUserId);
-            if ($user) {
-                self::setUserAsActive($user);
-                return;
-            }
-        }
-
         self::setUserAsActive($user);
     }
 
     /** @param User $user we found a user - set it as active! */
     private static function setUserAsActive(User $user): void
     {
+        $request = HTTPRequest::get();
         $user->logIPLogin();
 
-        $request = HTTPRequest::get();
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id');
 
         // do we have a loginAs in play?
         if (
             !empty($tnLoginAsUserId) &&
-            $user->hasRole('user-admin')
+            $user->hasRole('super-user')
         ) {
             $otherUser = User::readFromId((int)$tnLoginAsUserId);
             if ($otherUser instanceof User) {
@@ -668,6 +667,10 @@ class User implements Persistence
     /** @return bool logs the user out */
     public function logout(): bool
     {
+        if ($this->isLoggedInAsOther()) {
+            $this->returnToBaseLogin();
+            return true;
+        }
         $request = HTTPRequest::get();
         $request->setSession('TN_LoggedIn_User_Id', null);
         if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
@@ -677,7 +680,7 @@ class User implements Persistence
                 'domain' => $_ENV['COOKIE_DOMAIN']
             ]);
         }
-        static::setNoActiveUser();
+        static::setActiveUser();
         return true;
     }
 
