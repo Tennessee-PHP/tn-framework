@@ -131,9 +131,13 @@ class Subscription implements Persistence
      * @param int $maxEndTs
      * @return Subscription|null
      */
-    public static function getExtendableUserSubscriptionByGateway(User   $user, string $gatewayKey, string $planKey,
-                                                                  string $billingCycleKey, int $maxEndTs): ?Subscription
-    {
+    public static function getExtendableUserSubscriptionByGateway(
+        User   $user,
+        string $gatewayKey,
+        string $planKey,
+        string $billingCycleKey,
+        int $maxEndTs
+    ): ?Subscription {
         return static::searchOne(new SearchArguments([
             new SearchComparison('`userId`', '=', $user->id),
             new SearchComparison('`active`', '=', 1),
@@ -146,10 +150,6 @@ class Subscription implements Persistence
 
     public static function getUserActiveSubscription(User $user, string $gatewayKey = ''): ?Subscription
     {
-        if (!$user->loggedIn) {
-            return null;
-        }
-
         $conditions = [
             new SearchComparison('`userId`', '=', $user->id),
             new SearchComparison('`active`', '=', 1),
@@ -283,9 +283,15 @@ class Subscription implements Persistence
         return $counts;
     }
 
-    public static function countAndTotalByType(string $type, int $startTs, int $endTs, string $planKey = '',
-                                 string $billingCycleKey = '', string $gatewayKey = '', ?string $endReason = null): CountAndTotalResult
-    {
+    public static function countAndTotalByType(
+        string $type,
+        int $startTs,
+        int $endTs,
+        string $planKey = '',
+        string $billingCycleKey = '',
+        string $gatewayKey = '',
+        ?string $endReason = null
+    ): CountAndTotalResult {
         $conditions = [];
 
         $conditions[] = new SearchComparison(
@@ -456,7 +462,8 @@ class Subscription implements Persistence
     public function notifyUpcomingRenewal(): void
     {
         // refuse to do if it no longer meets the conditions
-        if ($this->nextTransactionTs >= (Time::getNow() + $this->getNotifyUpcomingTransactionWithin()) ||
+        if (
+            $this->nextTransactionTs >= (Time::getNow() + $this->getNotifyUpcomingTransactionWithin()) ||
             $this->nextTransactionTs <= Time::getNow() ||
             $this->upcomingTransactionLastNotified >= Time::getNow() - $this->getNotifyUpcomingTransactionWithin()
         ) {
@@ -477,7 +484,7 @@ class Subscription implements Persistence
 
         // send the email to notify them
         $res = Email::sendFromTemplate(
-//            'Your ' . $_ENV['SITE_NAME'] . ' Subscription Is About To Renew',
+            //            'Your ' . $_ENV['SITE_NAME'] . ' Subscription Is About To Renew',
             'subscription/subscription/upcomingrenewal',
             $user->email,
             [
@@ -505,7 +512,7 @@ class Subscription implements Persistence
             new SearchComparison('`nextTransactionTs`', '>', 0),
             new SearchComparison('`active`', '=', 1)
         ]));
-        foreach($subscriptions as $sub) {
+        foreach ($subscriptions as $sub) {
             $billingCycle = BillingCycle::getInstanceByKey($sub->billingCycleKey);
             if (!$billingCycle) {
                 continue;
@@ -607,7 +614,10 @@ class Subscription implements Persistence
                     'unitAmount' => $amount,
                     'totalAmount' => $amount
                 ]
-            ], $nonce, $deviceData);
+            ],
+            $nonce,
+            $deviceData
+        );
 
         // on failure, email
         if (!$transaction->success) {
@@ -620,7 +630,7 @@ class Subscription implements Persistence
                 // we are only doing this if we can't immediately inform the user via the screen
                 // (ie, because this is invoked via update payment method logic rather than a cron run)
                 Email::sendFromTemplate(
-//                    $_ENV['SITE_NAME'] . ' Subscription Payment Failed - Action Needed!',
+                    //                    $_ENV['SITE_NAME'] . ' Subscription Payment Failed - Action Needed!',
                     'subscription/subscription/paymentfailed',
                     $user->email,
                     [
@@ -667,7 +677,6 @@ class Subscription implements Persistence
         );
 
         return $transaction;
-
     }
 
     /** @return array get all the subscriptions where a payment has failed, and the grace period has expired */
