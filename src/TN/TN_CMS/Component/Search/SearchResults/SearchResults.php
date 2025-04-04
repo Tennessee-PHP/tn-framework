@@ -7,9 +7,11 @@ use TN\TN_CMS\Model\Search\SearchQuery;
 use TN\TN_Core\Attribute\Components\FromQuery;
 use \TN\TN_Core\Component\HTMLComponent;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
+use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Model\User\User;
 
 #[Reloadable]
+#[Route('TN_CMS:Search:searchResults')]
 class SearchResults extends HTMLComponent
 {
     #[FromQuery] public string $search = '';
