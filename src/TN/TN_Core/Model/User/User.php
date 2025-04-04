@@ -811,6 +811,9 @@ class User implements Persistence
     /** @return Subscription|null gets the users current active subscription, if one exists */
     public function getActiveSubscription(): ?Subscription
     {
+        if (!isset($this->id)) {
+            return null;
+        }
         return Subscription::getUserActiveSubscription($this);
     }
 
