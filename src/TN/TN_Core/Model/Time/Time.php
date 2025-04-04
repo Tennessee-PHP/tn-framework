@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Model\Time;
 
+use TN\TN_Core\Error\TNException;
 use TN\TN_Core\Model\Request\HTTPRequest;
 
 /**
@@ -29,12 +30,16 @@ class Time
      */
     public static function getNow(): int
     {
-        $request = HTTPRequest::get();
-        if ($request) {
-            $testDate = $request->getQuery('_testdate');
-            if (!empty($testDate) && $_ENV['ENV'] !== 'production') {
-                return strtotime($testDate);
+        try {
+            $request = HTTPRequest::get();
+            if ($request) {
+                $testDate = $request->getQuery('_testdate');
+                if (!empty($testDate) && $_ENV['ENV'] !== 'production') {
+                    return strtotime($testDate);
+                }
             }
+        } catch (TNException $e) {
+            // do nothing
         }
 
         if (self::$fixedTime > 0) {
@@ -84,10 +89,10 @@ class Time
             return ['days' => 0, 'hours' => 0, 'minutes' => 0, 'seconds' => 0];
         }
 
-        $days = floor($difference / (24*60*60));
-        $hours = floor(($difference - ($days*24*60*60)) / (60*60));
-        $minutes = floor(($difference - ($days*24*60*60)-($hours*60*60)) / 60);
-        $seconds = ($difference - ($days*24*60*60) - ($hours*60*60) - ($minutes*60)) % 60;
+        $days = floor($difference / (24 * 60 * 60));
+        $hours = floor(($difference - ($days * 24 * 60 * 60)) / (60 * 60));
+        $minutes = floor(($difference - ($days * 24 * 60 * 60) - ($hours * 60 * 60)) / 60);
+        $seconds = ($difference - ($days * 24 * 60 * 60) - ($hours * 60 * 60) - ($minutes * 60)) % 60;
         return ['days' => $days, 'hours' => $hours, 'minutes' => $minutes, 'seconds' => $seconds];
     }
 
@@ -149,4 +154,3 @@ class Time
         }
     }
 }
-

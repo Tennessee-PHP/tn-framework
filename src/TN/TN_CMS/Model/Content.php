@@ -119,7 +119,6 @@ abstract class Content
             'alwaysCurrent' => $this->getAlwaysCurrent(),
             'creatorId' => $this->getCreatorId()
         ];
-
         if ($new) {
             $impersistentPageEntryFields = $this->getImpersistentPageEntryFields();
             foreach ($impersistentPageEntryFields as $field) {
@@ -131,6 +130,4 @@ abstract class Content
         $pageEntry->update($update);
         $pageEntry->updateFromContent = false;
     }
-
-
 }
