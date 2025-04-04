@@ -6,7 +6,6 @@
         message="Loading Article Status..."
     }
 
-    <div class="card">
         <div class="component-body d-flex align-items-center">
             <div class="component-loading d-none d-flex align-items-center justify-content-center">
                 <div class="spinner-border text-primary" role="status">
@@ -63,7 +62,6 @@
                 {/if}
             {/if}
         </div>
-    </div>
 </div>
 
 <div class="modal fade" id="publisharticlemodal" tabindex="-1" aria-hidden="true"

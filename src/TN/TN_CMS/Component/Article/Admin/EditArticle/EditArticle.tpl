@@ -42,7 +42,7 @@
 
     </div>
 
-    <div class="navbar d-flex justify-content-between sticky-bottom mt-2">
+    <div class="navbar d-flex justify-content-center sticky-bottom mt-2">
 
         <div class="me-5 save-status-container">
             <p class="text-secondary align-center my-0 save-status-nochanges"><i
@@ -54,7 +54,6 @@
             <p class="text-danger align-center my-0 d-none save-status-error"><i
                         class="bi bi-exclamation-octagon-fill"></i> Save Unsuccessful</p>
         </div>
-
 
         {$articleStatusEditor->render()}
     </div>

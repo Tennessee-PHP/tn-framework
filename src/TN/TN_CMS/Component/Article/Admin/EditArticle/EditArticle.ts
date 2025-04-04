@@ -153,7 +153,7 @@ export default class EditArticle extends HTMLComponent {
         this.setSaveStatus('saving');
 
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/articles/edit/properties' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''), data, {
+        axios.post(TN.BASE_URL + 'staff/articles/edit/save' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''), data, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -162,6 +162,7 @@ export default class EditArticle extends HTMLComponent {
                 this.setSaveStatus('saved');
                 let data = response.data;
                 options.success(data);
+                console.log(response);
                 this.articleId = data.articleId;
                 this.$element.attr('data-articleid', data.articleId);
                 // @ts-ignore
