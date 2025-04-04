@@ -31,7 +31,7 @@ trait Search
     {
         $cacheIdentifier = $search->getCacheIdentifier();
         $count = static::countCache($cacheIdentifier);
-        if ($count !== null) {
+        if (!empty($count)) {
             return $count;
         }
         $count = static::countStorage($search, $absoluteLatest);
