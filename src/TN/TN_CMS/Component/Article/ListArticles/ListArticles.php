@@ -52,8 +52,6 @@ class ListArticles extends HTMLComponent
             }
         }
 
-
-
         $count = Article::getArticles($filters, null, null, 0, 100, true);
         $this->pagination = new Pagination([
             'itemCount' => $count,

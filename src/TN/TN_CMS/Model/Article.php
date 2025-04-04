@@ -135,7 +135,7 @@ class Article extends Content implements Persistence
 
         if ($category) {
             // translate category into tag
-            $tag = Category::getTagTextFromText($category);
+            $tag = $category;
         } else if ($categoryId) {
             $tag = Category::getTagTextFromId($categoryId);
         }
