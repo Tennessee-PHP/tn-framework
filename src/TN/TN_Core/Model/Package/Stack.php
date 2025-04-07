@@ -79,7 +79,6 @@ class Stack
             }
             $classes = array_unique($classes);
         }
-
         return $classes;
     }
 

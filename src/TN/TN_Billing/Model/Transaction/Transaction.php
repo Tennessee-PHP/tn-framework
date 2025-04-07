@@ -61,9 +61,8 @@ abstract class Transaction implements Persistence
     /** @return mixed */
     public function getProduct(): mixed
     {
-        return $this->subscriptionId > 0 ? Subscription::readFromId($this->subscriptionId) :
-            ($this->giftSubscriptionId > 0 ? GiftSubscription::readFromId($this->giftSubscriptionId) :
-                null);
+        return $this->subscriptionId > 0 ? Subscription::readFromId($this->subscriptionId) : ($this->giftSubscriptionId > 0 ? GiftSubscription::readFromId($this->giftSubscriptionId) :
+            null);
     }
 
     /** @return bool is this the latest transaction in the subscription? */
@@ -256,7 +255,7 @@ abstract class Transaction implements Persistence
     public static function getAllFromUser(User $user): array
     {
         $transactions = [];
-        foreach (Stack::getClassesInPackageNamespaces('Model\Billing\Transaction') as $class) {
+        foreach (Stack::getClassesInPackageNamespaces('TN_Billing\Model\Transaction') as $class) {
             $transactions = array_merge($transactions, $class::getFromUser($user));
         }
         return self::sortResults($transactions);
