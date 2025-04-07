@@ -57,7 +57,16 @@
                 <div class="alert-{if $inGracePeriod || ($braintreeCustomer && empty($braintreeCustomer->getReadablePaymentMethod()))}danger{else}secondary{/if} border px-5 py-2">
                     {if $braintreeCustomer}
                         {if !empty($braintreeCustomer->getReadablePaymentMethod())}
-                            Your payment method is set to {*{include file="Router/Route/Funnels/Checkout/Payment/VaultedPayment.tpl"}.*}
+                            Your payment method is set to {* just prints out the details of an previously vaulted payment from a braintree customer *}
+                            {$braintreeCustomer->getReadablePaymentMethod()}
+                            {if !empty($braintreeCustomer->accountName)}
+                                account ({$braintreeCustomer->accountName})
+                            {else}
+                                card
+                                {if $braintreeCustomer->cardExpiration}
+                                    ({$braintreeCustomer->cardType}, expiring {$braintreeCustomer->cardExpiration})
+                                {/if}
+                            {/if}
                         {else}
                             We do not currently have a valid payment method for you. Please add one:
                         {/if}

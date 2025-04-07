@@ -28,6 +28,7 @@ class BillingTab extends UserProfileTab
     public array $endReasonDescriptions;
     public false|float $braintreeOverduePayment;
     public bool $subscriptionsReorganized;
+    public bool $activeSubscriptionIsBraintree;
 
     public function prepare(): void
     {
@@ -69,5 +70,6 @@ class BillingTab extends UserProfileTab
         $this->endReasonDescriptions = Subscription::getEndReasonOptions();
         $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
         $this->subscriptionsReorganized = $subscriptionsReorganized;
+        $this->activeSubscriptionIsBraintree = $this->user->hasActiveBraintreeSubscription();
     }
 }
