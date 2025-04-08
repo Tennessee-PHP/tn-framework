@@ -17,7 +17,7 @@ class TagEditor extends HTMLComponent
 {
     public array $taggedContents;
     public string $contentClass;
-    public ?int $contentId;
+    public null|int|string $contentId;
     public mixed $content;
 
     /**
@@ -76,8 +76,5 @@ class TagEditor extends HTMLComponent
         }
     }
 
-    public function prepare(): void
-    {
-    }
-
+    public function prepare(): void {}
 }
