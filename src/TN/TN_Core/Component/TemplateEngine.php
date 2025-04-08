@@ -42,6 +42,7 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'str_starts_with', static::class . '::strStartsWith');
         $this->registerPlugin('modifier', 'abs', static::class . '::abs');
         $this->registerPlugin('modifier', 'urlencode', static::class . '::urlencode');
+        $this->registerPlugin('modifier', 'urlencodeperiods', static::class . '::urlencodePeriods');
         $this->registerPlugin('modifier', 'reset', static::class . '::reset');
         $this->registerPlugin('modifier', 'substr', static::class . '::substr');
         $this->registerPlugin('modifier', 'strpos', static::class . '::strpos');
@@ -81,6 +82,11 @@ class TemplateEngine extends Smarty
     public static function urlencode(mixed $value): string
     {
         return urlencode($value);
+    }
+
+    public static function urlencodePeriods(mixed $value): string
+    {
+        return urlencode(str_replace('.', '%2E', $value));
     }
 
     public static function substr(string $string, int $start, ?int $length = null): string
