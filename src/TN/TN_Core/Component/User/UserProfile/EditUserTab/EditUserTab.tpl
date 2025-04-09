@@ -97,6 +97,13 @@
                     </div>
                 </div>
             </form>
+
+            {if $observerIsSuperUser}
+                <button type="button" id="generate_password" class="btn btn-outline-secondary ms-3 d-flex align-items-center">
+                    Generate Password
+                </button>
+            {/if}
+
         </div>
     </div>
 
