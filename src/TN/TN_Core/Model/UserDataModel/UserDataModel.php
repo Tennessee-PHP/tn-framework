@@ -179,7 +179,6 @@ abstract class UserDataModel implements Persistence
                     $record->$prop = $value;
                     $changedProps[] = $prop;
                 }
-
             }
         }
 
