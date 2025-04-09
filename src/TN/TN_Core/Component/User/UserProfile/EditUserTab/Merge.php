@@ -10,10 +10,13 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\User\User;
 
-class Merge extends JSON {
+class Merge extends JSON
+{
     public string $username;
     public ?User $user;
     public User $observer;
+    public bool $observerIsSuperUser;
+
 
     public function prepare(): void
     {
