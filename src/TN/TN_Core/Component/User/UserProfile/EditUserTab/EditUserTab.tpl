@@ -30,7 +30,7 @@
             <form id="edit_name_form"
                   action="{path route="TN_Core:User:userProfileEditUserTabSaveField" username=$username}">
                 <div class="form-group mb-3">
-                    <label for="field_first" class="form-label">Email Address</label>
+                    <label for="field_first" class="form-label">Name</label>
                     <div class="d-flex">
                         <input type="text" id="field_first" class="form-control flex-fill me-2" name="first"
                                value="{$user->first}">
