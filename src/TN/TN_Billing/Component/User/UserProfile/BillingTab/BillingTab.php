@@ -9,6 +9,7 @@ use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Core\Component\User\UserProfile\UserProfileTab;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\User\User;
 
 class BillingTab extends UserProfileTab
@@ -60,7 +61,7 @@ class BillingTab extends UserProfileTab
             $subscriptionsReorganized = true;
         }
 
-        $this->refundReasons = Refund::getReasonOptions();
+        $this->refundReasons = Stack::resolveClassName(Refund::class)::getReasonOptions();
         $this->historicalSubscriptions = Subscription::getUserSubscriptions($this->user, true);
         $this->planPrices = Price::readAll();
         $this->activeSubscription = Subscription::getUserActiveSubscription($this->user);
