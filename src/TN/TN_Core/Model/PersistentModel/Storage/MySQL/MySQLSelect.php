@@ -26,14 +26,13 @@ class MySQLSelect
         public MySQLSelectType $selectType,
         public SearchArguments $search,
         public ?string         $sumProperty = null
-    )
-    {
+    ) {
         $this->className = Stack::resolveClassName($className);
         $this->query = "SELECT ";
         $this->query .= match ($selectType) {
-            MySQLSelectType::Objects => "`{$table}`.*",
-            MySQLSelectType::Count => "COUNT(*)",
-            MySQLSelectType::CountAndSum => "COUNT(*) as count, SUM(`{$table}`.`{$sumProperty}`) as sum",
+            MySQLSelectType::Objects => "DISTINCT `{$table}`.*",
+            MySQLSelectType::Count => "COUNT(DISTINCT `{$table}`.`id`)",
+            MySQLSelectType::CountAndSum => "COUNT(DISTINCT `{$table}`.`id`) as count, SUM(`{$table}`.`{$sumProperty}`) as sum",
             MySQLSelectType::Sum => "SUM(`{$table}`.*)"
         };
         $this->query .= " FROM {$table}";
@@ -172,5 +171,4 @@ class MySQLSelect
         }
         $this->query .= ')';
     }
-
 }

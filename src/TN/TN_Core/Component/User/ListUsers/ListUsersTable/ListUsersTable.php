@@ -12,9 +12,12 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonArgument;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonJoin;
+use TN\TN_Core\Model\PersistentModel\Search\SearchLogical;
 use TN\TN_Core\Model\PersistentModel\Search\SearchSorter;
 use TN\TN_Core\Model\PersistentModel\Search\SearchSorterDirection;
 use TN\TN_Core\Model\Role\OwnedRole;
+use TN\TN_Core\Model\Role\Role;
+use TN\TN_Core\Model\Role\RoleGroup;
 use TN\TN_Core\Model\User\User;
 
 #[Reloadable]
@@ -38,8 +41,37 @@ class ListUsersTable extends HTMLComponent
         $search->sorters[] = new SearchSorter('id', SearchSorterDirection::DESC);
 
         if (!$this->roleSelect->selected->all && $this->roleSelect->selected->key) {
+            $selectedRole = Role::getInstanceByKey($this->roleSelect->selected->key);
+            $roleKeys = [$selectedRole->key];
+
+            // If the selected role is a role group, get all its child roles
+            if ($selectedRole instanceof RoleGroup) {
+                $childRoles = $selectedRole->getChildren();
+                foreach ($childRoles as $childRole) {
+                    $roleKeys[] = $childRole->key;
+                }
+            }
+
             $search->conditions[] = new SearchComparisonJoin(joinFromClass: OwnedRole::class, joinToClass: User::class);
-            $search->conditions[] = new SearchComparison(new SearchComparisonArgument(property: 'roleKey', class: OwnedRole::class), '=', $this->roleSelect->selected->key);
+
+            // If we have multiple role keys, create an OR condition for them
+            if (count($roleKeys) > 1) {
+                $orConditions = [];
+                foreach ($roleKeys as $roleKey) {
+                    $orConditions[] = new SearchComparison(
+                        new SearchComparisonArgument(property: 'roleKey', class: OwnedRole::class),
+                        '=',
+                        $roleKey
+                    );
+                }
+                $search->conditions[] = new SearchLogical('OR', $orConditions);
+            } else {
+                $search->conditions[] = new SearchComparison(
+                    new SearchComparisonArgument(property: 'roleKey', class: OwnedRole::class),
+                    '=',
+                    $roleKeys[0]
+                );
+            }
         }
 
         if (!empty($this->username)) {
