@@ -65,11 +65,13 @@ class TrackedVisitor implements Persistence
         // if we have the cookie and we still have the data
         $trackedVisitor = false;
         $tnTvIdCookie = $request->getCookie('TN_tvid');
-        if (isset($tnTvIdCookie)) {
+        if (isset($tnTvIdCookie) && !empty($tnTvIdCookie)) {
             $trackedVisitors = TrackedVisitor::searchByProperty('uuId', $tnTvIdCookie);
             if (count($trackedVisitors)) {
                 $trackedVisitor = $trackedVisitors[0];
                 $trackedVisitor->update([
+                    'uuId' => $tnTvIdCookie,
+                    'ip' => IP::getAddress(),
                     'lastVisitTs' => Time::getNow()
                 ]);
             }
