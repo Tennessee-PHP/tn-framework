@@ -54,10 +54,10 @@
             <tbody>
             {foreach $refunds as $refund}
                 <tr>
-                    <td><a href="{$BASE_URL}staff/users/user/{$refund->userId}/profile">{if $refund->user}{$refund->user->username}{else}-{/if}</a></td>
+                    <td><a href="{$BASE_URL}{$refund->user->username|urlencodeperiods}/profile">{if $refund->user}{$refund->user->username}{else}-{/if}</a></td>
                     <td>{if $refund->user}{$refund->user->email}{else}-{/if}</td>
                     <td>
-                        <a href="{$BASE_URL}staff/users/user/{$refund->userId}/profile">{$refund->userId}</a>
+                        <a href="{$BASE_URL}{$refund->user->username|urlencodeperiods}/profile">{$refund->userId}</a>
                     </td>
                     <td>{$refund->transactionId}</td>
                     <td>{$refund->ts|date_format:"%Y-%m-%d"}</td>
