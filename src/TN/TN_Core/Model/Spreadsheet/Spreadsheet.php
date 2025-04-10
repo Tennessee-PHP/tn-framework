@@ -63,7 +63,7 @@ class Spreadsheet
             }
             $rows[] = $row;
         }
-        return new (get_called_class())($headers, $rows);
+        return new static($headers, $rows);
     }
 
     /**
@@ -149,7 +149,7 @@ class Spreadsheet
         $csvRows = [];
         foreach ($rows as $row) {
             $csvRow = [];
-            foreach($headers as $header) {
+            foreach ($headers as $header) {
                 $csvRow[] = $row->$header ?? '';
             }
             $csvRows[] = $csvRow;
