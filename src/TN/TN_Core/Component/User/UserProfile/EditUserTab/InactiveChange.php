@@ -11,10 +11,12 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Model\User\UserInactiveChange;
 
-class InactiveChange extends JSON {
+class InactiveChange extends JSON
+{
     public string $username;
     public ?User $user;
     public User $observer;
+    public bool $observerIsSuperUser;
 
     public function prepare(): void
     {
@@ -25,7 +27,6 @@ class InactiveChange extends JSON {
         }
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user');
-
         UserInactiveChange::createAndSave($this->user, $this->observer, $this->user->inactive, $_POST['comment']);
         $this->data = [
             'result' => 'success',

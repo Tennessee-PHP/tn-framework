@@ -38,7 +38,7 @@ class UserProfile extends HTMLComponent
             if (!User::getActive()->hasRole('super-user')) {
                 throw new ResourceNotFoundException('Cannot view this user');
             }
-            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)));
+            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)), true);
         }
 
         if (!$this->user) {

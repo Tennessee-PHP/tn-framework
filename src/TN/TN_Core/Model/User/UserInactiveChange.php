@@ -50,9 +50,6 @@ class UserInactiveChange implements Persistence
 
     /** methods */
 
-    /** protect the constructor */
-    protected function __construct() {}
-
     /**
      * returns all changes for a specific user
      * @param User $user
@@ -63,7 +60,7 @@ class UserInactiveChange implements Persistence
         $changes = static::search(new SearchArguments(
             new SearchComparison('`userId`', '=', $user->id),
             new SearchSorter('ts', 'DESC')
-        ));
+        ), true);
         foreach ($changes as &$change) {
             $change->user = $user;
             if (isset($change->byUserId)) {
@@ -95,7 +92,7 @@ class UserInactiveChange implements Persistence
             'inactive' => !$active
         ]);
 
-        $change = new self();
+        $change = static::getInstance();
         $change->userId = $user->id;
         $change->byUserId = $byUser->id;
         $change->active = $active;

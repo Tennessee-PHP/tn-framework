@@ -715,15 +715,13 @@ class User implements Persistence
      */
     public function mergeWithUser(User $secondaryUser, User $byUser): bool
     {
-        if (!$byUser->hasRole('user-admin') || $secondaryUser->inactive) {
-            return false;
+        if (!$byUser->hasRole('super-user') || $secondaryUser->inactive) {
+            throw new ValidationException('User does not have permission or the secondary user is inactive.');
         }
 
         // make the other user inactive with a reason
         $comment = 'Merging with user ' . $this->username . ' (#' . $this->id . ')';
-        if (UserInactiveChange::createAndSave($secondaryUser, $byUser, false, $comment) !== true) {
-            return false;
-        }
+        UserInactiveChange::createAndSave($secondaryUser, $byUser, false, $comment);
 
         // make sure this user has all the roles of the secondary user
         foreach ($secondaryUser->getRoles() as $role) {

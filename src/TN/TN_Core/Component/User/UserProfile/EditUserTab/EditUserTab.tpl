@@ -110,19 +110,18 @@
     {if $observerIsSuperUser}
         <h3 class="mt-3">Activation Status</h3>
 
-        {if $user->active}{else}{/if}
+        {if !$user->inactive}<p class="alert alert-success">This user is currently active.</p>{else}<p class="alert alert-danger">This user is currently inactive.</p>{/if}
         <form id="user_active_change_form"
               action="{path route="TN_Core:User:userProfileEditUserTabInactiveChange" username=$username}">
             <div class="d-flex">
-                <a href="{path route="TN_Core:User:listUsers"}" target="_blank"
-                   class="btn btn-outline-primary flex-fill">Find&nbsp;User&nbsp;ID&nbsp;To&nbsp;Merge</a>
-                <input type="text" id="field_merge_id" class="form-control mx-2 flex-fill"
-                       name="secondaryUserId" value="">
+                <label for="field_comment" class="form-label">Reason</label>
+                <input type="text" id="field_comment" class="form-control mx-2 flex-fill"
+                       name="comment" value="">
                 <button type="submit" class="btn btn-outline-primary ms-3 d-flex align-items-center">
                             <span class="spinner-border spinner-border-sm me-1 d-none" role="status"
                                   aria-hidden="true"></span>
                     <i class="bi bi-check-circle me-1 d-none"></i>
-                    Merge&nbsp;Users
+                    Make&nbsp;{!$user->inactive ? 'Inactive' : 'Active'}
                 </button>
             </div>
         </form>

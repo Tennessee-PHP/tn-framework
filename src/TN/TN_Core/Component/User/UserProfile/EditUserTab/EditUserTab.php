@@ -6,7 +6,8 @@ use TN\TN_Core\Component\User\UserProfile\UserProfileTab;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Model\User\UserInactiveChange;
 
-class EditUserTab extends UserProfileTab {
+class EditUserTab extends UserProfileTab
+{
     public static string $tabKey = 'user-info';
     public static string $tabReadable = 'Profile';
     public static int $sortOrder = 1;
@@ -15,7 +16,8 @@ class EditUserTab extends UserProfileTab {
     public bool $observerIsSuperUser;
     public array $userInactiveChanges;
 
-    public function prepare(): void {
+    public function prepare(): void
+    {
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user');
         $this->userInactiveChanges = UserInactiveChange::getUserChanges($this->user);
