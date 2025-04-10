@@ -105,7 +105,7 @@ export default class EditPageEntry extends HTMLComponent {
         console.log(this.lastSaveData);
 
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/page-entries/save', this.lastSaveData, {
+        axios.post(TN.BASE_URL + 'staff/page-entries/edit/save', this.lastSaveData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
