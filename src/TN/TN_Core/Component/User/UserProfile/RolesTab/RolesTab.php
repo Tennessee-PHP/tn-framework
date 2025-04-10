@@ -15,6 +15,10 @@ class RolesTab extends UserProfileTab
     public User $observer;
     public array $userRoleKeys;
 
+    public static function enabled(User $user): bool {
+        return User::getActive()->hasRole('super-user');
+    }
+
     public function prepare(): void
     {
         $this->roles = [];
