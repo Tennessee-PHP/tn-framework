@@ -19,7 +19,7 @@ class SubscriptionController extends Controller
     #[Component(\TN\TN_Billing\Component\Subscription\CancelSubscription::class)]
     public function cancelSubscription(): void {}
 
-    #[Schedule('10 2 * * * *')]
+    #[Schedule('10 2 * * *')]
     #[TimeLimit(600)]
     #[CommandName('subscription/cancel-failed-payment-subscriptions')]
     public function cancelFailedPaymentSubscriptions(): ?string
@@ -28,22 +28,28 @@ class SubscriptionController extends Controller
         $failures = [];
         foreach (SubscriptionModel::getFailedBillingsBeyondGracePeriod() as $subscription) {
             echo 'Subscription ID: ' . $subscription->id;
-            $success = $subscription->paymentFailedAndGracePeriodExpired();
-            echo $success === true ? 'success' : 'failed';
-            echo "\n";
+            try {
+                $subscription->paymentFailedAndGracePeriodExpired();
+                $success = true;
+                echo 'success' . PHP_EOL;
+            } catch (\Exception $e) {
+                echo 'error: ' . $e->getMessage() . PHP_EOL;
+                $success = false;
+            }
             if ($success) {
                 $successes[] = $subscription->id;
             } else {
                 $failures[] = $subscription->id;
             }
         }
+
         return json_encode([
-            'success' => $successes,
+            'successes' => $successes,
             'failures' => $failures
         ]);
     }
 
-    #[Schedule('*/20 * * * * *')]
+    #[Schedule('*/20 * * * *')]
     #[TimeLimit(Time::ONE_MINUTE)]
     #[CommandName('subscription/attempt-auto-renew-subscriptions')]
     public function attemptAutoRenewSubscriptions(): ?string
@@ -76,7 +82,7 @@ class SubscriptionController extends Controller
         return json_encode($output);
     }
 
-    #[Schedule('*/20 * * * * *')]
+    #[Schedule('*/20 * * * *')]
     #[TimeLimit(Time::ONE_MINUTE * 10)]
     #[CommandName('subscription/notify-upcoming-auto-renew-subscriptions')]
     public function notifyUpcomingAutoRenewSubscriptions(): ?string
@@ -92,7 +98,7 @@ class SubscriptionController extends Controller
                 $subscription->notifyUpcomingRenewal();
                 echo 'success';
                 $output['successes'][] = $subscription->id;
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 echo 'failed: ' . $e->getMessage();
                 $output['errors'][] = [
                     'subscriptionId' => $subscription->id,

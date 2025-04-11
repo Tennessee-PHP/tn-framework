@@ -28,7 +28,7 @@ class EmailController extends Controller
     public function saveEmailTemplate(): void {}
 
     #[CommandName('convertkit/send-from-queue')]
-    #[Schedule('*/5 * * * * *')]
+    #[Schedule('*/5 * * * *')]
     #[Component(\TN\TN_Core\CLI\Email\ConvertKit\SendFromQueue::class)]
     public function convertKitSendFromQueue(): void {}
 }

@@ -26,7 +26,7 @@ use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
 
 class AnalyticsController extends Controller
 {
-    #[Schedule('*/5 * * * * *')]
+    #[Schedule('*/5 * * * *')]
     #[TimeLimit(5000)]
     #[CommandName('reporting/analytics/update')]
     public function updateAnalytics(): ?string

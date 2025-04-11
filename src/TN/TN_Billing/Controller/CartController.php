@@ -10,12 +10,12 @@ use TN\TN_Core\Controller\Controller;
 
 class CartController extends Controller
 {
-    #[Schedule('05 */2 * * * *')]
+    #[Schedule('05 */2 * * *')]
     #[TimeLimit(600)]
     #[CommandName('billing/cart/send-abandoned-cart-reminders')]
     public function sendAbandonedCartReminders(): ?string
     {
-        foreach(CartModel::getAbandonedNonRemindedCarts() as $cart) {
+        foreach (CartModel::getAbandonedNonRemindedCarts() as $cart) {
             $cart->sendEmailReminder();
         }
         return null;
