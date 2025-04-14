@@ -56,4 +56,9 @@ class UserController extends Controller
     #[AnonymousOnly]
     #[Component(\TN\TN_Core\Component\User\RegisterForm\SuggestUsername::class)]
     public function suggestUsername(): void {}
+
+    #[Path('reset-password')]
+    #[AnonymousOnly]
+    #[Component(\TN\TN_Core\Component\User\ResetPasswordForm\ResetPasswordForm::class)]
+    public function resetPassword(): void {}
 }

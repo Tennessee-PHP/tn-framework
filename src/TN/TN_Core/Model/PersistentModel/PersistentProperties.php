@@ -1,6 +1,7 @@
 <?php
 
 namespace TN\TN_Core\Model\PersistentModel;
+
 use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\AutoIncrement;
 use TN\TN_Core\Attribute\Relationships\ChildrenClass;
@@ -22,7 +23,7 @@ trait PersistentProperties
 
         // get the type of the reflection property; remove the ? if it is nullable
         $type = $reflectionProperty->getType()?->getName();
-        $type = strtolower(str_replace('?', '', $type));
+        $type = str_replace('?', '', $type);
 
         if ($value === null) {
             return null;
@@ -108,5 +109,4 @@ trait PersistentProperties
 
         return $persistentProperties;
     }
-
 }

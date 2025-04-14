@@ -60,9 +60,6 @@ class PasswordReset implements Persistence
         self::$checkedIp = true;
     }
 
-    /** protect the constructor */
-    protected function __construct() {}
-
     /**
      * starts the password reset process given a user
      * @param User $user
@@ -93,7 +90,7 @@ class PasswordReset implements Persistence
     public static function getFromKey(string $key): ?PasswordReset
     {
         // return first item in search by property or null if there aren't any
-        self::searchByProperty('key', $key);
+        $search = self::searchByProperty('key', $key);
         return empty($search) ? null : $search[0];
     }
 
