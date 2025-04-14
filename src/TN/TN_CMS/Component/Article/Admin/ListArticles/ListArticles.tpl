@@ -5,7 +5,8 @@
     }
 
     <p>Control which articles are displayed across the website.</p>
-    {if $articleListing->isArticleEditor || $articleListing->isArticleAuthor}
+
+    {if $isArticleEditor || $isArticleAuthor}
         <div class="d-flex flex-md-row flex-column">
             <a href="{$BASE_URL}staff/articles/edit?" class="btn btn-primary mb-3 me-0 me-md-3">Add
                 Article From

@@ -17,13 +17,14 @@ export default class EditArticle extends HTMLComponent {
     private saveArticleContentDelay?: number;
     private $articleTitleEditor: Cash;
     private $tagEditor: Cash;
-
+    private $articleMetadataEditor: Cash;
     protected observe(): void {
 
         this.$saveStatusContainer = this.$element.find('.save-status-container');
         this.$articleTitleEditor = this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articletitleeditor-articletitleeditor');
         this.$tagEditor = this.$element.find('.tn-tn_cms-component-tageditor-tageditor');
-
+        this.$articleMetadataEditor = this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articlemetadataeditor-articlemetadataeditor');
+        
         const $form = this.$element.find('form');
         const $description = $form.find('[name="description"]');
         const $title = $form.find('[name="title"]');
@@ -64,7 +65,7 @@ export default class EditArticle extends HTMLComponent {
         this.addArticleIdToHref(this.articleId);
 
         this.$articleTitleEditor.on('change', this.onChange.bind(this));
-
+        this.$articleMetadataEditor.on('change', this.onChange.bind(this));
         this.$tagEditor.on('change', (e: Event, tags: string[]) => {
             this.onChange(e, { tags: this.$tagEditor.data('tags') });
         });
@@ -102,6 +103,7 @@ export default class EditArticle extends HTMLComponent {
     }
 
     protected onChange(e: Event, data: ReloadData): void {
+
         if (!data) {
             return;
         }
@@ -161,13 +163,12 @@ export default class EditArticle extends HTMLComponent {
             .then((response: AxiosResponse): void => {
                 this.setSaveStatus('saved');
                 let data = response.data;
-                options.success(data);
-                console.log(response);
                 this.articleId = data.articleId;
                 this.$element.attr('data-articleid', data.articleId);
                 // @ts-ignore
                 this.$element.find('a.article-preview-link').attr('href', TN.BASE_URL + data.articleUrl + '?preview=1');
                 this.addArticleIdToHref(data.articleId);
+                options.success(data);
             })
             .catch((error: AxiosError): void => {
                 this.onError(error);
@@ -215,9 +216,9 @@ export default class EditArticle extends HTMLComponent {
             contextmenu: 'bootstrap',
             external_plugins: {
                 // @ts-ignore
-                'tncms': TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js',
+                'tncms': TN.BASE_URL + 'fbgstatic/lib/tinymce-tnadverts-plugin/plugin.js',
                 // @ts-ignore
-                'tncontent': TN.BASE_URL + 'tnstatic/lib/tinymce-tncontent-plugin/plugin.js'
+                'tncontent': TN.BASE_URL + 'fbgstatic/lib/tinymce-tnadverts-plugin/plugin.js'
             },
 
             images_reuse_filename: true,

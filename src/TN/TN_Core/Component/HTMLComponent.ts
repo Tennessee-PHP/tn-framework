@@ -43,8 +43,14 @@ abstract class HTMLComponent {
             this.setupCloudflareTurnstile();
         }
 
-        this.$element.on('reload', this.reload.bind(this));
+        this.$element.on('reload', this.triggerReload.bind(this));
         this.observe();
+    }
+
+    protected triggerReload(e: Event): void {
+        e.preventDefault();
+        e.stopPropagation();
+        this.reload();
     }
 
     static setComponentFactory(factory: IComponentFactory): void {

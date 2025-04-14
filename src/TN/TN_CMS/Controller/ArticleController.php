@@ -44,6 +44,21 @@ class ArticleController extends Controller
     #[RolesOnly(['article-editor', 'article-author'])]
     public function adminEditArticle(): void {}
 
+    #[Path('staff/articles/edit/metadata')]
+    #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\ArticleMetadataEditor\ArticleMetadataEditor::class)]
+    #[RolesOnly(['article-editor', 'article-author'])]
+    public function adminArticleMetadataEditor(): void {}
+
+    #[Path('staff/articles/edit/url-stub')]
+    #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\ArticleUrlStubEditor\ArticleUrlStubEditor::class)]
+    #[RolesOnly(['article-editor', 'article-author'])]
+    public function adminEditArticleArticleUrlStubEditor(): void {}
+
+    #[Path('staff/articles/edit/thumbnail')]
+    #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\ArticleThumbnailEditor\ArticleThumbnailEditor::class)]
+    #[RolesOnly(['article-editor', 'article-author'])]
+    public function adminEditArticleArticleThumbnailEditor(): void {}
+
     #[Path('staff/articles/edit/save')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\EditArticle\SaveProperties::class)]
     #[RolesOnly(['article-editor', 'article-author'])]

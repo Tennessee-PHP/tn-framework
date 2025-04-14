@@ -119,9 +119,14 @@ trait Cache
 
     protected static function invalidateCacheSet(string $set): void
     {
-        foreach (CacheStorage::setMembers(static::getCacheKey('set', $set)) as $memberCacheKey) {
-            CacheStorage::delete($memberCacheKey);
+        try {
+            foreach (CacheStorage::setMembers(static::getCacheKey('set', $set)) as $memberCacheKey) {
+                CacheStorage::delete($memberCacheKey);
+            }
+        } catch (\Exception $e) {
+            // do nothing
         }
+
         CacheStorage::delete(static::getCacheKey('set', $set));
     }
 

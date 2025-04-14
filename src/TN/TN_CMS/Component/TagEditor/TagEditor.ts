@@ -27,7 +27,7 @@ export default class TagEditor extends HTMLComponent {
             });
         });
 
-        this.onUpdate();
+        this.onUpdate(false);
 
         this.$exampleTag = this.$element.find('.example-tag-container .tag');
     }
@@ -168,9 +168,11 @@ export default class TagEditor extends HTMLComponent {
 
     }
 
-    protected onUpdate(): void {
+    protected onUpdate(allowTrigger: boolean = true): void {
         // a parent always needs to pick this event up and handle it. the php class is ready to go with the actual editing.
         this.$element.data('tags', JSON.stringify(this.tags));
-        this.$element.trigger('change', [this.tags]);
+        if (allowTrigger) {
+            this.$element.trigger('change', [this.tags]);
+        }
     }
 }

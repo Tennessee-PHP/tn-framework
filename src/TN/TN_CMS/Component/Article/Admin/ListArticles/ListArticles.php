@@ -55,8 +55,10 @@ class ListArticles extends HTMLComponent
         $this->statePublished = Article::STATE_PUBLISHED;
         $this->stateTemplate = Article::STATE_TEMPLATE;
 
-        $this->templates = Article::getArticles(['authorId' => User::getActive()->id, 'state' => Article::STATE_TEMPLATE],
-            $this->sortProperty, $this->sortDirection
+        $this->templates = Article::getArticles(
+            ['authorId' => User::getActive()->id, 'state' => Article::STATE_TEMPLATE],
+            $this->sortProperty,
+            $this->sortDirection
         );
 
         $search = new SearchArguments();

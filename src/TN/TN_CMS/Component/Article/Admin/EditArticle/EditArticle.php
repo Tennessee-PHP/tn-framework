@@ -130,8 +130,7 @@ class EditArticle extends HTMLComponent
                     $edits['content'] = $value;
                     break;
                 case 'weight':
-                    $this->canEdit = User::getActive()->hasRole('article-editor');
-                    if ($this->canEdit) {
+                    if (User::getActive()->hasRole('article-editor')) {
                         $edits['weight'] = $value;
                     }
                     break;

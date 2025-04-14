@@ -1,4 +1,4 @@
-<div class="card mb-3 {$classAttribute}" id="{$idAttribute}">
+<div class="card mb-3 {$classAttribute}" id="{$idAttribute}" data-reload-url="{path route=$reloadRoute}">
     <div class="card-body">
         <h3>Metadata</h3>
 

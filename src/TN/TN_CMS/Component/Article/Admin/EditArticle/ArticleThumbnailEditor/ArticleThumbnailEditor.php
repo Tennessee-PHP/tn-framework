@@ -6,7 +6,10 @@ use TN\TN_CMS\Model\Article;
 use TN\TN_Core\Attribute\Components\FromRequest;
 use \TN\TN_Core\Component\HTMLComponent;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
-#[Reloadable('TN_CMS:Article:adminEditArticleArticleThumbnailEditorReload')]
+use TN\TN_Core\Attribute\Components\Route;
+
+#[Reloadable]
+#[Route('TN_CMS:Article:adminEditArticleArticleThumbnailEditor')]
 class ArticleThumbnailEditor extends HTMLComponent
 {
     public ?Article $article = null;
@@ -24,8 +27,8 @@ class ArticleThumbnailEditor extends HTMLComponent
         }
 
         $this->candidateImgSrcs = [];
-        if (isset($_POST['imgSrcs']) && !empty($_POST['imgSrcs'])) {
-            $imgSrcsRaw = explode('|', $_POST['imgSrcs']);
+        if (isset($_REQUEST['imgSrcs']) && !empty($_REQUEST['imgSrcs'])) {
+            $imgSrcsRaw = explode('|', $_REQUEST['imgSrcs']);
             foreach ($imgSrcsRaw as $imgSrc) {
                 if (!str_starts_with($imgSrc, 'blob:')) {
                     $this->candidateImgSrcs[] = $imgSrc;
@@ -46,6 +49,5 @@ class ArticleThumbnailEditor extends HTMLComponent
         if (!empty($this->candidateImgSrcs) && empty($this->article->thumbnailSrc)) {
             $this->article->update(['thumbnailSrc' => $this->candidateImgSrcs[0]]);
         }
-
     }
 }
