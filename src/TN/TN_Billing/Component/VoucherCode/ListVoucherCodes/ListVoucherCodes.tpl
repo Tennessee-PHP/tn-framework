@@ -2,7 +2,7 @@
     <p>
         <a href="{$BASE_URL}staff/sales/voucher-codes/new" class="btn btn-primary">Add New Promo Code</a>
     </p>
-    <div class="table-reponsive" id="voucher_codes_table_wrapper">
+    <div class="table-responsive" id="voucher_codes_table_wrapper">
         <table class="table">
             <thead>
             <tr>
