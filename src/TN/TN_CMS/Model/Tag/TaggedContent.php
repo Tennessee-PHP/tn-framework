@@ -3,6 +3,7 @@
 namespace TN\TN_CMS\Model\Tag;
 
 use PDO;
+use TN\TN_CMS\Model\PageEntry;
 use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Relationships\ParentId;

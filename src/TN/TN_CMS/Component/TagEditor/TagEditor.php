@@ -2,6 +2,7 @@
 
 namespace TN\TN_CMS\Component\TagEditor;
 
+use TN\TN_CMS\Model\PageEntry;
 use TN\TN_CMS\Model\Tag\Tag;
 use TN\TN_CMS\Model\Tag\TaggedContent;
 use TN\TN_Core\Component\HTMLComponent;
@@ -61,6 +62,7 @@ class TagEditor extends HTMLComponent
                 'tagId' => $tag->id,
                 'primary' => (bool)($tagData['primary'] ?? false)
             ]);
+            $this->taggedContents[] = $taggedContent;
         }
 
         // always add the author's name as a tag
@@ -73,7 +75,14 @@ class TagEditor extends HTMLComponent
                 'tagId' => $tag->id,
                 'primary' => (bool)($tagData['primary'] ?? false)
             ]);
+            $this->taggedContents[] = $taggedContent;
         }
+
+        // we can now update numTags on the page entry
+        $pageEntry = PageEntry::getPageEntryForContentItem(get_class($this->content), $this->content->id);
+        $pageEntry?->update([
+            'numTags' => count($this->taggedContents)
+        ]);
     }
 
     public function prepare(): void {}
