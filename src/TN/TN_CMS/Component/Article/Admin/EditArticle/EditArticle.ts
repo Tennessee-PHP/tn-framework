@@ -8,7 +8,7 @@ import $, {Cash} from "cash-dom";
 export default class EditArticle extends HTMLComponent {
     protected $element: Cash;
     private editRequests: Array<{data: any, options: any}> = [];
-    private articleId: string | number = 'new';
+    private articleId: string | number;
     private editRequestLoading: boolean = false;
     private $saveStatusContainer: Cash;
     private tinyMceEditor: any;
@@ -60,6 +60,7 @@ export default class EditArticle extends HTMLComponent {
         this.addAutoResize();
         this.initTinyMce();
         this.articleId = this.$element.data('articleid');
+        console.log(this.articleId);
         this.editRequests = [];
         this.editRequestLoading = false;
         this.addArticleIdToHref(this.articleId);
@@ -153,6 +154,10 @@ export default class EditArticle extends HTMLComponent {
         const {data, options} = this.editRequests.shift()!;
 
         this.setSaveStatus('saving');
+
+        console.log(this.articleId);
+        // @ts-ignore
+        console.log(TN.BASE_URL + 'staff/articles/edit/save' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''));
 
         // @ts-ignore
         axios.post(TN.BASE_URL + 'staff/articles/edit/save' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''), data, {

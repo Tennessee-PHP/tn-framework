@@ -17,7 +17,7 @@ class DeleteArticle extends JSON
                 $article->erase();
                 $this->data = [
                     'result' => 'success',
-                    'message' => 'Article weight updated'
+                    'message' => 'Article deleted'
                 ];
             }
         }

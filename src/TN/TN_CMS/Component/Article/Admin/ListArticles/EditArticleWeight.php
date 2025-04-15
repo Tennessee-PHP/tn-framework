@@ -9,16 +9,18 @@ class EditArticleWeight extends JSON
 {
     public function prepare(): void
     {
-        if (isset($_POST['weight']) && !empty($_POST['weight'])) {
+        if (isset($_POST['weight'])) {
             $id = intval($_POST['articleId']);
             $weight = $_POST['weight'];
 
             $article = Article::getContentItem($id);
             $article->update(['weight' => $weight]);
+            $this->data = [
+                'result' => 'success',
+                'message' => 'Article weight updated'
+            ];
+        } else {
+            throw new \Exception('Invalid weight');
         }
-        $this->data = [
-            'result' => 'success',
-            'message' => 'Article weight updated'
-        ];
     }
 }

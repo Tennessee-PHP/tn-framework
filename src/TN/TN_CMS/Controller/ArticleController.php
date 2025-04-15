@@ -29,12 +29,12 @@ class ArticleController extends Controller
     #[RolesOnly(['backend-article-list-viewer', 'article-editor', 'article-author'])]
     public function adminListArticles(): void {}
 
-    #[Path('staff/articles/weight')]
+    #[Path('staff/articles/edit-article-weight')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\ListArticles\EditArticleWeight::class)]
     #[RoleOnly('article-editor')]
     public function adminEditArticleWeight(): void {}
 
-    #[Path('staff/articles/delete')]
+    #[Path('staff/articles/delete-article')]
     #[Component(\TN\TN_CMS\Component\Article\Admin\ListArticles\DeleteArticle::class)]
     #[RoleOnly('article-editor')]
     public function adminDeleteArticle(): void {}
