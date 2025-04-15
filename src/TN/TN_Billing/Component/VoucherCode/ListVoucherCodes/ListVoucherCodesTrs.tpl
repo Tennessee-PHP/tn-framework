@@ -12,10 +12,4 @@
         <a href="{$BASE_URL}staff/sales/voucher-codes/edit/{$code->id}" class="btn btn-sm btn-secondary"><i
                     class="bi bi-pencil-fill"></i> Edit</a>
     </td>
-    {if !$expired}
-        <td>
-            <a href="{$BASE_URL}staff/sales/voucher-codes/edit/{$code->id}/deactivate" class="btn btn-sm btn-danger"><i
-                        class="bi bi-trash-fill"></i> Deactivate</a>
-        </td>
-    {/if}
 </tr>

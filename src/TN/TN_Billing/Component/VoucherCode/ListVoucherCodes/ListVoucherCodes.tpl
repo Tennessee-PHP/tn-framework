@@ -14,7 +14,6 @@
                 <th>Apply</th>
                 <th>Plans</th>
                 <th>Edit</th>
-                <th>Deactivate</th>
             </tr>
             </thead>
             <tbody>

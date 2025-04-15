@@ -23,8 +23,10 @@ class EditVoucherCode extends HTMLComponent
     public int $totalUses;
     public $totalDiscount;
     public array $plans;
+    public array $activePlans;
 
-    public function getPageTitle(): string {
+    public function getPageTitle(): string
+    {
         return $this->isPhantom ? 'Add Promo Code' : 'Edit Promo Code';
     }
 
@@ -40,7 +42,7 @@ class EditVoucherCode extends HTMLComponent
             $this->isPhantom = false;
             $startTime = date("Y-m-d", $this->voucher->startTs);
             $endTime = date("Y-m-d", $this->voucher->endTs);
-            $activePlans = explode(',', $this->voucher->planKeys);
+            $this->activePlans = explode(',', $this->voucher->planKeys);
             // todo: implement DataSet::compile
             /*$dataSet = DataSet::compile([
                 'TN\Model\Reporting\DayReport\DayVoucherCodeReport' => [
