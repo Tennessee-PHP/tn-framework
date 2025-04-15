@@ -3,6 +3,7 @@
 namespace TN\TN_CMS\Component\LandingPage\Admin\ListLandingPages;
 
 use TN\TN_CMS\Model\LandingPage;
+use TN\TN_Core\Attribute\Components\FromQuery;
 use TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
 use \TN\TN_Core\Component\HTMLComponent;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Page;
@@ -20,9 +21,17 @@ class ListLandingPages extends HTMLComponent
     public Pagination $pagination;
     public int $stateDraft;
     public int $statePublished;
+    #[FromQuery] public ?int $deleteId = null;
 
     public function prepare(): void
     {
+        if ($this->deleteId) {
+            $landingPage = LandingPage::readFromId($this->deleteId);
+            if ($landingPage) {
+                $landingPage->erase();
+            }
+        }
+
         $search = new SearchArguments(sorters: new SearchSorter('publishedTs', 'DESC'));
         $count = LandingPage::count($search);
         $this->pagination = new Pagination([

@@ -52,7 +52,7 @@
                                 class="btn btn-sm btn-secondary"><i class="bi bi-pencil-fill"></i< /a>
                         </td>
                         <td>
-                            <a data-bs-toggle="modal" data-bs-target="#deletelandingpagemodal"
+                            <a data-bs-toggle="modal" data-bs-target="#deletelandingpagemodal" data-landingpageid="{$landingPage->id}" data-landingpagetitle="{$landingPage->title}"
                                 class="btn btn-sm btn-danger delete d-flex justify-content-center"><i
                                     class="bi bi-trash-fill"></i></a>
                         </td>
@@ -78,8 +78,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger delete-confirm" data-bs-dismiss="modal">Yes,
-                        Delete</button>
+                    <a href="#" class="btn btn-danger delete-confirm">Yes, Delete</a>
                 </div>
             </div>
         </div>
