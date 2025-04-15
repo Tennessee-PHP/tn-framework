@@ -18,12 +18,15 @@ export default class EditArticle extends HTMLComponent {
     private $articleTitleEditor: Cash;
     private $tagEditor: Cash;
     private $articleMetadataEditor: Cash;
+
+    private $articleSeoChecklist: Cash;
     protected observe(): void {
 
         this.$saveStatusContainer = this.$element.find('.save-status-container');
         this.$articleTitleEditor = this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articletitleeditor-articletitleeditor');
         this.$tagEditor = this.$element.find('.tn-tn_cms-component-tageditor-tageditor');
         this.$articleMetadataEditor = this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articlemetadataeditor-articlemetadataeditor');
+        this.$articleSeoChecklist = this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articleseochecklist-articleseochecklist');
         
         const $form = this.$element.find('form');
         const $description = $form.find('[name="description"]');
@@ -60,13 +63,14 @@ export default class EditArticle extends HTMLComponent {
         this.addAutoResize();
         this.initTinyMce();
         this.articleId = this.$element.data('articleid');
-        console.log(this.articleId);
         this.editRequests = [];
         this.editRequestLoading = false;
         this.addArticleIdToHref(this.articleId);
 
         this.$articleTitleEditor.on('change', this.onChange.bind(this));
         this.$articleMetadataEditor.on('change', this.onChange.bind(this));
+        this.$articleSeoChecklist.on('change', this.onChange.bind(this));
+
         this.$tagEditor.on('change', (e: Event, tags: string[]) => {
             this.onChange(e, { tags: this.$tagEditor.data('tags') });
         });
@@ -154,10 +158,6 @@ export default class EditArticle extends HTMLComponent {
         const {data, options} = this.editRequests.shift()!;
 
         this.setSaveStatus('saving');
-
-        console.log(this.articleId);
-        // @ts-ignore
-        console.log(TN.BASE_URL + 'staff/articles/edit/save' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''));
 
         // @ts-ignore
         axios.post(TN.BASE_URL + 'staff/articles/edit/save' + (this.articleId !== 'new' ? '?articleid=' + this.articleId : ''), data, {

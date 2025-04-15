@@ -6,10 +6,12 @@ use TN\TN_CMS\Model\Article;
 use TN\TN_Core\Attribute\Components\FromRequest;
 use \TN\TN_Core\Component\HTMLComponent;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
+use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Time\Time;
 
-#[Reloadable('TN_CMS:Article:adminEditArticleArticleStatusEditorReload')]
+#[Reloadable]
+#[Route('TN_CMS:Article:adminEditArticleArticleStatusEditor')]
 class ArticleStatusEditor extends HTMLComponent
 {
     public ?Article $article = null;
@@ -19,7 +21,8 @@ class ArticleStatusEditor extends HTMLComponent
     public int $statePublished;
     public int $stateTemplate;
 
-    public function prepare(): void {
+    public function prepare(): void
+    {
         $this->stateDraft = Article::STATE_DRAFT;
         $this->stateReadyForEditing = Article::STATE_READY_FOR_EDITING;
         $this->statePublished = Article::STATE_PUBLISHED;
@@ -64,7 +67,6 @@ class ArticleStatusEditor extends HTMLComponent
             }
 
             $this->article->update($updateData);
-
         }
     }
 }

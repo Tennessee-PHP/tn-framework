@@ -168,8 +168,8 @@ abstract class HTMLComponent {
             .get(this.$element.data('reload-url'), {
                 params: reloadData,
             })
-            .catch(this.onReloadError.bind(this, this.reloadCount))
-            .then(this.onReloadSuccess.bind(this, this.reloadCount));
+            .then(this.onReloadSuccess.bind(this, this.reloadCount))
+            .catch(this.onReloadError.bind(this, this.reloadCount));
     }
 
     protected updateUrlQuery(data: ReloadData): void {
@@ -214,6 +214,8 @@ abstract class HTMLComponent {
             clearTimeout(this.reloadTimer);
         }
 
+        console.log('onReloadSuccess');
+        console.log(this.$element.attr('class'));
         this.$element.hide();
         this.$element.before(response.data);
         let $newElement = this.$element.prev();

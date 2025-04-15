@@ -66,11 +66,6 @@ export default class ArticleStatusEditor extends HTMLComponent {
         this.reload();
     }
 
-    protected setReloading(reloading: Boolean): void {
-        this.$element.find('.component-loading').height(this.$element.height());
-        super.setReloading(reloading);
-    }
-
     protected getReloadData(): ReloadData {
         let data: ReloadData = super.getReloadData();
         data.status = this.status;
