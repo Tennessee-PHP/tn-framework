@@ -9,6 +9,7 @@ use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
 use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Time\Time;
+use TN\TN_Core\Model\User\User;
 
 #[Reloadable]
 #[Route('TN_CMS:Article:adminEditArticleArticleStatusEditor')]
@@ -20,7 +21,7 @@ class ArticleStatusEditor extends HTMLComponent
     public int $stateReadyForEditing;
     public int $statePublished;
     public int $stateTemplate;
-
+    public bool $canSetToTemplate;
     public function prepare(): void
     {
         $this->stateDraft = Article::STATE_DRAFT;
@@ -35,6 +36,9 @@ class ArticleStatusEditor extends HTMLComponent
                 $this->article = Article::readFromId($this->articleId);
             }
         }
+
+
+        $this->canSetToTemplate = User::getActive()->hasRole('article-editor');
 
         if (isset($_REQUEST['status'])) {
             $newStatus = match ($_REQUEST['status']) {
