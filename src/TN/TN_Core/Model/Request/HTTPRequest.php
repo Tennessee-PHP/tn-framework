@@ -229,6 +229,10 @@ class HTTPRequest extends Request
     {
         $response = null;
 
+        if ($this->path === '/download/yes') {
+            echo 'respond' . PHP_EOL;
+        }
+
         $filename = $this->path . ($this->ext ? '.' . $this->ext : '');
         if (!empty($this->ext) && file_exists($_ENV['TN_WEB_ROOT'] . $filename)) {
             // for these older files, let's reduce the reporting level or we'll just drown in them
@@ -243,6 +247,9 @@ class HTTPRequest extends Request
         }
 
         foreach (Stack::getChildClasses(Controller::class) as $controllerClassName) {
+            if ($this->path === '/download/yes') {
+                echo $controllerClassName . PHP_EOL;
+            }
             $controller = new $controllerClassName;
             if ($response = $controller->respond($this)) {
                 break;
@@ -251,6 +258,9 @@ class HTTPRequest extends Request
 
         if (!$this->notFound && !$response) {
             $this->notFound = true;
+            if ($this->path === '/download/yes') {
+                echo 'not found' . PHP_EOL;
+            }
             $this->respond();
             return;
         }
