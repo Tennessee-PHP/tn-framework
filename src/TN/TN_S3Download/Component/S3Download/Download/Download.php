@@ -27,10 +27,8 @@ class Download extends HTMLComponent
         $bucket = new Bucket($_ENV['DOWNLOADS_AWS_S3_BUCKET'], $_ENV['DOWNLOADS_AWS_S3_REGION'], $_ENV['DOWNLOADS_AWS_S3_KEY'], $_ENV['DOWNLOADS_AWS_S3_SECRET']);
         $file = File::getInstanceFromProperties($bucket, $this->file ?? $_GET['file']);
         $user = User::getActive();
-
-        echo 'here';
-        exit;
         $res = $file->exists();
+
         if (!$res) {
             throw new ValidationException('File not found');
         }
