@@ -224,6 +224,8 @@ export default class EditLandingPage extends HTMLComponent {
             }
         })
             .then((response: AxiosResponse): void => {
+                this.$saveBtn.find('.spinner-border').addClass('d-none');
+                this.$saveBtn.find('i.bi').removeClass('d-none');
                 this.setSaveStatus('saved');
                 let data = response.data;
                 options.success(data);

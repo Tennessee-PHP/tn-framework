@@ -88,6 +88,7 @@ export default class TagEditor extends HTMLComponent {
         let $target = $(event.currentTarget);
         let tag = $target.data('tag');
         _.delay(() => {
+            this.$newTagInput.val(tag);
             this.setNewTagInputWidth();
             this.addTag();
         }, 10);
