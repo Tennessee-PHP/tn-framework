@@ -14,7 +14,7 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\User\User;
 use \TN\TN_Core\Attribute\Components\Route;
 
-#[Page('Articles', 'articles', false)]
+#[Page('Articles', 'articles')]
 #[Route('TN_CMS:Article:listArticles')]
 #[Reloadable]
 class ListArticles extends HTMLComponent
