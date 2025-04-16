@@ -15,7 +15,7 @@ use TN\TN_S3Download\Model\Bucket;
 use TN\TN_S3Download\Model\File;
 
 #[Page('Download File', 'You do not have permission to download this file', false)]
-#[Route('TN_S3Download:S3Download:download')]
+#[Route('FBG_Main:File:download')]
 #[Breadcrumb('Download')]
 class Download extends HTMLComponent
 {
