@@ -15,9 +15,7 @@ class RequestMatcher extends Matcher
     public function __construct(
         public string $path,
         public ?string $method = null
-    )
-    {
-    }
+    ) {}
 
     /**
      * get rules for this path - each path gets translated into > 1 regex to match against the request, e.g. with and
@@ -49,6 +47,9 @@ class RequestMatcher extends Matcher
         }
         $rules = $this->getRules();
         foreach ($rules as $rule) {
+            if ($request->path === '/download/yes') {
+                echo $request->path . ':' . $rule . ':' . (preg_match($this->getRegexFromRule($rule), $request->path) ? 'true' : 'false') . PHP_EOL;
+            }
             if (preg_match($this->getRegexFromRule($rule), $request->path)) {
                 return true;
             }
