@@ -258,7 +258,13 @@ abstract class Controller
                 continue;
             }
 
-            $response = $this->getResponse($request, $method, $matcher);
+            try {
+                $response = $this->getResponse($request, $method, $matcher);
+            } catch (ResourceNotFoundException $e) {
+                $renderer = $rendererClass::error($e->getMessage(), 404);
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 404);
+            }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
                 $renderer = $rendererClass::roadblock();
