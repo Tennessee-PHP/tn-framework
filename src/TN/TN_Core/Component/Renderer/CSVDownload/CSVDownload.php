@@ -18,9 +18,7 @@ class CSVDownload extends Renderer
     public string $csv = '';
     public string $filename = '';
 
-    public function prepare(): void
-    {
-    }
+    public function prepare(): void {}
 
     public function headers(): void
     {

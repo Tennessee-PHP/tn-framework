@@ -67,7 +67,7 @@ class Component extends RouteType
         }
 
         $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
-        if ($component instanceof JSON || $component instanceof Text) {
+        if ($component instanceof JSON || $component instanceof Text || $component instanceof CSVDownload) {
             return $component;
         }
         $rendererClass = $this->getRendererClass();
