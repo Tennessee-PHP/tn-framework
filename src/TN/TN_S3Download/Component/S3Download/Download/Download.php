@@ -28,6 +28,8 @@ class Download extends HTMLComponent
         $file = File::getInstanceFromProperties($bucket, $this->file ?? $_GET['file']);
         $user = User::getActive();
 
+        echo 'here';
+        exit;
         $res = $file->exists();
         if (!$res) {
             throw new ValidationException('File not found');
