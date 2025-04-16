@@ -47,9 +47,6 @@ class RequestMatcher extends Matcher
         }
         $rules = $this->getRules();
         foreach ($rules as $rule) {
-            if ($request->path === '/download/yes') {
-                echo $request->path . ':' . $rule . ':' . (preg_match($this->getRegexFromRule($rule), $request->path) ? 'true' : 'false') . PHP_EOL;
-            }
             if (preg_match($this->getRegexFromRule($rule), $request->path)) {
                 return true;
             }

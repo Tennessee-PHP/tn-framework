@@ -226,11 +226,6 @@ abstract class Controller
         // instantiate a reflection class for the current controller
         $reflection = new \ReflectionClass($this);
 
-
-        if ($request->path === '/download/yes') {
-            echo static::class . PHP_EOL;
-        }
-
         // let's iterate through all the methods on the reflection class
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             $matcher = $this->routeMatches($request, $method);

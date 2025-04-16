@@ -271,7 +271,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             $this->onFailure();
             $this->update([
                 'success' => false,
-                'errorMsg' => 'We were unable to attempt to process your payment: ' . $result->message . '. Please try again later. If you\'re having trouble with payment by credit card, please try paying through your PayPal account if you have one.'
+                'errorMsg' => 'We were unable to attempt to process your payment: ' . $result->message
             ]);
             // nothing more we can do - nothing else to process!
             return;
