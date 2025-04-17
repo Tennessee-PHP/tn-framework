@@ -57,40 +57,5 @@
             {/if}
         {/if}
     </div>
-</div>
 
-<div class="modal fade" id="publisharticlemodal" tabindex="-1" aria-hidden="true" aria-labelledby="publisharticlemodal"
-    data-articleid="">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="modal-title" id="publisharticlemodallabel">
-                    Publish Article Confirmation
-                </span>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="prompt">
-                    Would you like to set the publish date of this article to be now, or leave it at its current
-                    value
-                    of <span class="current-datetime"> {$article->publishedTs|date_format:"%m/%d/%y %H:%M"} </span> ?
-                </div>
-                <div class="publish-options row">
-                    <div class="col-6">
-                        <button value="publish-now" data-bs-dismiss="modal"
-                            class="btn btn-sm  btn-outline-primary col-12 mt-2 article-state-btn publish-now-btn">
-                            Publish to time set to now
-                        </button>
-                    </div>
-                    <div class="col-6">
-                        <button value="publish-ts" data-bs-dismiss="modal"
-                            class="btn btn-sm  btn-outline-primary col-12 mt-2 article-state-btn publish-ts-btn">
-                            Publish with time set to <span class="current-datetime">
-                                {$article->publishedTs|date_format:"%m/%d/%y %H:%M"} </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
