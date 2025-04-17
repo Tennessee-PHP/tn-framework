@@ -205,6 +205,7 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         } else {
             $query = '';
         }
+
         $path = Controller::path($parts[0], $parts[1], $parts[2], $this->getPropertiesFrom(FromPath::class)) . $query;
 
         // now trim $_ENV['BASE_URL'] off the start
