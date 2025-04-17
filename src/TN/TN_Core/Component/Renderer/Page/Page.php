@@ -239,7 +239,6 @@ class Page extends Renderer
         }
         $contentPageEntry = $this->component->getContentPageEntry();
         if ($contentPageEntry) {
-
             $this->pageEntry = $contentPageEntry;
         } else {
             $this->pageEntry = PageEntry::addFromPage($this, $this->component->getPageIndexKey(), $this->component->getPageIndexPath());
