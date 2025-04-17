@@ -21,6 +21,6 @@ class RequiresBraintree extends RequiresResource
             $page->addJsUrl($url);
         }
         $user = User::getActive();
-        $page->addJsVar('braintreeClientToken', $braintree->generateClientToken($user->loggedIn ? $user : false));
+        $page->addJsVar('braintreeClientToken', $braintree->generateClientToken($user->loggedIn ? $user : null));
     }
 }

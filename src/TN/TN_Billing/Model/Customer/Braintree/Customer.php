@@ -63,6 +63,9 @@ class Customer implements Persistence
      */
     public static function getFromUser(User $user): ?Customer
     {
+        if (!$user->loggedIn) {
+            return null;
+        }
         $customers = self::searchByProperty('userId', $user->id);
         if (count($customers) > 0) {
             return $customers[0];

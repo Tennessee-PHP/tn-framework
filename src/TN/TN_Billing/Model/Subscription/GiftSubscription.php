@@ -74,7 +74,7 @@ class GiftSubscription implements Persistence
     /** @var string the reason for giving the complimentary subscription */
     #[Inclusion('()getReasonOptions|keys')]
     #[Optional]
-    public string $complimentaryReason;
+    public string $complimentaryReason = '';
 
     /** @var int when was the email last sent to recipient? */
     public int $emailLastSentToRecipientTs = 0;
@@ -140,15 +140,13 @@ class GiftSubscription implements Persistence
      * @return array
      * @throws ValidationException
      */
-    #[ArrayShape([
-        'invalid_emails' => 'array',
-        'success_emails' => 'array',
-        'failed_emails' => 'array',
-        'created_ids' => 'array'
-    ])]
-    public static function createComplimentarySubscriptions(string $planKey, string $billingCycleKey, int $duration,
-                                                            string $reason, string $emails): array
-    {
+    public static function createComplimentarySubscriptions(
+        string $planKey,
+        string $billingCycleKey,
+        int $duration,
+        string $reason,
+        string $emails
+    ): array {
         $plan = Plan::getInstanceByKey($planKey);
         if ($plan === false) {
             trigger_error('createComplimentarySubscriptions invalid plan key specified');
@@ -293,7 +291,7 @@ class GiftSubscription implements Persistence
         }
 
         $subscription = Subscription::getInstance();
-         $subscription->update([
+        $subscription->update([
             'userId' => $user->id,
             'planKey' => $this->planKey,
             'billingCycleKey' => $this->billingCycleKey,
@@ -340,7 +338,6 @@ class GiftSubscription implements Persistence
         );
 
         return $subscription;
-
     }
 
     /** @return bool send the recipient the email they need to redeem the subscription. returns false if done recently or otherwise fails */
@@ -352,8 +349,8 @@ class GiftSubscription implements Persistence
 
         if ($this->type === 'complimentary') {
             return Email::sendFromTemplate(
-//                ($this->emailLastSentToRecipientTs > 0 ? 'REMINDER: ' : '') .
-//                'You\'re Awesome - FREE ' . $_ENV['SITE_NAME'] . ' Gift Subscription Inside!',
+                //                ($this->emailLastSentToRecipientTs > 0 ? 'REMINDER: ' : '') .
+                //                'You\'re Awesome - FREE ' . $_ENV['SITE_NAME'] . ' Gift Subscription Inside!',
                 'subscription/giftsubscription/recipientcomplimentary',
                 $this->recipientEmail,
                 [
@@ -364,8 +361,8 @@ class GiftSubscription implements Persistence
             );
         } else {
             return Email::sendFromTemplate(
-//                ($this->emailLastSentToRecipientTs > 0 ? 'REMINDER: ' : '') .
-//                'Somebody Must Love You - FREE ' . $_ENV['SITE_NAME'] . ' Gift Subscription Inside!',
+                //                ($this->emailLastSentToRecipientTs > 0 ? 'REMINDER: ' : '') .
+                //                'Somebody Must Love You - FREE ' . $_ENV['SITE_NAME'] . ' Gift Subscription Inside!',
                 'subscription/giftsubscription/recipient',
                 $this->recipientEmail,
                 [
@@ -376,7 +373,6 @@ class GiftSubscription implements Persistence
                 ]
             );
         }
-
     }
 
     /** @return bool send the gifter the email to let them know it was all done successfully */
@@ -396,5 +392,4 @@ class GiftSubscription implements Persistence
             ]
         );
     }
-
 }

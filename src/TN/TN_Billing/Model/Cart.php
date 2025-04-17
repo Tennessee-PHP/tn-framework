@@ -367,7 +367,6 @@ class Cart implements Persistence
         ]);
 
         $this->updateFinalPrice();
-
     }
 
     /** @return Price gets current price object (without discounts or credits applied here)
@@ -409,7 +408,6 @@ class Cart implements Persistence
                 'creditableSubscriptionCredit' => 0
             ]);
         }
-
     }
 
     /**
@@ -446,7 +444,15 @@ class Cart implements Persistence
             'finalPrice' => $price,
             'discount' => round($this->getPrice()->price - $price, 2)
         ]);
+    }
 
+    public function getUser(): ?User
+    {
+        // If userId contains periods (likely an IP address), return null
+        if (str_contains($this->userId, '.')) {
+            return null;
+        }
+        return User::readFromId((int)$this->userId);
     }
 
     /**
@@ -492,7 +498,8 @@ class Cart implements Persistence
 
         // check it exactly matches (to two decimal places) the expected price
         if (round($this->finalPrice, 2) !== round($expectedPrice, 2)) {
-            throw new ValidationException(<<<ERROR
+            throw new ValidationException(
+                <<<ERROR
             Looks like the price may have changed since you got to the checkout. Please check it again before
             continuing! The price might change due to a change to either the cost of the plan, whether or not your
             promo code can be applied, or because your existing subscription is now worth a different amount of credit
@@ -502,7 +509,8 @@ class Cart implements Persistence
         }
 
         if ($this->finalPrice <= 0) {
-            throw new ValidationException(<<<ERROR
+            throw new ValidationException(
+                <<<ERROR
             You can only upgrade a current annual subscription to another annual subscription - please chose "annually"
             instead of "monthly" on the checkout page.
             ERROR
@@ -577,7 +585,10 @@ class Cart implements Persistence
                     'unitAmount' => $this->finalPrice,
                     'totalAmount' => $this->finalPrice
                 ]
-            ], $nonce, $deviceData);
+            ],
+            $nonce,
+            $deviceData
+        );
 
         if (!$transaction->success) {
             throw new ValidationException(($transaction->errorMsg ?? 'Unknown error occurred') . '. If you\'re having trouble with payment by credit card, please try paying through your PayPal account if you have one.');
@@ -618,5 +629,4 @@ class Cart implements Persistence
 
         return $transaction;
     }
-
 }
