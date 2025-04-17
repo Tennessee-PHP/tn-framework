@@ -153,7 +153,7 @@ abstract class UserDataModel implements Persistence
         }
 
         // add a uuId if one doesn't exist
-        if (!isset($data['uuId'])) {
+        if (!isset($data['uuId']) && !isset($record->uuId)) {
             $data['uuId'] = (string)RamseyUuid::uuid4();
         }
 

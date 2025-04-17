@@ -213,9 +213,7 @@ abstract class HTMLComponent {
         if (this.reloadTimer) {
             clearTimeout(this.reloadTimer);
         }
-
-        console.log('onReloadSuccess');
-        console.log(this.$element.attr('class'));
+        
         this.$element.hide();
         this.$element.before(response.data);
         let $newElement = this.$element.prev();

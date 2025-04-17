@@ -152,7 +152,6 @@ class Operation implements Persistence
         if ((int)$result[0] > 0) {
             throw new ValidationException('Operation superceded by more recent originTs');
         }
-
     }
 
     protected function reducePreviousOperations(): void
@@ -231,7 +230,7 @@ class Operation implements Persistence
      */
     protected function applyUpdate(): void
     {
-        $this->record->save();
+        $this->record->save(explode(',', $this->prop));
     }
 
     /**
@@ -242,5 +241,4 @@ class Operation implements Persistence
     {
         $this->record->erase();
     }
-
 }
