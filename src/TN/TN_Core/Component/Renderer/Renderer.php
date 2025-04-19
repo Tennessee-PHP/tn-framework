@@ -4,6 +4,9 @@ namespace TN\TN_Core\Component\Renderer;
 
 use TN\TN_Core\Component\Component;
 use TN\TN_Core\Model\Package\Stack;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Components\Route;
 
 /**
  * Renderer class - for components that render a response to a request
@@ -35,12 +38,42 @@ abstract class Renderer extends Component
     {
         header('Content-Type: ' . static::$contentType);
         http_response_code($this->httpResponseCode);
+
+        // Get the Route attribute from this component
+        $reflectionClass = new \ReflectionClass($this);
+        $routeAttributes = $reflectionClass->getAttributes(Route::class);
+        if (empty($routeAttributes)) {
+            return;
+        }
+
+        // Parse the route string to get controller and method
+        $routeString = $routeAttributes[0]->getArguments()[0];
+        [$module, $controller, $method] = explode(':', $routeString);
+        if (!str_ends_with($controller, 'Controller')) {
+            $controller .= 'Controller';
+        }
+        $controllerClass = Stack::resolveClassName("{$module}\\Controller\\{$controller}Controller");
+
+        if (!class_exists($controllerClass)) {
+            return;
+        }
+
+        // Check the controller method for CORS attributes
+        $reflectionMethod = new \ReflectionMethod($controllerClass, $method);
+        $methodAttributes = $reflectionMethod->getAttributes();
+
+        foreach ($methodAttributes as $attribute) {
+            $attributeName = $attribute->getName();
+            if ($attributeName === AllowOrigin::class) {
+                $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+                header("Access-Control-Allow-Origin: $origin");
+            } elseif ($attributeName === AllowCredentials::class) {
+                header('Access-Control-Allow-Credentials: true');
+            }
+        }
     }
 
-    public function prepare(): void
-    {
-
-    }
+    public function prepare(): void {}
 
     /**
      * @param string $message
@@ -72,4 +105,3 @@ abstract class Renderer extends Component
      */
     public abstract static function roadblock(): Renderer;
 }
-
