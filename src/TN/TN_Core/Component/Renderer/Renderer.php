@@ -52,8 +52,7 @@ abstract class Renderer extends Component
         if (!str_ends_with($controller, 'Controller')) {
             $controller .= 'Controller';
         }
-        $controllerClass = Stack::resolveClassName("{$module}\\Controller\\{$controller}Controller");
-
+        $controllerClass = Stack::resolveClassName("{$module}\\Controller\\{$controller}");
         if (!class_exists($controllerClass)) {
             return;
         }
