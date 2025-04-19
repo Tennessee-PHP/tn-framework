@@ -315,7 +315,14 @@ class User implements Persistence
             }
         }
 
-        $tnTokenCookie = $request->getCookie('TN_token') ?? $request->getQuery('access_token');
+        $tnTokenCookie = false;
+        $jsonRequestBody = $request->getJSONRequestBody();
+        if ($jsonRequestBody && isset($jsonRequestBody['access_token'])) {
+            $tnTokenCookie = $jsonRequestBody['access_token'];
+        } else {
+            $tnTokenCookie = $request->getQuery('access_token') ?? $request->getCookie('TN_token');
+        }
+
         if (empty($tnTokenCookie)) {
             static::setNoActiveUser();
             return;

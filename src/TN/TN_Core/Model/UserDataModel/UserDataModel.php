@@ -63,6 +63,28 @@ abstract class UserDataModel implements Persistence
         if (!is_array($ids)) {
             $ids = [$ids];
         }
+
+        if (count($ids) === 0) {
+            return [];
+        }
+
+        foreach ($ids as &$id) {
+            $id = trim($id);
+        }
+
+        if (count($ids) === 1) {
+            $id = $ids[0];
+            return static::search(new SearchArguments([
+                new SearchLogical('AND', [
+                    new SearchComparison('`userId`', '=', $userId),
+                    new SearchLogical('OR', [
+                        new SearchComparison('`id`', '=', $id),
+                        new SearchComparison('`uuId`', '=', $id)
+                    ])
+                ])
+            ]));
+        }
+
         return static::search(new SearchArguments([
             new SearchLogical('AND', [
                 new SearchComparison('`userId`', '=', $userId),
@@ -147,25 +169,9 @@ abstract class UserDataModel implements Persistence
      */
     protected static function setData(UserDataModel $record, array $data, bool $fromClient): array
     {
-        // DEBUG
-        file_put_contents(
-            '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-            "UserDataModel::setData called\n" .
-                "Class: " . get_called_class() . "\n" .
-                "Data: " . json_encode($data) . "\n" .
-                "fromClient: " . ($fromClient ? 'true' : 'false') . "\n",
-            FILE_APPEND
-        );
-
         // put the data onto the record
         if ($fromClient) {
             $data = self::getDataFromClient($data);
-            // DEBUG
-            file_put_contents(
-                '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-                "After getDataFromClient: " . json_encode($data) . "\n",
-                FILE_APPEND
-            );
         }
 
         // add a uuId if one doesn't exist
@@ -179,14 +185,6 @@ abstract class UserDataModel implements Persistence
             if ($prop !== 'id') {
                 try {
                     $rp = new ReflectionProperty(get_called_class(), $prop);
-
-                    // DEBUG
-                    file_put_contents(
-                        '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-                        "Processing property: $prop\n",
-                        FILE_APPEND
-                    );
-
                     $value = match ($rp->getType()->getName()) {
                         'int' => (int)$value,
                         'float' => (float)$value,
@@ -198,33 +196,12 @@ abstract class UserDataModel implements Persistence
                     if (!isset($record->$prop) || $record->$prop != $value) {
                         $record->$prop = $value;
                         $changedProps[] = $prop;
-
-                        // DEBUG
-                        file_put_contents(
-                            '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-                            "Changed property: $prop to " . json_encode($value) . "\n",
-                            FILE_APPEND
-                        );
                     }
                 } catch (\ReflectionException) {
-                    // DEBUG
-                    file_put_contents(
-                        '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-                        "Property $prop does not exist in class\n",
-                        FILE_APPEND
-                    );
                     continue;
                 }
             }
         }
-
-        // DEBUG
-        file_put_contents(
-            '/Users/simonshepherd/footballguys/fbgsite/tmp/userdata-debug.log',
-            "Changed properties: " . json_encode($changedProps) . "\n" .
-                "-----------------------------\n",
-            FILE_APPEND
-        );
 
         return $changedProps;
     }
