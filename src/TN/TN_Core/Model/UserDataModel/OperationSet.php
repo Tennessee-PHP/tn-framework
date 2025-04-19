@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Model\UserDataModel;
 
+use FBG\FBG_NFL\Model\Calendar\Season;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Error\DBException;
 use TN\TN_Core\Model\Time\Time;
@@ -158,10 +159,57 @@ class OperationSet
      */
     public static function getCreateOperationsFromData(string $class, array $data, bool $fromClient = false): OperationSet
     {
-        $ops = [];
+        // Sort data into two categories: those with UUIDs and those without
+        $dataWithUuIds = [];
+        $dataWithoutUuIds = [];
+        $uuIds = [];
+
+        // Process all data items
         foreach ($data as $item) {
-            $ops[] = $class::createUserData(self::getUser(), Time::getNow(), $item, $fromClient, false);
+            if (isset($item['uuId']) || isset($item['id'])) {
+                $uuId = $item['uuId'] ?? $item['id'];
+                $dataWithUuIds[$uuId] = $item;
+                $uuIds[] = $uuId;
+            } else {
+                $dataWithoutUuIds[] = $item;
+            }
         }
+
+        $ops = [];
+        $user = self::getUser();
+        $originTs = Time::getNow();
+
+        // Check for existing records with these UUIDs
+        $existingRecords = [];
+        if (!empty($uuIds)) {
+            $existingRecords = $class::readFromIdsOrUuIdsForUser($user->id, $uuIds);
+        }
+
+        // Process existing records as updates
+        foreach ($existingRecords as $record) {
+            $updateData = $dataWithUuIds[$record->uuId] ?? [];
+
+            // Remove the UUID from the update data to prevent warnings
+            unset($updateData['uuId']);
+            unset($updateData['id']);
+
+            // Create an update operation for this record
+            $ops[] = $record->updateUserData($user, $originTs, $updateData, $fromClient, false);
+
+            // Remove the processed item so we don't create it later
+            unset($dataWithUuIds[$record->uuId]);
+        }
+
+        // Process remaining items with UUIDs as creates
+        foreach ($dataWithUuIds as $item) {
+            $ops[] = $class::createUserData($user, $originTs, $item, $fromClient, false);
+        }
+
+        // Process items without UUIDs as creates
+        foreach ($dataWithoutUuIds as $item) {
+            $ops[] = $class::createUserData($user, $originTs, $item, $fromClient, false);
+        }
+
         return self::getFromOperations($ops);
     }
 
@@ -298,11 +346,9 @@ class OperationSet
 
             // merge it down onto updateOp
             $updateOp->prop = implode(',', array_merge(explode(',', $updateOp->prop), explode(',', $updateOpI->prop)));
-
         }
 
         return $updateOp;
-
     }
 
     /**
@@ -332,9 +378,7 @@ class OperationSet
             foreach ($operationsByMethod as $method => $operations) {
 
                 $this->batchApplyOperationsOnModel($method, $operations);
-
             }
-
         }
 
         return $this;
@@ -354,7 +398,6 @@ class OperationSet
             Operation::DELETE => $this->batchApplyDeleteOperationsOnModel($operations),
             default => null
         };
-
     }
 
     /**
@@ -537,5 +580,4 @@ class OperationSet
             'modelMap' => $this->getModelMap()
         ];
     }
-
 }

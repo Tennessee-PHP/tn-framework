@@ -11,6 +11,15 @@ class JSON extends Renderer
 
     public mixed $data = [];
 
+    public function headers(): void
+    {
+        parent::headers();
+
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+    }
+
     /**
      * @inheritDoc
      */

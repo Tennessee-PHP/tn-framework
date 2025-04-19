@@ -222,12 +222,24 @@ class HTTPRequest extends Request
     }
 
     /**
-     * query controllers for a respond
+     * query controllers for a response
      * @return void
      */
     public function respond(): void
     {
         $response = null;
+
+        // todo: refactor options handling
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+            header("Access-Control-Allow-Origin: $origin");
+            header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Max-Age: 86400');
+            http_response_code(204);
+            exit;
+        }
 
         $filename = $this->path . ($this->ext ? '.' . $this->ext : '');
         if (!empty($this->ext) && file_exists($_ENV['TN_WEB_ROOT'] . $filename)) {
