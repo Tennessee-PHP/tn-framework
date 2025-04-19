@@ -2,6 +2,8 @@
 
 namespace TN\TN_Core\Model\PersistentModel;
 
+use TN\TN_Core\Error\ValidationException;
+
 /**
  * concerning the state of persistent models
  */
@@ -21,33 +23,61 @@ trait State
     abstract protected function saveStorage(array $changedProperties = []): SaveType;
     public function save(array $changedProperties = []): void
     {
-        $changedProperties = array_merge($changedProperties, $this->beforeSave($changedProperties));
-        if ($this->saveStorage($changedProperties) === SaveType::Update) {
-            $this->afterSaveUpdate($changedProperties);
-            if (count($changedProperties) > 0) {
+        try {
+            $changedProperties = array_merge($changedProperties, $this->beforeSave($changedProperties));
+            if ($this->saveStorage($changedProperties) === SaveType::Update) {
+                $this->afterSaveUpdate($changedProperties);
+                if (count($changedProperties) > 0) {
+                    $this->invalidateCache();
+                }
+            } else {
+                $this->afterSaveInsert();
                 $this->invalidateCache();
             }
-        } else {
-            $this->afterSaveInsert();
-            $this->invalidateCache();
+        } catch (ValidationException $e) {
+            // Silent return on validation exceptions
+            return;
         }
     }
 
     abstract protected function eraseStorage(): void;
     public function erase(): void
     {
-        $this->beforeErase();
-        $this->eraseStorage();
-        $this->afterErase();
-        $this->invalidateCache();
+        try {
+            $this->beforeErase();
+            $this->eraseStorage();
+            $this->afterErase();
+            $this->invalidateCache();
+        } catch (ValidationException $e) {
+            // Silent return on validation exceptions
+            return;
+        }
     }
 
     abstract protected static function batchSaveInsertStorage(array $objects, bool $useSetId = false): void;
 
     public static function batchSaveInsert(array $objects, bool $useSetId = false): void
     {
-        static::batchSaveInsertStorage($objects, $useSetId);
+        // Filter out objects that fail validation
+        $validObjects = [];
+
         foreach ($objects as $object) {
+            try {
+                // Call beforeSave to trigger validation
+                $object->beforeSave([]);
+                $validObjects[] = $object;
+            } catch (ValidationException $e) {
+                // Skip this object on validation exceptions
+                continue;
+            }
+        }
+
+        if (empty($validObjects)) {
+            return;
+        }
+
+        static::batchSaveInsertStorage($validObjects, $useSetId);
+        foreach ($validObjects as $object) {
             $object->afterSaveInsert();
             $object->invalidateCache();
         }
@@ -57,7 +87,12 @@ trait State
     public static function batchErase(array $objects): void
     {
         foreach ($objects as $object) {
-            $object->beforeErase();
+            try {
+                $object->beforeErase();
+            } catch (ValidationException $e) {
+                // Skip this object on validation exceptions
+                continue;
+            }
         }
         static::batchEraseStorage($objects);
         foreach ($objects as $object) {
