@@ -68,7 +68,7 @@ class PasswordReset implements Persistence
      */
     public static function startFromUser(User $user, PasswordResetType $type = PasswordResetType::Reset): ?PasswordReset
     {
-        $pr = new self();
+        $pr = self::getInstance();
         $pr->userId = $user->id;
         $pr->startTs = Time::getNow();
         $pr->completed = false;
