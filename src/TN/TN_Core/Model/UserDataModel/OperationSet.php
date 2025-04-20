@@ -79,7 +79,12 @@ class OperationSet
         $modelToClassMap = self::getModelToClassMap($classes ?? []);
         $recordsToReadByClass = [];
 
-        foreach ($operationsData as $opData) {
+        foreach ($operationsData as &$opData) {
+            // Normalize timestamp to seconds if it's in milliseconds
+            if (isset($opData['ts']) && strlen((string)$opData['ts']) === 13) {
+                $opData['ts'] = (int)($opData['ts'] / 1000);
+            }
+
             // try to find the class for this op
             $class = $modelToClassMap[trim(strtolower($opData['model']))] ?? false;
 
@@ -133,7 +138,10 @@ class OperationSet
                     continue;
                 }
                 if (strtolower($opData['type']) === 'update') {
-                    $ops[] = $record->updateUserData(self::getUser(), $opData['ts'], [$opData['field'] => $opData['value']], true, false);
+                    $op = $record->updateUserData(self::getUser(), $opData['ts'], [$opData['field'] => $opData['value']], true, false);
+                    if ($op) {
+                        $ops[] = $op;
+                    }
                 } else if (strtolower($opData['type']) === 'delete') {
                     $ops[] = $record->deleteUserData(self::getUser(), $opData['ts'], false);
                 }
@@ -502,11 +510,13 @@ class OperationSet
     {
         if ($this->sendFullSync()) {
             return [
-                'data' => $this->getFullSyncData()
+                'data' => $this->getFullSyncData(),
+                'ts' => $this->recTs
             ];
         } else {
             return [
-                'operations' => $this->getUserOperationsSinceLastSync()
+                'operations' => $this->getUserOperationsSinceLastSync(),
+                'ts' => $this->recTs
             ];
         }
     }
@@ -574,10 +584,13 @@ class OperationSet
      */
     protected function getFullSyncData(): array
     {
-        return [
-            'ts' => $this->recTs,
-            'models' => $this->getModels(),
-            'modelMap' => $this->getModelMap()
-        ];
+        $data = [];
+        foreach ($this->classes as $class) {
+            $data = array_merge($data, $class::readMultipleForUser($this->getUser()->id));
+        }
+        foreach ($data as &$item) {
+            $item = $item->getData(true);
+        }
+        return $data;
     }
 }

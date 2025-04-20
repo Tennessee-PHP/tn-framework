@@ -14,6 +14,7 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Search\SearchSorter;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
+use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQLPrune;
 use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Time\Time;
 
@@ -26,6 +27,11 @@ class Operation implements Persistence
 {
     use MySQL;
     use PersistentModel;
+
+    use MySQLPrune;
+
+    protected static int $lifespan = Time::ONE_MONTH;
+    protected static string $tsProp = 'appliedTs';
 
     const int CREATE = 1;
     const int UPDATE = 2;
@@ -221,7 +227,9 @@ class Operation implements Persistence
     protected function applyCreate(): void
     {
         $this->record->save();
-        $this->recordId = $this->record->id;
+        if (isset($this->record->id)) {
+            $this->recordId = $this->record->id;
+        }
     }
 
     /**

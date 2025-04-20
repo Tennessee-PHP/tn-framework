@@ -223,7 +223,7 @@ abstract class UserDataModel implements Persistence
         $record->year = date('Y', $originTs);
 
         // and set its data
-        self::setData($record, $data, $fromClient);
+        static::setData($record, $data, $fromClient);
 
         // SECOND, set up the operation
         $operation = self::getOperation($user, $originTs, Operation::CREATE, $record);
@@ -245,11 +245,15 @@ abstract class UserDataModel implements Persistence
      * @param bool $apply
      * @return Operation
      */
-    public function updateUserData(User $user, int $originTs, array $data, bool $fromClient = false, bool $apply = true): Operation
+    public function updateUserData(User $user, int $originTs, array $data, bool $fromClient = false, bool $apply = true): ?Operation
     {
         // FIRST, set the new data
         // CRITICAL FIX: Use static:: instead of self:: to properly respect inheritance and method overrides
         $props = static::setData($this, $data, $fromClient);
+
+        if (empty($props)) {
+            return null;
+        }
 
         // SECOND, create the operation, passing through the array of changed properties
         $operation = self::getOperation($user, $originTs, Operation::UPDATE, $this, $props);
@@ -340,7 +344,7 @@ abstract class UserDataModel implements Persistence
     /**
      * @return string[] property names that should not be returned to the client
      */
-    protected static function getClientIgnoreProperties(): array
+    public static function getClientIgnoreProperties(): array
     {
         $class = new \ReflectionClass(get_called_class());
         $clientIgnoreProperties = [];
