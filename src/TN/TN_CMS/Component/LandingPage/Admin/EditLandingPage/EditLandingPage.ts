@@ -70,10 +70,6 @@ export default class EditLandingPage extends HTMLComponent {
         const data = new FormData(formEl);
         const optionsData = new FormData(optionsFormEl);
 
-        console.log('https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css');
-        // @ts-ignore
-        console.log(TN.CSS_URL);
-
         window.tinymce.init({
             selector: '#landingpage_description',
             height: 500,
@@ -290,9 +286,6 @@ export default class EditLandingPage extends HTMLComponent {
     }
 
     protected initTinyMce(): void {
-        console.log('initTinyMce');
-        // @ts-ignore
-        console.log('CSS URL:', TN.CSS_URL);
         let toolbar =
             'landingpageinsiderroadblock | bold italic underline | removeformat | h2 h3 h4 h5 | bullist numlist | alignleft aligncenter alignright | forecolor backcolor | link image media table code';
         // @ts-ignore
@@ -307,13 +300,9 @@ export default class EditLandingPage extends HTMLComponent {
             ],
             setup: (editor: any) => {
                 editor.on('init', () => {
-                    console.log('TinyMCE Editor initialized');
-                    console.log('Content CSS files:', editor.options.get('content_css'));
-                    // Check if CSS is actually loaded in iframe
                     const editorIframe = editor.iframeElement;
                     if (editorIframe) {
                         const iframeDoc = editorIframe.contentDocument;
-                        console.log('TinyMCE iframe stylesheets:', Array.from(iframeDoc.styleSheets).map(sheet => (sheet as CSSStyleSheet).href));
                         
                         // Add data-bs-theme attribute to body
                         iframeDoc.body.setAttribute('data-bs-theme', 'light');
