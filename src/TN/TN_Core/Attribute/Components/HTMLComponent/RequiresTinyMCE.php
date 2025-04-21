@@ -22,6 +22,13 @@ class RequiresTinyMCE extends RequiresResource
         );
         $page->addJsVar('CSS_URL', $cssResource->url);
         $page->addJsVar('TINYMCE_BOOTSTRAP_KEY', $_ENV['TINYMCE_BOOTSTRAP_KEY']);
+        $page->addJsVar('TINYMCE_KEY', $_ENV['TINYMCE_KEY']);
+
+        // Add font URLs
+        $page->addJsVar('FONT_URLS', [
+            'https://fonts.googleapis.com/css2?family=Anton&family=Fira+Sans+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'
+        ]);
+
         $page->addJsUrl('https://cdn.tiny.cloud/1/' . $_ENV['TINYMCE_KEY'] . '/tinymce/6/tinymce.min.js');
     }
 }

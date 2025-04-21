@@ -56,7 +56,9 @@ export default class EditArticle extends HTMLComponent {
                 'tncms': TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js'
             },
             content_css: [
-                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
+                // @ts-ignore
+                TN.CSS_URL
             ]
         });
 

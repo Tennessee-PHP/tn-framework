@@ -1,9 +1,9 @@
-import HTMLComponent, {ReloadData} from '@tn/TN_Core/Component/HTMLComponent';
+import HTMLComponent, { ReloadData } from '@tn/TN_Core/Component/HTMLComponent';
 import ErrorToast from '@tn/TN_Core/Component/Toast/ErrorToast';
-import axios, {AxiosError, AxiosResponse} from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import SuccessToast from '@tn/TN_Core/Component/Toast/SuccessToast';
 import _ from 'lodash';
-import $, {Cash} from 'cash-dom';
+import $, { Cash } from 'cash-dom';
 
 interface ErrorResponse {
     message: string;
@@ -16,13 +16,13 @@ declare global {
     interface Window {
         tinymce: {
             init(config: any): void;
-        }
+        };
     }
 }
 
 export default class EditLandingPage extends HTMLComponent {
     protected $element: Cash;
-    private editRequests: Array<{data: any, options: any}> = [];
+    private editRequests: Array<{ data: any; options: any }> = [];
     private landingPageId: string | number;
     private editRequestLoading: boolean = false;
     private $saveStatusContainer: Cash;
@@ -35,10 +35,11 @@ export default class EditLandingPage extends HTMLComponent {
     private $landingPageTitleEditor: Cash;
 
     protected observe(): void {
-
         this.$saveStatusContainer = this.$element.find('.save-status-container');
         this.$saveBtn = this.$element.find('#save_landing_page_btn');
-        this.$landingPageTitleEditor = this.$element.find('.tn-tn_cms-component-landingpage-admin-editlandingpage-landingpagetitleeditor-landingpagetitleeditor');
+        this.$landingPageTitleEditor = this.$element.find(
+            '.tn-tn_cms-component-landingpage-admin-editlandingpage-landingpagetitleeditor-landingpagetitleeditor'
+        );
         this.$tagEditor = this.$element.find('.tn-tn_cms-component-tageditor-tageditor');
         this.landingPageId = this.$element.data('landingpageid');
         if (!this.landingPageId) {
@@ -61,7 +62,7 @@ export default class EditLandingPage extends HTMLComponent {
 
         const formEl = $form[0];
         const optionsFormEl = $optionsForm[0];
-        
+
         if (!(formEl instanceof HTMLFormElement) || !(optionsFormEl instanceof HTMLFormElement)) {
             return;
         }
@@ -69,27 +70,54 @@ export default class EditLandingPage extends HTMLComponent {
         const data = new FormData(formEl);
         const optionsData = new FormData(optionsFormEl);
 
+        console.log('https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css');
+        // @ts-ignore
+        console.log(TN.CSS_URL);
+
         window.tinymce.init({
             selector: '#landingpage_description',
             height: 500,
             menubar: false,
             plugins: [
-                'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'help', 'wordcount', 'tncms'
+                'advlist',
+                'autolink',
+                'lists',
+                'link',
+                'image',
+                'charmap',
+                'preview',
+                'anchor',
+                'searchreplace',
+                'visualblocks',
+                'code',
+                'fullscreen',
+                'insertdatetime',
+                'media',
+                'table',
+                'help',
+                'wordcount',
+                'tncms',
             ],
-            toolbar: 'undo redo | blocks | ' +
+            toolbar:
+                'undo redo | blocks | ' +
                 'bold italic | alignleft aligncenter ' +
                 'alignright alignjustify | bullist numlist outdent indent | ' +
                 'removeformat | help | tncms',
             contextmenu: 'bootstrap',
             external_plugins: {
                 // @ts-ignore
-                'tncms': TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js'
+                tncms: TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js',
+            },
+            skin: 'bootstrap',
+            body_attributes: {
+                'data-bs-theme': 'light'
             },
             content_css: [
-                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css'
-            ]
+                'default',
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
+                // @ts-ignore
+                TN.CSS_URL
+            ],
         });
 
         this.initTinyMce();
@@ -117,14 +145,18 @@ export default class EditLandingPage extends HTMLComponent {
             return;
         }
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/upload-image', new FormData(form), {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        })
+        axios
+                // @ts-ignore
+            .post(TN.BASE_URL + 'staff/upload-image', new FormData(form), {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
             .then((response: any) => {
                 this.$element.find('#landing_page_thumbnail_src').val(response.data.location);
-                this.$element.find('section.landing-page-header-1').css('background-image', 'url("' + response.data.location + '")');
+                this.$element
+                    .find('section.landing-page-header-1')
+                    .css('background-image', 'url("' + response.data.location + '")');
                 this.onUnsavedChange();
             })
             .catch((error: any) => {
@@ -148,7 +180,7 @@ export default class EditLandingPage extends HTMLComponent {
         edit.title = this.$element.find('input.landing-page-title').val();
         edit.state = this.$element.find('#landing_page_state').val();
         edit.urlStub = this.$element.find('#landing_page_url').val();
-        edit.content = this.tinyMceEditor.getContent({format: 'html'});
+        edit.content = this.tinyMceEditor.getContent({ format: 'html' });
         edit.tags = this.$tagEditor.data('tags');
         edit.allowRemovedNavigation = this.$element.find('#allow_removed_navigation').prop('checked') ? 1 : 0;
         edit.convertKitTag = this.$element.find('#landing_page_convertkit_tag').val();
@@ -170,7 +202,7 @@ export default class EditLandingPage extends HTMLComponent {
         _.defaults(options, {
             success: () => {},
             error: () => {},
-            complete: () => {}
+            complete: () => {},
         });
 
         delete data.success;
@@ -183,7 +215,7 @@ export default class EditLandingPage extends HTMLComponent {
 
         this.editRequests.push({
             data: data,
-            options: options
+            options: options,
         });
 
         this.nextEditRequest();
@@ -213,16 +245,24 @@ export default class EditLandingPage extends HTMLComponent {
 
         this.editRequestLoading = true;
 
-        const {data, options} = this.editRequests.shift()!;
+        const { data, options } = this.editRequests.shift()!;
 
         this.setSaveStatus('saving');
 
         // @ts-ignore
-        axios.post(TN.BASE_URL + 'staff/landingpages/edit/save' + (this.landingPageId !== 'new' ? '?landingpageid=' + this.landingPageId : ''), data, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        })
+        axios
+            .post(
+                // @ts-ignore
+                TN.BASE_URL +
+                    'staff/landingpages/edit/save' +
+                    (this.landingPageId !== 'new' ? '?landingpageid=' + this.landingPageId : ''),
+                data,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
+            )
             .then((response: AxiosResponse): void => {
                 this.$saveBtn.find('.spinner-border').addClass('d-none');
                 this.$saveBtn.find('i.bi').removeClass('d-none');
@@ -232,7 +272,10 @@ export default class EditLandingPage extends HTMLComponent {
                 this.landingPageId = data.landingPageId;
                 this.$element.attr('data-landingpageid', data.landingPageId);
                 // @ts-ignore
-                this.$element.find('a.landingpage-preview-link').attr('href', TN.BASE_URL + data.landingPageUrl + '?preview=1');
+                this.$element
+                    .find('a.landingpage-preview-link')
+                    // @ts-ignore
+                    .attr('href', TN.BASE_URL + data.landingPageUrl + '?preview=1');
                 this.addLandingPageIdToHref(data.landingPageId);
             })
             .catch((error: AxiosError<ErrorResponse>): void => {
@@ -247,17 +290,69 @@ export default class EditLandingPage extends HTMLComponent {
     }
 
     protected initTinyMce(): void {
-        let toolbar = 'landingpageinsiderroadblock | bold italic underline | removeformat | h2 h3 h4 h5 | bullist numlist | alignleft aligncenter alignright | forecolor backcolor | link image media table code';
+        console.log('initTinyMce');
+        // @ts-ignore
+        console.log('CSS URL:', TN.CSS_URL);
+        let toolbar =
+            'landingpageinsiderroadblock | bold italic underline | removeformat | h2 h3 h4 h5 | bullist numlist | alignleft aligncenter alignright | forecolor backcolor | link image media table code';
         // @ts-ignore
         tinymce.init({
             selector: 'textarea#editor',
             skin: 'bootstrap',
             content_css: [
+                'default',
+                'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
                 // @ts-ignore
-                TN.CSS_URL,
-                // @ts-ignore
-                TN.FONTS_CSS_URL
+                TN.CSS_URL
             ],
+            setup: (editor: any) => {
+                editor.on('init', () => {
+                    console.log('TinyMCE Editor initialized');
+                    console.log('Content CSS files:', editor.options.get('content_css'));
+                    // Check if CSS is actually loaded in iframe
+                    const editorIframe = editor.iframeElement;
+                    if (editorIframe) {
+                        const iframeDoc = editorIframe.contentDocument;
+                        console.log('TinyMCE iframe stylesheets:', Array.from(iframeDoc.styleSheets).map(sheet => (sheet as CSSStyleSheet).href));
+                        
+                        // Add data-bs-theme attribute to body
+                        iframeDoc.body.setAttribute('data-bs-theme', 'light');
+                        
+                        // Add font preconnect and stylesheet links
+                        const head = iframeDoc.head;
+                        
+                        // Add preconnect links
+                        const preconnectGoogle = iframeDoc.createElement('link');
+                        preconnectGoogle.rel = 'preconnect';
+                        preconnectGoogle.href = 'https://fonts.googleapis.com';
+                        head.appendChild(preconnectGoogle);
+
+                        const preconnectGstatic = iframeDoc.createElement('link');
+                        preconnectGstatic.rel = 'preconnect';
+                        preconnectGstatic.href = 'https://fonts.gstatic.com';
+                        preconnectGstatic.setAttribute('crossorigin', '');
+                        head.appendChild(preconnectGstatic);
+
+                        // Add font stylesheet
+                        // @ts-ignore
+                        const fontUrls: string[] = TN.FONT_URLS;
+                        fontUrls.forEach(url => {
+                            const fontLink = iframeDoc.createElement('link');
+                            fontLink.rel = 'stylesheet';
+                            fontLink.href = url;
+                            head.appendChild(fontLink);
+                        });
+                    }
+                });
+                editor.on('LoadContent', () => {
+                    console.log('Content loaded in editor');
+                });
+            },
+            init_instance_callback: (editor: any) => {
+                this.tinyMceEditor = editor;
+                this.tinyMceEditor.on('Change', this.onUnsavedChange.bind(this));
+                console.log('Editor instance initialized');
+            },
             relative_urls: false,
             convert_urls: false,
             remove_script_host: false,
@@ -268,28 +363,24 @@ export default class EditLandingPage extends HTMLComponent {
             toolbar_sticky: true,
             toolbar_sticky_offset: 50,
             min_height: 1000,
-            plugins: 'lists, link, image, media, mediaembed, autoresize, code, autolink, powerpaste, table, textcolor',
+            plugins: 'lists, link, image, media, mediaembed, autoresize, code, autolink, powerpaste, table',
             mediaembed_max_width: 450,
-            toolbar: [
-                toolbar,
-            ],
+            toolbar: [toolbar],
             menubar: false,
             contextmenu: 'bootstrap',
             external_plugins: {
                 // @ts-ignore
-                'tncms': TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js?td=2',
-                // @ts-ignore
-                'tncontent': TN.BASE_URL + 'tnstatic/lib/tinymce-tncontent-plugin/plugin.js'
+                tncms: TN.BASE_URL + 'fbgstatic/lib/tinymce-tncms-plugin/plugin.js?td=2'
             },
 
             // image options
             images_reuse_filename: true,
             image_caption: true,
             image_class_list: [
-                {title: 'None', value: ''},
-                {title: 'Responsive (scales to fit width)', value: 'responsive'},
-                {title: 'Float right', value: 'float-end'},
-                {title: 'Float left', value: 'float-start'}
+                { title: 'None', value: '' },
+                { title: 'Responsive (scales to fit width)', value: 'responsive' },
+                { title: 'Float right', value: 'float-end' },
+                { title: 'Float left', value: 'float-start' },
             ],
 
             // power paste options
@@ -312,37 +403,30 @@ export default class EditLandingPage extends HTMLComponent {
             table_toolbar: 'tabledelete',
             table_appearance_options: false,
             table_grid: false,
-            table_border_styles: [
-                {title: 'None', value: ''}
-            ],
-            table_class_list: [
-                {title: 'None', value: ''}
-            ],
+            table_border_styles: [{ title: 'None', value: '' }],
+            table_class_list: [{ title: 'None', value: '' }],
             table_cell_class_list: [
-                {title: 'None', value: ''},
-                {title: 'Primary', value: 'table-primary'},
-                {title: 'Secondary', value: 'table-secondary'},
-                {title: 'Success', value: 'table-success'},
-                {title: 'Danger', value: 'table-danger'},
-                {title: 'Warning', value: 'table-warning'},
-                {title: 'Light', value: 'table-light'},
-                {title: 'Dark', value: 'table-dark'}
+                { title: 'None', value: '' },
+                { title: 'Primary', value: 'table-primary' },
+                { title: 'Secondary', value: 'table-secondary' },
+                { title: 'Success', value: 'table-success' },
+                { title: 'Danger', value: 'table-danger' },
+                { title: 'Warning', value: 'table-warning' },
+                { title: 'Light', value: 'table-light' },
+                { title: 'Dark', value: 'table-dark' },
             ],
             table_row_class_list: [
-                {title: 'None', value: ''},
-                {title: 'Primary', value: 'table-primary'},
-                {title: 'Secondary', value: 'table-secondary'},
-                {title: 'Success', value: 'table-success'},
-                {title: 'Danger', value: 'table-danger'},
-                {title: 'Warning', value: 'table-warning'},
-                {title: 'Light', value: 'table-light'},
-                {title: 'Dark', value: 'table-dark'}
+                { title: 'None', value: '' },
+                { title: 'Primary', value: 'table-primary' },
+                { title: 'Secondary', value: 'table-secondary' },
+                { title: 'Success', value: 'table-success' },
+                { title: 'Danger', value: 'table-danger' },
+                { title: 'Warning', value: 'table-warning' },
+                { title: 'Light', value: 'table-light' },
+                { title: 'Dark', value: 'table-dark' },
             ],
-            table_border_widths: [
-                {title: 'None', value: 0}
-            ],
+            table_border_widths: [{ title: 'None', value: 0 }],
 
-            init_instance_callback: this.observeTinyMce.bind(this),
             paste_postprocess: this.tinyMcePastePostProcess.bind(this)
         });
     }
@@ -354,25 +438,27 @@ export default class EditLandingPage extends HTMLComponent {
 
     protected tinyMcePastePostProcess(pluginApi: any, data: any): void {
         // move the first tr of each tbody into a thead, if the table does not have a thead
-        $(data.node).find('table').each(function (i, table) {
-            let $table = $(table);
-            $table.addClass('table');
-            $table.attr('data-sheets-root', null);
-            $table.attr('border', '0');
-            $table.attr('cellpadding', '0');
-            $table.attr('cellspacing', '0');
+        $(data.node)
+            .find('table')
+            .each(function (i, table) {
+                let $table = $(table);
+                $table.addClass('table');
+                $table.attr('data-sheets-root', null);
+                $table.attr('border', '0');
+                $table.attr('cellpadding', '0');
+                $table.attr('cellspacing', '0');
 
-            $table.find('tr:first-child td').each(function () {
-                $(this).replaceWith('<th>' + $(this).html() + '</th>');
+                $table.find('tr:first-child td').each(function () {
+                    $(this).replaceWith('<th>' + $(this).html() + '</th>');
+                });
+
+                if (!$table.find('thead').length && !$table.find('th').length) {
+                    $table.prepend('thead').add($table.remove('tr:first-child'));
+                }
+
+                $table.find('tr, td').attr('style', null);
+                $table.find('tr, td').attr('data-sheets-value', null);
+                $table.find('tr, td').attr('data-sheets-formula', null);
             });
-
-            if (!$table.find('thead').length && !$table.find('th').length) {
-                $table.prepend('thead').add($table.remove('tr:first-child'));
-            }
-
-            $table.find('tr, td').attr('style', null);
-            $table.find('tr, td').attr('data-sheets-value', null);
-            $table.find('tr, td').attr('data-sheets-formula', null);
-        });
     }
 }
