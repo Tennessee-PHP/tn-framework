@@ -62,7 +62,7 @@ export default class EditLandingPage extends HTMLComponent {
 
         const formEl = $form[0];
         const optionsFormEl = $optionsForm[0];
-
+        
         if (!(formEl instanceof HTMLFormElement) || !(optionsFormEl instanceof HTMLFormElement)) {
             return;
         }
@@ -70,6 +70,7 @@ export default class EditLandingPage extends HTMLComponent {
         const data = new FormData(formEl);
         const optionsData = new FormData(optionsFormEl);
 
+        // @ts-ignore
         window.tinymce.init({
             selector: '#landingpage_description',
             height: 500,
@@ -144,10 +145,10 @@ export default class EditLandingPage extends HTMLComponent {
         axios
                 // @ts-ignore
             .post(TN.BASE_URL + 'staff/upload-image', new FormData(form), {
-                headers: {
+            headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-            })
+        })
             .then((response: any) => {
                 this.$element.find('#landing_page_thumbnail_src').val(response.data.location);
                 this.$element
@@ -224,7 +225,6 @@ export default class EditLandingPage extends HTMLComponent {
 
     protected notifyLandingPageSeoChecklist(): void {
         // This method will be implemented later
-        console.log('SEO checklist notification');
     }
 
     protected onError(error: AxiosError<ErrorResponse>): void {
@@ -254,10 +254,10 @@ export default class EditLandingPage extends HTMLComponent {
                     (this.landingPageId !== 'new' ? '?landingpageid=' + this.landingPageId : ''),
                 data,
                 {
-                    headers: {
+            headers: {
                         'Content-Type': 'multipart/form-data',
                     },
-                }
+            }
             )
             .then((response: AxiosResponse): void => {
                 this.$saveBtn.find('.spinner-border').addClass('d-none');
@@ -289,7 +289,7 @@ export default class EditLandingPage extends HTMLComponent {
         let toolbar =
             'landingpageinsiderroadblock | bold italic underline | removeformat | h2 h3 h4 h5 | bullist numlist | alignleft aligncenter alignright | forecolor backcolor | link image media table code';
         // @ts-ignore
-        tinymce.init({
+        window.tinymce.init({
             selector: 'textarea#editor',
             skin: 'bootstrap',
             content_css: [
@@ -334,13 +334,11 @@ export default class EditLandingPage extends HTMLComponent {
                     }
                 });
                 editor.on('LoadContent', () => {
-                    console.log('Content loaded in editor');
                 });
             },
             init_instance_callback: (editor: any) => {
                 this.tinyMceEditor = editor;
                 this.tinyMceEditor.on('Change', this.onUnsavedChange.bind(this));
-                console.log('Editor instance initialized');
             },
             relative_urls: false,
             convert_urls: false,
@@ -430,24 +428,24 @@ export default class EditLandingPage extends HTMLComponent {
         $(data.node)
             .find('table')
             .each(function (i, table) {
-                let $table = $(table);
-                $table.addClass('table');
-                $table.attr('data-sheets-root', null);
-                $table.attr('border', '0');
-                $table.attr('cellpadding', '0');
-                $table.attr('cellspacing', '0');
+            let $table = $(table);
+            $table.addClass('table');
+            $table.attr('data-sheets-root', null);
+            $table.attr('border', '0');
+            $table.attr('cellpadding', '0');
+            $table.attr('cellspacing', '0');
 
-                $table.find('tr:first-child td').each(function () {
-                    $(this).replaceWith('<th>' + $(this).html() + '</th>');
-                });
-
-                if (!$table.find('thead').length && !$table.find('th').length) {
-                    $table.prepend('thead').add($table.remove('tr:first-child'));
-                }
-
-                $table.find('tr, td').attr('style', null);
-                $table.find('tr, td').attr('data-sheets-value', null);
-                $table.find('tr, td').attr('data-sheets-formula', null);
+            $table.find('tr:first-child td').each(function () {
+                $(this).replaceWith('<th>' + $(this).html() + '</th>');
             });
+
+            if (!$table.find('thead').length && !$table.find('th').length) {
+                $table.prepend('thead').add($table.remove('tr:first-child'));
+            }
+
+            $table.find('tr, td').attr('style', null);
+            $table.find('tr, td').attr('data-sheets-value', null);
+            $table.find('tr, td').attr('data-sheets-formula', null);
+        });
     }
 }

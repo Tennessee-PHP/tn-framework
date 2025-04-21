@@ -290,7 +290,8 @@ class Subscription implements Persistence
         string $planKey = '',
         string $billingCycleKey = '',
         string $gatewayKey = '',
-        ?string $endReason = null
+        ?string $endReason = null,
+        ?int $campaignId = null
     ): CountAndTotalResult {
         $conditions = [];
 
@@ -334,6 +335,10 @@ class Subscription implements Persistence
         }
         if ($endReason !== null) {
             $conditions = new SearchComparison('`endReason`', '=', $endReason);
+        }
+
+        if ($campaignId !== null) {
+            $conditions[] = new SearchComparison('`campaignId`', '=', $campaignId);
         }
 
         return static::countAndTotal(new SearchArguments(conditions: $conditions), 'lastTransactionAmount');

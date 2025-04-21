@@ -37,7 +37,7 @@ abstract class SubscriptionsTypeEntry extends AnalyticsEntry
     {
         echo 'updating subscription ' . get_called_class()::$type . ' report for ' . date('Y-m-d', $this->dayTs) . implode(', ', [$this->gatewayKey, $this->planKey, $this->billingCycleKey]) . PHP_EOL;
         $this->update([
-            'count' => Subscription::count(get_called_class()::$type, $this->dayTs, strtotime('+1 day', $this->dayTs), $this->planKey ?? '', $this->billingCycleKey ?? '', $this->gatewayKey ?? '')['count']
+            'count' => Subscription::countAndTotalByType(get_called_class()::$type, $this->dayTs, strtotime('+1 day', $this->dayTs), $this->planKey ?? '', $this->billingCycleKey ?? '', $this->gatewayKey ?? '')['count']
         ]);
     }
 
