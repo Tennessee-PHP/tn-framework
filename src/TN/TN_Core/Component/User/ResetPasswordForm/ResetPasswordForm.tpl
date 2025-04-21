@@ -5,7 +5,7 @@
         </div>
     {elseif $success}
         <div class="alert alert-success">
-            Your password has been reset. You are now logged in.
+            Your password has been reset.
         </div>
     {else}
         {if $errorMessage}

@@ -66,9 +66,12 @@ trait PersistentProperties
      */
     protected function savePropertyValue(mixed $value): mixed
     {
-        // if $value is a type of enum, get its value
-        if ($value instanceof \UnitEnum) {
+        // Handle both BackedEnum and UnitEnum appropriately
+        if ($value instanceof \BackedEnum) {
             return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
         }
 
         if ($value instanceof \DateTime) {

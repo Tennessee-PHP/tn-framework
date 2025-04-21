@@ -7,7 +7,8 @@ namespace TN\TN_Core\Attribute\Constraints;
  * 
  */
 #[\Attribute(\Attribute::TARGET_PROPERTY | \Attribute::TARGET_CLASS)]
-class Strlen extends Constraint {
+class Strlen extends Constraint
+{
 
     /**
      * constructor
@@ -22,6 +23,11 @@ class Strlen extends Constraint {
      */
     public function validate(mixed $value)
     {
+        // If value is a backed enum, get its value
+        if ($value instanceof \BackedEnum) {
+            $value = $value->value;
+        }
+
         $length = strlen($value);
         $this->valid = true;
         $minFail = $length < $this->min;
