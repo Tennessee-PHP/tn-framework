@@ -56,10 +56,47 @@ export default class EditArticle extends HTMLComponent {
                 'tncms': TN.BASE_URL + 'tnstatic/lib/tinymce-tncms-plugin/plugin.js'
             },
             content_css: [
+                'default',
                 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css',
                 // @ts-ignore
                 TN.CSS_URL
-            ]
+            ],
+            setup: (editor: any) => {
+                editor.on('init', () => {
+                    const editorIframe = editor.iframeElement;
+                    if (editorIframe) {
+                        const iframeDoc = editorIframe.contentDocument;
+                        
+                        // Add data-bs-theme attribute to body
+                        iframeDoc.body.setAttribute('data-bs-theme', 'light');
+                        
+                        // Add font preconnect and stylesheet links
+                        const head = iframeDoc.head;
+                        
+                        // Add preconnect links
+                        const preconnectGoogle = iframeDoc.createElement('link');
+                        preconnectGoogle.rel = 'preconnect';
+                        preconnectGoogle.href = 'https://fonts.googleapis.com';
+                        head.appendChild(preconnectGoogle);
+
+                        const preconnectGstatic = iframeDoc.createElement('link');
+                        preconnectGstatic.rel = 'preconnect';
+                        preconnectGstatic.href = 'https://fonts.gstatic.com';
+                        preconnectGstatic.setAttribute('crossorigin', '');
+                        head.appendChild(preconnectGstatic);
+
+                        // Add font stylesheet
+                        // @ts-ignore
+                        const fontUrls: string[] = TN.FONT_URLS;
+                        fontUrls.forEach(url => {
+                            const fontLink = iframeDoc.createElement('link');
+                            fontLink.rel = 'stylesheet';
+                            fontLink.href = url;
+                            head.appendChild(fontLink);
+                        });
+                    }
+                });
+            },
         });
 
         this.addAutoResize();
