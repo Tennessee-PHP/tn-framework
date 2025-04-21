@@ -14,7 +14,7 @@ use TN\TN_Reporting\Model\Analytics\DataSeries\AnalyticsDataSeriesColumn;
 use TN\TN_Reporting\Model\Campaign\Campaign;
 
 #[TableName('analytics_campaign_daily_entries')]
-class RevenueDailyEntry extends AnalyticsEntry
+class CampaignDailyEntry extends AnalyticsEntry
 {
     /** @var array|string[] */
     public static array $filters = ['campaign'];
