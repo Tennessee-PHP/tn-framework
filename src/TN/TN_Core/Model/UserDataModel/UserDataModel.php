@@ -167,7 +167,7 @@ abstract class UserDataModel implements Persistence
      * @param bool $fromClient
      * @return string[] array of properties changed
      */
-    protected static function setData(UserDataModel $record, array $data, bool $fromClient): array
+    public static function setData(UserDataModel $record, array $data, bool $fromClient): array
     {
         // put the data onto the record
         if ($fromClient) {
