@@ -31,7 +31,6 @@ class UserProfile extends HTMLComponent
 
     public function prepare(): void
     {
-
         if ($this->username === 'me') {
             $this->user = User::getActive();
         } else {
@@ -39,11 +38,16 @@ class UserProfile extends HTMLComponent
                 throw new ResourceNotFoundException('Cannot view this user');
             }
             $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)), true);
+            if (!$this->user) {
+                $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->username)), true);
+            }
         }
 
         if (!$this->user) {
             throw new ResourceNotFoundException('Cannot find this user');
         }
+
+        $this->username = $this->user->username;
         $this->canLoginAsUser = User::getActive()->hasRole('super-user');
 
         $selectedTabClass = null;
