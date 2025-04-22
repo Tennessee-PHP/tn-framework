@@ -1,6 +1,6 @@
 <?php
 
-namespace TN\TN_Reporting\Model\Analytics\Revenue;
+namespace TN\TN_Reporting\Model\Analytics\Campaign;
 
 use TN\TN_Billing\Model\Refund\Refund;
 use TN\TN_Billing\Model\Subscription\Subscription;
