@@ -43,6 +43,7 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'abs', static::class . '::abs');
         $this->registerPlugin('modifier', 'urlencode', static::class . '::urlencode');
         $this->registerPlugin('modifier', 'urlencodeperiods', static::class . '::urlencodePeriods');
+        $this->registerPlugin('modifier', 'fullurlencode', static::class . '::fullurlencode');
         $this->registerPlugin('modifier', 'reset', static::class . '::reset');
         $this->registerPlugin('modifier', 'substr', static::class . '::substr');
         $this->registerPlugin('modifier', 'strpos', static::class . '::strpos');
