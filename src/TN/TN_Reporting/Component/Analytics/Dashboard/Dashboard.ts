@@ -13,12 +13,18 @@ export default class Dashboard extends HTMLComponent {
             this.controls.push($(select));
         });
 
+
+        this.$element.find('input[name="breakdown"]').on('change', this.triggerReload.bind(this));
+
         this.observeControls();
     }
 
     protected getReloadData(): ReloadData {
         let data: ReloadData = super.getReloadData();
         data.reportkey = this.$element.data('reportkey');
+        this.$element.find('input[name="breakdown"]:checked').each(function() {
+            data.breakdown = $(this).val();
+        });
         return data;
     }
 }

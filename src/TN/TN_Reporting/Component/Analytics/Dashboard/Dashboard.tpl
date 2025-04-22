@@ -7,8 +7,8 @@
                    href="{$BASE_URL}staff/reporting/dashboard"><i class="bi bi-speedometer"></i>
                     Summary</a>
             </li>
-            <li><h3><i class="bi bi-coin"></i>
-                    Revenue</h3></li>
+            <li><h4><i class="bi bi-coin"></i>
+                    Revenue</h4></li>
             <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'dailyRevenue'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=dailyRevenue">Daily</a>
@@ -24,8 +24,8 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=revenuePerSubscription">Per Subscription</a>
             </li>
 
-            <li><h3><i class="bi bi-credit-card-2-front-fill"></i>
-                    Subscriptions</h3></li>
+            <li><h4><i class="bi bi-credit-card-2-front-fill"></i>
+                    Subscriptions</h4></li>
             <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'active'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=active">Active</a>
@@ -56,8 +56,15 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=subscriptionLifetimeValue">Lifetime Value</a>
             </li>
 
-            <li><h3><i class="bi bi-bank2"></i>
-                    Expenses</h3></li>
+            <li><h4><i class="bi bi-cash-coin"></i>
+                    Campaigns</h4></li>
+            <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'campaign'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=campaign">Campaigns</a>
+            </li>
+
+            <li><h4><i class="bi bi-bank2"></i>
+                    Expenses</h4></li>
             <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'expensesFees'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=expensesFees">Fees</a>
@@ -67,8 +74,8 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=expensesRefunds">Refunds</a>
             </li>
 
-            <li><h3><i class="bi bi-people-fill"></i>
-                    Users</h3></li>
+            <li><h4><i class="bi bi-people-fill"></i>
+                    Users</h4></li>
             <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'userRegistrations'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=userRegistrations">Registrations</a>
@@ -77,8 +84,8 @@
             {*<li><h3><i class="bi bi-graph-up-arrow"></i>
                     Page Views</h3></li>*}
 
-            <li><h3><i class="bi bi-envelope-open"></i>
-                    Email List</h3></li>
+            <li><h4><i class="bi bi-envelope-open"></i>
+                    Email List</h4></li>
 
             <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'emailListActive'} active{/if}" aria-current="page"
@@ -96,7 +103,8 @@
             </li>
         </ul>
 
-
-        {$report->render()}
+        <div class="flex-grow-1">
+            {$report->render()}
+        </div>
     </div>
 </div>

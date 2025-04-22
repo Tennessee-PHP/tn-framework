@@ -79,7 +79,6 @@ class AnalyticsDataSeriesTimeEntry extends DataSeriesTimeEntry
             foreach ($this->comparisonDayReports as $key => $comparisonDayReports) {
                 $this->buildDayReportsByPrefixFromDayReports($key, $comparisonDayReports, $breakdown);
             }
-
         }
     }
 

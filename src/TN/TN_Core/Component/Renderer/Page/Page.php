@@ -21,6 +21,7 @@ use TN\TN_Core\Attribute\Components\HTMLComponent\BareRender;
 use TN\TN_Core\Attribute\Components\HTMLComponent\MetaPixelEvent;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresResource;
+use TN\TN_Core\Component\Error\Maintenance\Maintenance;
 use TN\TN_Core\Component\TemplateEngine;
 
 /**
@@ -279,6 +280,18 @@ class Page extends Renderer
             'description' => 'An error occurred',
             'component' => new Error([
                 'message' => nl2br($message)
+            ])
+        ]);
+    }
+
+    public static function maintenance(): Renderer
+    {
+        return self::getInstance([
+            'httpResponseCode' => 503,
+            'title' => 'Work in Progress!',
+            'description' => $_ENV['SITE_MAINTENANCE_MESSAGE'],
+            'component' => new Maintenance([
+                'message' => $_ENV['SITE_MAINTENANCE_MESSAGE']
             ])
         ]);
     }

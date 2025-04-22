@@ -13,6 +13,7 @@ use TN\TN_Reporting\Model\Analytics\Revenue\RevenueDailyEntry;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
+use TN\TN_Reporting\Model\Analytics\Campaign\CampaignDailyEntry;
 use TN\TN_Reporting\Model\Analytics\Revenue\RevenuePerSubscriptionEntry;
 use TN\TN_Reporting\Model\Analytics\Revenue\RevenueRecurringEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsActiveEntry;
@@ -48,6 +49,7 @@ class AnalyticsController extends Controller
             SubscriptionsEndedEntry::updateDayReports($ts);
             ExpensesFeesEntry::updateDayReports($ts);
             ExpensesRefundsEntry::updateDayReports($ts);
+            CampaignDailyEntry::updateDayReports($ts);
             $ts = strtotime('-1 day', $ts);
         }
         return null;

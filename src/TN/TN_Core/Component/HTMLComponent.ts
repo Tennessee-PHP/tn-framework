@@ -24,7 +24,7 @@ let globalI: number = 0;
 abstract class HTMLComponent {
     protected $element: Cash;
     protected reloadMethod: ReloadMethod = 'get';
-    protected updateUrlQueryOnReload: boolean = false;
+protected updateUrlQueryOnReload: boolean = false;
     protected controls: Cash[] = [];
     protected i: number = 0;
     protected reloading: Boolean = false;

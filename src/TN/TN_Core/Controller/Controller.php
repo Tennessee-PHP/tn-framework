@@ -29,6 +29,7 @@ use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
 use TN\TN_Core\Attribute\Route\RouteType;
+use TN\TN_Core\Component\Renderer\Page\Page;
 
 /**
  * Base controller class handling routing and request processing in the TN Framework.
@@ -223,6 +224,17 @@ abstract class Controller
      */
     public function respond(HTTPRequest $request): ?HTTPResponse
     {
+        if ($_ENV['SITE_MAINTENANCE_MODE']) {
+            if (isset($_GET['_test'])) {
+                $_SESSION['skip_maintenance'] = true;
+            }
+            if (!isset($_SESSION['skip_maintenance'])) {
+                $renderer = Stack::resolveClassName(Page::class)::maintenance();
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 503);
+            }
+        }
+
         // instantiate a reflection class for the current controller
         $reflection = new \ReflectionClass($this);
 

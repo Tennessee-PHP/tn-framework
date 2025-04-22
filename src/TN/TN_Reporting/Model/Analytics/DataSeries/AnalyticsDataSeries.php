@@ -45,8 +45,7 @@ class AnalyticsDataSeries extends DataSeries
 
         /** @var null|string|array */
         public string|array|null $compareTo = null
-    )
-    {
+    ) {
         // get all the day reports that fall inside the range
         $this->dayReports = $this->getAllReports($this->startTs, $this->endTs);
 
@@ -177,12 +176,15 @@ class AnalyticsDataSeries extends DataSeries
         $conditions[] = new SearchComparison('`dayTs`', '>=', $startTs);
         $conditions[] = new SearchComparison('`dayTs`', '<=', $endTs);
         foreach ($this->dayReportClass::$filters as $filter) {
-            $filterKey = $filter . 'Key';
+            if ($filter === 'campaign') {
+                $filterKey = 'campaignId';
+            } else {
+                $filterKey = $filter . 'Key';
+            }
             if ($filterKey !== $this->breakdown) {
                 $conditions[] = new SearchComparison("`{$filterKey}`", '=', $this->filters[$filterKey] ?? '');
             }
         }
         return $this->dayReportClass::search(new SearchArguments($conditions));
     }
-
 }

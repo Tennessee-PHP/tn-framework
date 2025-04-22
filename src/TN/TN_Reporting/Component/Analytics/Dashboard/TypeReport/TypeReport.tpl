@@ -4,8 +4,7 @@
         message="Loading Type Report..."
     }
 
-    <div class="card">
-        <div class="reporting-dashboard-component-typereport flex-fill" id="{$id}"
+        <div class="reporting-dashboard-component-typereport w-100" id="{$id}"
              data-reportkey="{$reportKey}">
 
             <p class="alert alert-info"><i class="bi bi-info-circle-fill"></i>
@@ -51,6 +50,8 @@
                                 Refund Reason
                             {elseif $select->requestKey === 'endedreason'}
                                 Ended Reason
+                            {elseif $select->requestKey === 'campaign'}
+                                Campaign
                             {/if}
                         </label>
                         {$select->render()}
@@ -58,7 +59,7 @@
                             <input type="radio" name="breakdown" class="form-check-input"
                                    id="breakdown_{$select->requestKey}"
                                    value="{$select->requestKey}"
-                                   {if $select->requestKey|cat:'key' === $breakdown|lower}checked{/if}/>
+                                   {if $select->requestKey|cat:'key' === $breakdown|lower || $select->requestKey|cat:'id' === $breakdown|lower}checked{/if}/>
                             <label for="breakdown_{$select->requestKey}"
                                    class="form-check-label"><small>Breakdown</small></label>
                         </div>
@@ -86,5 +87,4 @@
 
 
         </div>
-    </div>
 </div>

@@ -8,6 +8,7 @@ use TN\TN_Core\Component\DataSeries\DataSeriesChart\DataSeriesChart;
 use TN\TN_Core\Component\DataSeries\DataSeriesTable\DataSeriesTable;
 use TN\TN_Core\Component\Input\DateInput\DateInput;
 use TN\TN_Core\Component\Input\Select\PlanSelect\PlanSelect;
+use TN\TN_Core\Component\Input\Select\CampaignSelect\CampaignSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\EndedReasonSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\ProductTypeSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\RefundReasonSelect;
@@ -69,6 +70,7 @@ class TypeReport extends DashboardComponent
                 'productType' => new ProductTypeSelect(),
                 'refundReason' => new RefundReasonSelect(),
                 'endedReason' => new EndedReasonSelect(),
+                'campaign' => new CampaignSelect(),
             };
             $select->prepare();
             $this->filterSelects[$filter] = $select;
@@ -83,6 +85,15 @@ class TypeReport extends DashboardComponent
                 }
                 $this->breakdown = 'gatewayKey';
                 $this->filterSelects['gateway']->selected = '';
+                break;
+
+            case 'campaign':
+                if (!in_array('campaign', $this->analyticsEntryClassName::$filters)) {
+                    $this->breakdown = null;
+                    break;
+                }
+                $this->breakdown = 'campaignId';
+                $this->filterSelects['campaign']->selected = '';
                 break;
 
             case 'plan':
@@ -152,8 +163,13 @@ class TypeReport extends DashboardComponent
     {
         $filters = [];
         foreach ($this->filterSelects as $filter => $select) {
-            $filters[$filter . 'Key'] = $select->selected->key;
+            if ($filter === 'campaign') {
+                $filters['campaignId'] = $select->selected->key;
+            } else {
+                $filters[$filter . 'Key'] = $select->selected->key;
+            }
         }
+
         return $filters;
     }
 
@@ -176,9 +192,15 @@ class TypeReport extends DashboardComponent
         $this->dateInput1->value = date('Y-m-d', $startTs);
         $this->dateInput2->value = date('Y-m-d', $endTs);
 
-        $this->dataSeries = new AnalyticsDataSeries($this->analyticsEntryClassName, $this->timeUnitSelect->selected->key,
-            $startTs, $endTs, $this->getDataSeriesFilters(), $this->breakdown, $compareTo);
-
+        $this->dataSeries = new AnalyticsDataSeries(
+            $this->analyticsEntryClassName,
+            $this->timeUnitSelect->selected->key,
+            $startTs,
+            $endTs,
+            $this->getDataSeriesFilters(),
+            $this->breakdown,
+            $compareTo
+        );
     }
 
     /**
