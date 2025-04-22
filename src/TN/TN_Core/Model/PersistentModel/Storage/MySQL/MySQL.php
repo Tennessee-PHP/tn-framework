@@ -143,7 +143,7 @@ trait MySQL
                 }
             }
             foreach ($properties as $prop) {
-                $values[] = $object->savePropertyValue($object->$prop ?? null);
+                $values[] = $object->savePropertyValue($prop, $object->$prop ?? null);
                 if ($i === 0) {
                     $props[] = '`' . $prop . '`';
                 }
@@ -384,7 +384,7 @@ trait MySQL
         $values = [];
         $sets = [];
         foreach ($properties as $prop) {
-            $values[] = $this->savePropertyValue($this->$prop ?? null);
+            $values[] = $this->savePropertyValue($prop, $this->$prop ?? null);
             $sets[] = "`{$prop}` = ?";
         }
 
@@ -430,7 +430,7 @@ trait MySQL
     /**
      * does the save as a sql insert
      * @param bool $useSetId
-     * @return bool
+     * @return SaveType
      * @throws DBException
      */
     protected function saveInsert(bool $useSetId = false): SaveType
@@ -449,7 +449,7 @@ trait MySQL
             $props[] = "`{$idProp}`";
         }
         foreach ($properties as $prop) {
-            $value = $this->savePropertyValue($this->$prop ?? null);
+            $value = $this->savePropertyValue($prop, $this->$prop ?? null);
             $values[] = $value;
             $props[] = '`' . $prop . '`';
         }

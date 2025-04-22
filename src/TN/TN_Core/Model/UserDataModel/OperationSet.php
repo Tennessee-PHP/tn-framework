@@ -20,6 +20,7 @@ class OperationSet
     public int $recTs;
     public int $lastSyncTs;
     public ?array $classes = null;
+    public array $userOperationsSinceLastSync = [];
 
     /**
      * @param array $operations
@@ -515,7 +516,7 @@ class OperationSet
             ];
         } else {
             return [
-                'operations' => $this->getUserOperationsSinceLastSync(),
+                'operations' => $this->userOperationsSinceLastSync,
                 'ts' => $this->recTs
             ];
         }
@@ -566,7 +567,7 @@ class OperationSet
      * gets the operations that the client isn't aware of yet
      * @return array
      */
-    protected function getUserOperationsSinceLastSync(): array
+    public function setUserOperationsSinceLastSync(): array
     {
         // make sure to split out updates one per field
         $operations = Operation::getForUserSinceTs($this->getUser()->id, $this->lastSyncTs, $this->getModels());

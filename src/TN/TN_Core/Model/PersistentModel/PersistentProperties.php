@@ -6,6 +6,8 @@ use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\AutoIncrement;
 use TN\TN_Core\Attribute\Relationships\ChildrenClass;
 use TN\TN_Core\Attribute\Relationships\ParentObject;
+use TN\TN_Core\Attribute\Encrypt;
+use TN\TN_Core\Service\Encryption;
 
 /**
  * gets an instance of a class, first querying the stack for an extended class
@@ -14,6 +16,10 @@ trait PersistentProperties
 {
     protected function loadPropertyValue(string $property, mixed $value): mixed
     {
+        if ($value === null) {
+            return null;
+        }
+
         // get a representation of the reflection property $property on $this
         try {
             $reflectionProperty = new \ReflectionProperty($this, $property);
@@ -21,39 +27,41 @@ trait PersistentProperties
             return $value;
         }
 
+        // First check if property was encrypted and needs decryption
+        $encryptAttributes = $reflectionProperty->getAttributes(Encrypt::class);
+        if (!empty($encryptAttributes) && $value !== null) {
+            $value = Encryption::getInstance()->decrypt($value);
+        }
+
         // get the type of the reflection property; remove the ? if it is nullable
         $type = $reflectionProperty->getType()?->getName();
         $type = str_replace('?', '', $type);
 
-        if ($value === null) {
-            return null;
-        }
-
-        // if the type is one native to PHP, return it
+        // Then handle all type conversions
         if (in_array($type, ['int', 'string', 'float', 'bool'])) {
-            return $value;
-        }
-
-        if ($type === 'datetime') {
+            // No conversion needed for basic types
+        } else if ($type === 'datetime') {
             try {
-                return new \DateTime($value);
+                $value = new \DateTime($value);
             } catch (\Exception) {
-                return new \DateTime();
+                $value = new \DateTime();
             }
-        }
-
-        if ($type === 'array') {
-            return json_decode($value, true);
-        }
-
-        // let's try to get a reflection class of $type and see if it's an enum
-        try {
-            $reflectionClass = new \ReflectionClass($type);
-            if ($reflectionClass->isEnum()) {
-                return $type::from($value);
+        } else if ($type === 'array') {
+            // If it's already an array, keep it as is
+            // If it's a string, try to JSON decode it
+            if (is_string($value)) {
+                $value = json_decode($value, true);
             }
-        } catch (\ReflectionException) {
-            return $value;
+        } else {
+            // Check if it's an enum
+            try {
+                $reflectionClass = new \ReflectionClass($type);
+                if ($reflectionClass->isEnum()) {
+                    $value = $type::from($value);
+                }
+            } catch (\ReflectionException) {
+                // If we can't reflect the type, just keep the value as is
+            }
         }
 
         return $value;
@@ -64,29 +72,37 @@ trait PersistentProperties
      * @param mixed $value
      * @return mixed
      */
-    protected function savePropertyValue(mixed $value): mixed
+    protected function savePropertyValue(string $property, mixed $value): mixed
     {
-        // Handle both BackedEnum and UnitEnum appropriately
-        if ($value instanceof \BackedEnum) {
-            return $value->value;
-        }
-        if ($value instanceof \UnitEnum) {
-            return $value->name;
-        }
-
-        if ($value instanceof \DateTime) {
-            return $value->format('Y-m-d H:i:s');
-        }
-
-        if (is_array($value)) {
-            return json_encode($value);
-        }
-
         if ($value === null) {
             return null;
         }
 
-        return is_bool($value) ? (int)$value : $value;
+        // First handle all type conversions
+        if ($value instanceof \BackedEnum) {
+            $value = $value->value;
+        } else if ($value instanceof \UnitEnum) {
+            $value = $value->name;
+        } else if ($value instanceof \DateTime) {
+            $value = $value->format('Y-m-d H:i:s');
+        } else if (is_array($value)) {
+            $value = json_encode($value);
+        } else if (is_bool($value)) {
+            $value = (int)$value;
+        }
+
+        // Finally, check if property should be encrypted
+        try {
+            $reflectionProperty = new \ReflectionProperty($this, $property);
+            $encryptAttributes = $reflectionProperty->getAttributes(Encrypt::class);
+            if (!empty($encryptAttributes)) {
+                return Encryption::getInstance()->encrypt($value);
+            }
+        } catch (\ReflectionException) {
+            // If we can't reflect the property, just return the converted value
+        }
+
+        return $value;
     }
 
     /**
