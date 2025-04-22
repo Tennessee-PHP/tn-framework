@@ -86,7 +86,8 @@ class TemplateEngine extends Smarty
 
     public static function urlencodePeriods(mixed $value): string
     {
-        return urlencode(str_replace('.', '%2E', $value));
+        // Convert to lowercase, replace spaces with dashes, remove special chars, and collapse multiple dashes
+        return preg_replace('/-+/', '-', strtolower(preg_replace('/[^a-zA-Z0-9_-]/', '', str_replace(' ', '-', $value))));
     }
 
     public static function substr(string $string, int $start, ?int $length = null): string
