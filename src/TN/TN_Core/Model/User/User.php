@@ -489,7 +489,7 @@ class User implements Persistence
     public static function attemptLogin(string $login, string $password): bool
     {
         $ip = IP::getInstance();
-        $event = self::class . ':login-attempt';
+        $event = self::class . ':attempt-login';
         if (!$ip->eventAllowed($event, static::LOGIN_ATTEMPTS_ALLOWED, static::LOGIN_ATTEMPT_TIMEOUT)) {
             throw new LoginException(LoginErrorMessage::Timeout);
         }
