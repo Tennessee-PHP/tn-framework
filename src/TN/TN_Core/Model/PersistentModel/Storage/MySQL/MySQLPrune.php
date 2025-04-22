@@ -21,6 +21,6 @@ trait MySQLPrune
         $table = self::getTableName();
         $tsProp = self::$tsProp;
         $stmt = $db->prepare("DELETE FROM {$table} WHERE {$tsProp} < ?");
-        $stmt->execute([ Time::getNow() - self::$lifespan ]);
+        $stmt->execute([Time::getNow() - static::$lifespan]);
     }
 }
