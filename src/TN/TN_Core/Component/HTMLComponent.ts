@@ -189,6 +189,7 @@ protected updateUrlQueryOnReload: boolean = false;
                 continue;
             }
             let value: string;
+            
             if (data[key] instanceof Array) {
                 value = (data[key] as string[]).join(',');
             } else {
