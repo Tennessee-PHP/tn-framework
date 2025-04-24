@@ -24,7 +24,7 @@ class SaveVoucherCode extends JSON
             if ($plan->paid) {
                 $key = $plan->key;
                 if (isset($_POST[$key])) {
-                    $planKeys[] = $_POST[$key];
+                    $planKeys[] = $key;
                 }
             }
         }

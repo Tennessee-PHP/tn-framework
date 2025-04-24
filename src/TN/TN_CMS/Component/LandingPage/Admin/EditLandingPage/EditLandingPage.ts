@@ -363,11 +363,13 @@ export default class EditLandingPage extends HTMLComponent {
             // image options
             images_reuse_filename: true,
             image_caption: true,
+            images_default_classes: 'img-fluid',
             image_class_list: [
                 { title: 'None', value: '' },
                 { title: 'Responsive (scales to fit width)', value: 'responsive' },
                 { title: 'Float right', value: 'float-end' },
                 { title: 'Float left', value: 'float-start' },
+                { title: 'Fluid', value: 'img-fluid' }
             ],
 
             // power paste options
