@@ -205,6 +205,8 @@ class Page extends Renderer
         }
 
         $this->component->prepare();
+
+        $this->user = User::getActive();
         $this->title = $this->component->getPageTitle();
         $this->description = $this->component->getPageDescription();
         $this->openGraphImage = $this->component->getPageOpenGraphImage();
