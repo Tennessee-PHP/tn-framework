@@ -55,15 +55,15 @@ class FileDownloadCount implements Persistence
         $counts = [
             'total' => [
                 'count' => '*',
-                'where' => ''
+                'where' => ' WHERE `ts` >= ' . $ts
             ],
             'premium' => [
                 'count' => 'distinct(`userIdentifier`)',
-                'where' => ' WHERE `premium` = 1 '
+                'where' => ' WHERE `premium` = 1 AND `ts` >= ' . $ts
             ],
             'free' => [
                 'count' => 'distinct(`userIdentifier`)',
-                'where' => ' WHERE `premium` = 0 '
+                'where' => ' WHERE `premium` = 0 AND `ts` >= ' . $ts
             ]
         ];
         foreach ($counts as $countKey => $info) {
@@ -80,4 +80,4 @@ class FileDownloadCount implements Persistence
 
         return $stats;
     }
-} 
+}
