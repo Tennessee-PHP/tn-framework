@@ -54,7 +54,7 @@
         </div>
 
         <div class="row pb-4">
-            <h3 class="pb-2">Select Plans</h3>
+            <h3 class="pb-2">Select ws</h3>
             {foreach $plans as $plan}
                 {if $plan->paid}
                     <div class="col-4">
