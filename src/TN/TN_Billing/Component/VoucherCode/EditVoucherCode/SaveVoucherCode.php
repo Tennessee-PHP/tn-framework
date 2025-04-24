@@ -23,8 +23,8 @@ class SaveVoucherCode extends JSON
             // we only care about paid plans
             if ($plan->paid) {
                 $key = $plan->key;
-                // Only add the plan key if the checkbox was checked (value matches the key)
-                if (isset($_POST[$key]) && $_POST[$key] === $key) {
+                // Add the plan key if the checkbox was checked (value matches the key or equals 1)
+                if (isset($_POST[$key]) && ($_POST[$key] === $key || $_POST[$key] === '1')) {
                     $planKeys[] = $key;
                 }
             }
