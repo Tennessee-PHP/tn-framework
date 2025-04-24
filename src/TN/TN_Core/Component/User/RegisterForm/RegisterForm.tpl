@@ -4,6 +4,7 @@
     {if $cloudflareTurnstile}data-cloudflare-turnstile="on"{/if}>
 
     <input type="hidden" name="attemptRegistration" value="true"/>
+    <input type="hidden" name="redirect_url" value="{$redirectUrl}"/>
     <div class="form-container">
 
 
