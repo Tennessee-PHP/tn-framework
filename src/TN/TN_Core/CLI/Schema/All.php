@@ -13,7 +13,22 @@ class All extends CLI
     {
         $classes = Stack::getClassesInModuleNamespaces('Model', true, MySQL::class);
         foreach ($classes as $class) {
-            $this->out($class::getSchema() . PHP_EOL . PHP_EOL);
+            try {
+                $reflection = new \ReflectionClass($class);
+                if ($reflection->isAbstract()) {
+                    continue;
+                }
+                try {
+                    $schema = $class::getSchema();
+                    if ($schema) {
+                        $this->out($schema . PHP_EOL . PHP_EOL);
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            } catch (\ReflectionException $e) {
+                continue;
+            }
         }
     }
 }

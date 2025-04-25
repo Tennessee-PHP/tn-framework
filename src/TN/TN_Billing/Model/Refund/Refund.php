@@ -10,6 +10,7 @@ use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\User\User;
+use TN\TN_Core\Attribute\Impersistent;
 
 /**
  * braintree credits
@@ -27,7 +28,7 @@ class Refund implements Persistence
     public float $amount;
     #[Inclusion('()getReasonOptions|keys')] #[Optional] public string $reason = '';
     public string $comment = '';
-    protected ?User $userRecord = null;
+    #[Impersistent] protected ?User $userRecord = null;
 
     public function __get(string $prop): mixed
     {
@@ -55,5 +56,4 @@ class Refund implements Persistence
     {
         return self::searchByProperty('userId', $user->id);
     }
-
 }

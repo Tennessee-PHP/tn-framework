@@ -98,8 +98,8 @@ class User implements Persistence
      * After this, the password is only stored in hash'ed form. */
     #[Impersistent] #[Strlen(6, 50)] #[Optional] public string $password;
     #[Impersistent] public string $passwordRepeat;
-    public mixed $last;
-    public mixed $first;
+    public string $last;
+    public string $first;
 
     /** methods */
 

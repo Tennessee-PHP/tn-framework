@@ -301,13 +301,13 @@ trait MySQL
         );
 
         try {
-            $db = DB::getInstance($_ENV['MYSQL_DB']);
-            $stmt = $db->prepare($select->query);
-
             if (MYSQL_DEBUG_MODE) {
                 echo $select->query . PHP_EOL;
                 self::MySQLTimerReset();
             }
+
+            $db = DB::getInstance($_ENV['MYSQL_DB']);
+            $stmt = $db->prepare($select->query);
 
             if (!$stmt->execute($select->params)) {
                 throw new DBException('Failed to execute search query');

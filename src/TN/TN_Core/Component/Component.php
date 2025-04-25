@@ -83,7 +83,7 @@ abstract class Component
                         } else {
                             $this->$propertyName = $tmp;
                         }
-                    } catch (\Exception|Error $e) {
+                    } catch (\Exception | Error $e) {
                         // do nothing
                     }
                 }
@@ -92,7 +92,6 @@ abstract class Component
                     $this->$propertyName = User::getActive();
                 }
             }
-
         }
 
         foreach ($pathArguments as $key => $value) {
@@ -101,7 +100,6 @@ abstract class Component
             }
             $this->$key = $value;
         }
-
     }
 
     /**

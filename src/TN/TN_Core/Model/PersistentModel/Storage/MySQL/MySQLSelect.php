@@ -132,7 +132,9 @@ class MySQLSelect
     {
         $this->addComparisonArgument($comparison->argument1);
         $this->addComparisonOperator($comparison->operator);
-        $this->addComparisonArgument($comparison->argument2);
+        if (!in_array($comparison->operator, [SearchComparisonOperator::IsNull, SearchComparisonOperator::IsNotNull])) {
+            $this->addComparisonArgument($comparison->argument2);
+        }
     }
 
     private function addComparisonArgument(SearchComparisonArgument $argument): void

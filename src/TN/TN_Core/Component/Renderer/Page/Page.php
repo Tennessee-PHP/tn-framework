@@ -20,6 +20,7 @@ use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Attribute\Components\HTMLComponent\BareRender;
 use TN\TN_Core\Attribute\Components\HTMLComponent\MetaPixelEvent;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
+use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveFooter;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresResource;
 use TN\TN_Core\Component\Error\Maintenance\Maintenance;
 use TN\TN_Core\Component\TemplateEngine;
@@ -70,6 +71,9 @@ class Page extends Renderer
 
     /** @var bool should navigation be removed from the page? */
     public bool $removeNavigation = false;
+
+    /** @var bool should footer be removed from the page? */
+    public bool $removeFooter = false;
 
     /** @var bool don't display any visual header HTML components */
     public bool $removeHeader = false;
@@ -180,6 +184,10 @@ class Page extends Renderer
 
         if ($reflection->getAttributes(RemoveNavigation::class)) {
             $this->removeNavigation = true;
+        }
+
+        if ($reflection->getAttributes(RemoveFooter::class)) {
+            $this->removeFooter = true;
         }
 
         foreach ($this->component->getPageJsVars() as $var => $value) {
