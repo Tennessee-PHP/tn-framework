@@ -24,9 +24,11 @@ class All extends CLI
                         $this->out($schema . PHP_EOL . PHP_EOL);
                     }
                 } catch (\Exception $e) {
+                    $this->red('schema error: ' . $e->getMessage());
                     continue;
                 }
             } catch (\ReflectionException $e) {
+                $this->red('reflection error: ' . $e->getMessage());
                 continue;
             }
         }

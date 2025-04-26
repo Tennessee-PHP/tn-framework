@@ -8,7 +8,9 @@ use TN\TN_Core\Model\DataSeries\DataSeriesColumn;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Time\Time;
+use TN\TN_Core\Attribute\MySQL\TableName;
 
+#[TableName('analytics_entry')]
 abstract class AnalyticsEntry implements Persistence
 {
     use MySQL;
@@ -99,7 +101,6 @@ abstract class AnalyticsEntry implements Persistence
         }
 
         return $reports;
-
     }
 
     protected static function buildDayReportVariants(array $base, array $filterValues): array
