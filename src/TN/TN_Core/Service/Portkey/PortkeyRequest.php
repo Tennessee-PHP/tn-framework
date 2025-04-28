@@ -11,7 +11,7 @@ use TN\TN_Core\Error\PortkeyException;
  */
 abstract class PortkeyRequest extends Curl
 {
-    protected ?object $jsonResponse = null;
+    public ?object $jsonResponse = null;
     protected string $url = '';
     protected array $request = [];
 
