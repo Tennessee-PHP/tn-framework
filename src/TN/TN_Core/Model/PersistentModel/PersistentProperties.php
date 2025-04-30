@@ -40,7 +40,7 @@ trait PersistentProperties
         // Then handle all type conversions
         if (in_array($type, ['int', 'string', 'float', 'bool'])) {
             // No conversion needed for basic types
-        } else if ($type === 'datetime') {
+        } else if ($type === 'DateTime') {
             try {
                 $value = new \DateTime($value);
             } catch (\Exception) {

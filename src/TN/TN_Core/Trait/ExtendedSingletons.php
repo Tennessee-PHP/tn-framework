@@ -58,7 +58,6 @@ trait ExtendedSingletons
             foreach(Stack::getClassesInPackageNamespaces(self::getExtendedNamespace()) as
                     $class) {
                 $class::getInstance();
-                echo $class . PHP_EOL;
             }
         }
         return self::$instances;
