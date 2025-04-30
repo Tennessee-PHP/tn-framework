@@ -35,7 +35,8 @@ abstract class PortkeyRequest extends Curl
 
     protected function setDefaultOptions(): void
     {
-        $this->setHeader('Authorization', 'Bearer ' . $_ENV['PORTKEY_API_KEY']);
+        $this->setHeader('x-portkey-api-key', $_ENV['PORTKEY_API_KEY']);
+        $this->setHeader('x-portkey-virtual-key', $_ENV['PORTKEY_API_VIRTUAL_KEY']);
         $this->setHeader('Content-Type', 'application/json');
         $this->setHeader('Accept', 'application/json');
     }
@@ -46,6 +47,9 @@ abstract class PortkeyRequest extends Curl
             throw new PortkeyException($this->curl_error_message);
         }
 
+        // DEBUG: Output the raw response from Portkey
+        var_dump($this->response);
+
         $this->jsonResponse = json_decode($this->response);
         if (!$this->jsonResponse) {
             throw new PortkeyException('Invalid JSON response from Portkey API');
@@ -54,7 +58,7 @@ abstract class PortkeyRequest extends Curl
         if (isset($this->jsonResponse->error)) {
             throw new PortkeyException(
                 $this->jsonResponse->error->message ?? 'Unknown error from Portkey API',
-                $this->jsonResponse->error->code ?? 0
+                is_numeric($this->jsonResponse->error->code ?? 0) ? (int)($this->jsonResponse->error->code) : 0
             );
         }
     }

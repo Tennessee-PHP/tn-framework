@@ -2,7 +2,6 @@
 
 namespace TN\TN_Advert\Component\Admin\SaveAdvert;
 
-use Dotenv\Exception\ValidationException;
 use LitEmoji\LitEmoji;
 use TN\TN_Advert\Model\Advert;
 use TN\TN_Advert\Model\AdvertSpot;
@@ -35,7 +34,7 @@ class SaveAdvert extends JSON
         } else {
             $this->advertModel = Advert::readFromId((int)$this->id);
             if (!($this->advertModel instanceof Advert)) {
-                throw new ValidationException('Advert not found');
+                throw new \TN\TN_Core\Error\ValidationException('Advert not found');
             }
         }
 
