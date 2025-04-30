@@ -552,7 +552,7 @@ trait MySQL
         return implode(PHP_EOL, [
             'CREATE ' . "TABLE IF NOT EXISTS `{$table}` (",
             implode(', ' . PHP_EOL, array_merge($columnStrings, $keyStrings)),
-            ') ENGINE=InnoDB CHARSET=utf8mb4 COMMENT="storage for objects of PHP class ' . get_called_class() . '"'
+            ') ENGINE=InnoDB CHARSET=utf8mb4 COMMENT="storage for objects of PHP class ' . get_called_class() . '";'
         ]);
     }
 
@@ -640,5 +640,126 @@ trait MySQL
         }
 
         return "`{$propertyName}` {$type}" . (!empty($typeOptions) ? "({$typeOptions})" : '') . ($nullable ? "" : " NOT NULL") . ($isAutoIncrement ? ' AUTO_INCREMENT' : '');
+    }
+
+    private static function getTableNameFromSchema(string $schema): string
+    {
+        if (preg_match('/CREATE TABLE IF NOT EXISTS `([^`]+)`/', $schema, $matches)) {
+            return $matches[1];
+        }
+        return '';
+    }
+
+    private static function getTableDependencies(string $schema): array
+    {
+        $dependencies = [];
+        // Match all FOREIGN KEY references
+        if (preg_match_all('/FOREIGN KEY\s*\([^)]+\)\s*REFERENCES\s*`([^`]+)`/', $schema, $matches)) {
+            $dependencies = array_unique($matches[1]);
+        }
+        return $dependencies;
+    }
+
+    private static function sortSchemasByDependency(array $tableInfo): array
+    {
+        $sorted = [];
+        $visited = [];
+        $visiting = [];
+
+        // Helper function for depth-first topological sort
+        $visit = function($tableName) use (&$visit, &$sorted, &$visited, &$visiting, $tableInfo) {
+            // Check for circular dependency
+            if (isset($visiting[$tableName])) {
+                throw new \Exception("Circular dependency detected involving table: $tableName");
+            }
+
+            // Skip if already visited
+            if (isset($visited[$tableName])) {
+                return;
+            }
+
+            $visiting[$tableName] = true;
+
+            // Visit all dependencies first
+            foreach ($tableInfo[$tableName]['dependencies'] as $dep) {
+                if (isset($tableInfo[$dep])) {
+                    $visit($dep);
+                }
+            }
+
+            unset($visiting[$tableName]);
+            $visited[$tableName] = true;
+            $sorted[] = $tableInfo[$tableName]['schema'];
+        };
+
+        // Visit all tables
+        foreach (array_keys($tableInfo) as $tableName) {
+            if (!isset($visited[$tableName])) {
+                $visit($tableName);
+            }
+        }
+
+        return $sorted;
+    }
+
+    /**
+     * Get all schemas in dependency order
+     * @return array Ordered array of CREATE TABLE statements
+     * @throws \Exception
+     */
+    public static function getAllSchemas(): array
+    {
+        $classes = Stack::getClassesInModuleNamespaces('Model', true, MySQL::class);
+        $tableInfo = [];
+
+        // First collect all schemas and their dependencies
+        foreach ($classes as $class) {
+            try {
+                $reflection = new \ReflectionClass($class);
+                if ($reflection->isAbstract()) {
+                    continue;
+                }
+                try {
+                    $schema = $class::getSchema();
+                    if ($schema) {
+                        $tableName = self::getTableNameFromSchema($schema);
+                        if ($tableName) {
+                            $tableInfo[$tableName] = [
+                                'schema' => $schema,
+                                'dependencies' => self::getTableDependencies($schema)
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            } catch (\ReflectionException $e) {
+                continue;
+            }
+        }
+
+        return self::sortSchemasByDependency($tableInfo);
+    }
+
+    /**
+     * Apply all schemas to the database
+     * @throws DBException
+     */
+    public static function applyAllSchemas(): void
+    {
+        if (!$_ENV['MYSQL_ALLOW_TABLE_MUTATION']) {
+            throw new DBException('Table mutation is not allowed in this environment');
+        }
+
+        try {
+            $schemas = self::getAllSchemas();
+            $db = DB::getInstance($_ENV['MYSQL_DB'], true);
+            
+            foreach ($schemas as $schema) {
+                $db->query($schema);
+            }
+        } catch (\Exception $e) {
+            throw new DBException('Failed to apply schemas: ' . $e->getMessage());
+        }
     }
 }
