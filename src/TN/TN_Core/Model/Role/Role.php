@@ -77,15 +77,4 @@ abstract class Role
         return false;
     }
 
-    /** @return array get instances of all that extend this class */
-    public static function getInstances(): array
-    {
-        if (empty(self::$instances)) {
-            foreach(Stack::getClassesInModuleNamespaces('Model/Role') as
-                    $class) {
-                $class::getInstance();
-            }
-        }
-        return self::$instances;
-    }
 }

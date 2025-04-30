@@ -44,7 +44,7 @@ use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Storage\Redis;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Cache;
-
+use TN\TN_Core\Error\CodeException;
 /**
  * a user of the website
  *
@@ -305,7 +305,12 @@ class User implements Persistence
     /** set the active user */
     private static function setActiveUser(): void
     {
-        $request = HTTPRequest::get();
+        try {
+            $request = HTTPRequest::get();
+        } catch (CodeException $e) {
+            static::setNoActiveUser();
+            return;
+        }
 
         if ($request->getSession('TN_LoggedIn_User_Id', null) !== null) {
             $user = self::readFromId($request->getSession('TN_LoggedIn_User_Id'));

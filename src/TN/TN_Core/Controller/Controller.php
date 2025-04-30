@@ -202,14 +202,25 @@ abstract class Controller
                         ]);
                     }
                 } catch (\Error | \Exception $e) {
+
+                    if (!($e instanceof TNException)) {
+                        $e = new TNException($e->getMessage(), (int)$e->getCode(), $e);
+                    }
+
                     if ($command->isCron) {
                         $commandLog?->update([
-                            'result' => $e->getMessage(),
+                            'result' => $e->getDisplayMessage(),
                             'completed' => true,
                             'success' => false,
                             'endTs' => Time::getNow(),
                             'duration' => Time::getNow() - $commandLog->startTs
                         ]);
+                    } else {
+                        if ($cliClass) {
+                            $cli->red($e->getDisplayMessage());
+                        } else {
+                            echo $e->getDisplayMessage() . PHP_EOL;
+                        }
                     }
                     throw $e;
                 }
