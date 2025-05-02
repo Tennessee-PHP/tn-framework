@@ -47,9 +47,6 @@ abstract class PortkeyRequest extends Curl
             throw new PortkeyException($this->curl_error_message);
         }
 
-        // DEBUG: Output the raw response from Portkey
-        var_dump($this->response);
-
         $this->jsonResponse = json_decode($this->response);
         if (!$this->jsonResponse) {
             throw new PortkeyException('Invalid JSON response from Portkey API');
