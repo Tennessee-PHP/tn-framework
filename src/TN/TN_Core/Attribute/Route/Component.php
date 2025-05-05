@@ -5,6 +5,7 @@ namespace TN\TN_Core\Attribute\Route;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Component\PageComponent;
 use TN\TN_Core\Component\Renderer\CSVDownload\CSVDownload;
+use TN\TN_Core\Component\Renderer\SQLDownload\SQLDownload;
 use TN\TN_Core\Component\Renderer\HTML\HTML;
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Component\Renderer\Page\Page;
@@ -55,6 +56,9 @@ class Component extends RouteType
         if ($reflection->isSubclassOf(CSVDownload::class)) {
             return CSVDownload::class;
         }
+        if ($reflection->isSubclassOf(SQLDownload::class)) {
+            return SQLDownload::class;
+        }
 
         // Default to Text renderer
         return Text::class;
@@ -67,7 +71,7 @@ class Component extends RouteType
         }
 
         $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
-        if ($component instanceof JSON || $component instanceof Text || $component instanceof CSVDownload) {
+        if ($component instanceof JSON || $component instanceof Text || $component instanceof CSVDownload || $component instanceof SQLDownload) {
             return $component;
         }
         $rendererClass = $this->getRendererClass();
