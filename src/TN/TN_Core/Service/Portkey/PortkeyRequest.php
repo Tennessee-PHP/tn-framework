@@ -14,6 +14,12 @@ abstract class PortkeyRequest extends Curl
     public ?object $jsonResponse = null;
     protected string $url = '';
     protected array $request = [];
+    /** @var callable|null */
+    protected $streamCallback = null;
+    /** @var callable|null */
+    protected $completionCallback = null;
+    protected bool $stream = false;
+    protected string $streamContent = '';
 
     public function __construct()
     {
@@ -28,9 +34,22 @@ abstract class PortkeyRequest extends Curl
         }
 
         $this->setDefaultOptions();
+
+        if ($this->stream) {
+            $this->setupStreamHandling();
+        }
+
         $this->request();
-        $this->validateResponse();
-        $this->parseResponse();
+        $this->exec();
+
+        if ($this->curl_error) {
+            throw new PortkeyException($this->curl_error_message);
+        }
+
+        if (!$this->stream) {
+            $this->validateResponse();
+            $this->parseResponse();
+        }
     }
 
     protected function setDefaultOptions(): void
@@ -43,21 +62,123 @@ abstract class PortkeyRequest extends Curl
 
     protected function validateResponse(): void
     {
-        if ($this->curl_error) {
-            throw new PortkeyException($this->curl_error_message);
+        // If response starts with { or [, treat it as JSON
+        if (str_starts_with(trim($this->response), '{') || str_starts_with(trim($this->response), '[')) {
+            $this->jsonResponse = json_decode($this->response);
+            if (!$this->jsonResponse) {
+                throw new PortkeyException('Invalid JSON response from Portkey API');
+            }
+
+            if (isset($this->jsonResponse->error)) {
+                throw new PortkeyException(
+                    $this->jsonResponse->error->message ?? 'Unknown error from Portkey API',
+                    is_numeric($this->jsonResponse->error->code ?? 0) ? (int)($this->jsonResponse->error->code) : 0
+                );
+            }
+        } else {
+            // For non-JSON responses, store the raw text
+            $this->jsonResponse = (object)['choices' => [(object)['message' => (object)['content' => $this->response]]]];
+        }
+    }
+
+    /**
+     * Set up streaming response handling
+     */
+    protected function setupStreamHandling(): void
+    {
+        // Set up callback for processing chunks
+        $this->setOpt(CURLOPT_WRITEFUNCTION, function ($ch, $data) {
+            // Each line is a separate JSON object
+            $lines = explode("\n", $data);
+            foreach ($lines as $line) {
+                if (empty(trim($line))) continue;
+
+                if (str_starts_with($line, 'data: ')) {
+                    $jsonData = substr($line, 6); // Remove 'data: ' prefix
+                    $chunk = json_decode($jsonData);
+
+                    if (isset($chunk->error)) {
+                        throw new PortkeyException(
+                            $chunk->error->message ?? 'Unknown error from Portkey API',
+                            is_numeric($chunk->error->code ?? 0) ? (int)($chunk->error->code) : 0
+                        );
+                    }
+
+                    if (isset($chunk->choices[0]->delta->content)) {
+                        $content = $chunk->choices[0]->delta->content;
+                        if ($this->streamCallback) {
+                            ($this->streamCallback)($content);
+                        }
+                        $this->streamContent .= $content;
+                    }
+
+                    // Check if this is the last chunk
+                    if (isset($chunk->choices[0]->finish_reason) && $chunk->choices[0]->finish_reason === 'stop') {
+                        // Set the final response and validate it
+                        $this->response = $this->streamContent;
+                        $this->validateResponse();
+                        $this->parseResponse();
+
+                        // Call completion callback if provided
+                        if ($this->completionCallback) {
+                            ($this->completionCallback)($this->streamContent);
+                        }
+                    }
+                }
+            }
+            return strlen($data);
+        });
+    }
+
+    private function handleStreamedResponse(string $chunk): void
+    {
+        // ... existing code ...
+    }
+
+    private function handleStreamCompletion(): void
+    {
+        // Validate the accumulated response
+        $this->validateResponse($this->streamContent);
+
+        // Call the completion callback if provided
+        if ($this->completionCallback !== null) {
+            ($this->completionCallback)($this->streamContent);
+        }
+    }
+
+    private function makeRequest(): mixed
+    {
+        $client = new Client();
+
+        $options = [
+            'json' => [
+                'model' => $this->model,
+                'messages' => $this->messages,
+                'stream' => $this->stream
+            ],
+            'headers' => [
+                'Authorization' => 'Bearer ' . Config::get('portkey.api_key')
+            ]
+        ];
+
+        if ($this->stream) {
+            $options['stream'] = true;
+            $response = $client->post(Config::get('portkey.api_url'), $options);
+            $body = $response->getBody();
+
+            while (!$body->eof()) {
+                $line = trim($body->read(1024));
+                if (!empty($line)) {
+                    $this->handleStreamedResponse($line);
+                }
+            }
+
+            // After streaming is complete, handle completion
+            $this->handleStreamCompletion();
+            return $this->streamContent;
         }
 
-        $this->jsonResponse = json_decode($this->response);
-        if (!$this->jsonResponse) {
-            throw new PortkeyException('Invalid JSON response from Portkey API');
-        }
-
-        if (isset($this->jsonResponse->error)) {
-            throw new PortkeyException(
-                $this->jsonResponse->error->message ?? 'Unknown error from Portkey API',
-                is_numeric($this->jsonResponse->error->code ?? 0) ? (int)($this->jsonResponse->error->code) : 0
-            );
-        }
+        // ... existing code for non-streaming requests ...
     }
 
     abstract protected function request(): void;
