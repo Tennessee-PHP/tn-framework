@@ -33,7 +33,7 @@ class Roadblock extends HTMLComponent
         }
 
         $this->requiredPlan = Plan::getPlanForLevel($this->content ? $this->content->level : 0);
-        
+
         // Add RegisterForm component if required plan is free
         if ($this->requiredPlan && !$this->requiredPlan->paid) {
             $this->registerForm = new RegisterForm([
