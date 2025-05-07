@@ -44,11 +44,6 @@ class BillingTab extends UserProfileTab
             }
         }
 
-        $braintree = Gateway::getInstanceByKey('braintree');
-        foreach ($braintree->getJsUrls() as $url) {
-            // todo: $page->addJsUrl($url);
-        }
-        // todo: $page->addJsVar('braintreeClientToken', $braintree->generateClientToken(isset($user->loggedIn) ? $user : false));
         if (Subscription::getUserActiveSubscription($this->user)) {
             $subscriptionPrices = Subscription::getSubscriptionPrices($this->user->getActiveSubscription());
         } else {

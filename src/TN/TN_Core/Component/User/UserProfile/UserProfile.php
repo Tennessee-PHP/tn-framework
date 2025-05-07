@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Component\User\UserProfile;
 
+use TN\TN_Billing\Attribute\Components\HTMLComponent\RequiresBraintree;
 use TN\TN_Core\Attribute\Components\HTMLComponent\Page;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresTinyMCE;
 use TN\TN_Core\Attribute\Components\Route;
@@ -15,6 +16,7 @@ use TN\TN_Core\Model\User\User;
 #[Page('User Profile', 'User profile', false)]
 #[Route('TN_Core:User:userProfile')]
 #[RequiresTinyMCE]
+#[RequiresBraintree]
 class UserProfile extends HTMLComponent
 {
     public string $username;
