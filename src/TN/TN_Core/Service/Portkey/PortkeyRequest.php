@@ -16,8 +16,6 @@ abstract class PortkeyRequest extends Curl
     protected array $request = [];
     /** @var callable|null */
     protected $streamCallback = null;
-    /** @var callable|null */
-    protected $completionCallback = null;
     protected bool $stream = false;
     protected string $streamContent = '';
 
@@ -118,67 +116,11 @@ abstract class PortkeyRequest extends Curl
                         $this->response = $this->streamContent;
                         $this->validateResponse();
                         $this->parseResponse();
-
-                        // Call completion callback if provided
-                        if ($this->completionCallback) {
-                            ($this->completionCallback)($this->streamContent);
-                        }
                     }
                 }
             }
             return strlen($data);
         });
-    }
-
-    private function handleStreamedResponse(string $chunk): void
-    {
-        // ... existing code ...
-    }
-
-    private function handleStreamCompletion(): void
-    {
-        // Validate the accumulated response
-        $this->validateResponse($this->streamContent);
-
-        // Call the completion callback if provided
-        if ($this->completionCallback !== null) {
-            ($this->completionCallback)($this->streamContent);
-        }
-    }
-
-    private function makeRequest(): mixed
-    {
-        $client = new Client();
-
-        $options = [
-            'json' => [
-                'model' => $this->model,
-                'messages' => $this->messages,
-                'stream' => $this->stream
-            ],
-            'headers' => [
-                'Authorization' => 'Bearer ' . Config::get('portkey.api_key')
-            ]
-        ];
-
-        if ($this->stream) {
-            $options['stream'] = true;
-            $response = $client->post(Config::get('portkey.api_url'), $options);
-            $body = $response->getBody();
-
-            while (!$body->eof()) {
-                $line = trim($body->read(1024));
-                if (!empty($line)) {
-                    $this->handleStreamedResponse($line);
-                }
-            }
-
-            // After streaming is complete, handle completion
-            $this->handleStreamCompletion();
-            return $this->streamContent;
-        }
-
-        // ... existing code for non-streaming requests ...
     }
 
     abstract protected function request(): void;
