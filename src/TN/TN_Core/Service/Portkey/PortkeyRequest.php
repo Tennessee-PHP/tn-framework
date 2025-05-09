@@ -18,7 +18,6 @@ abstract class PortkeyRequest extends Curl
     protected $streamCallback = null;
     protected bool $stream = false;
     protected string $streamContent = '';
-
     public function __construct()
     {
         parent::__construct();
@@ -38,7 +37,6 @@ abstract class PortkeyRequest extends Curl
         }
 
         $this->request();
-        $this->exec();
 
         if ($this->curl_error) {
             throw new PortkeyException($this->curl_error_message);
