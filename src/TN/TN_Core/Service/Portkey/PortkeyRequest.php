@@ -18,6 +18,8 @@ abstract class PortkeyRequest extends Curl
     protected $streamCallback = null;
     protected bool $stream = false;
     protected string $streamContent = '';
+    protected ?string $traceId = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -42,9 +44,33 @@ abstract class PortkeyRequest extends Curl
             throw new PortkeyException($this->curl_error_message);
         }
 
+        $this->extractTraceId();
+
         if (!$this->stream) {
             $this->validateResponse();
             $this->parseResponse();
+        }
+    }
+
+    /**
+     * Get the Portkey Trace ID from the last request
+     * @return string|null The trace ID if available, null otherwise
+     */
+    public function getTraceId(): ?string
+    {
+        return $this->traceId;
+    }
+
+    /**
+     * Extract the Trace ID from response headers
+     */
+    protected function extractTraceId(): void
+    {
+        foreach ($this->response_headers as $header) {
+            if (preg_match('/^x-portkey-trace-id:\s*(.+)$/i', $header, $matches)) {
+                $this->traceId = trim($matches[1]);
+                break;
+            }
         }
     }
 
