@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Attribute\Route;
 
+use FBG\TN_Core\Component\LegacyComponent;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Component\PageComponent;
 use TN\TN_Core\Component\Renderer\CSVDownload\CSVDownload;
@@ -68,7 +69,7 @@ class Component extends RouteType
         }
 
         $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
-        if (!($component instanceof HTMLComponent)) {
+        if (!($component instanceof HTMLComponent) && !($component instanceof LegacyComponent)) {
             return $component;
         }
         $rendererClass = $this->getRendererClass();
