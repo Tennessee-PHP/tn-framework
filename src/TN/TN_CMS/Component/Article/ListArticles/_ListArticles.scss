@@ -4,7 +4,7 @@
       padding: 0;
       a.article-link {
         display: block;
-        height: 300px;
+        min-height: 300px;
         &:hover {
           text-decoration:none;
 
