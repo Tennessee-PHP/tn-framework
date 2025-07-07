@@ -20,6 +20,11 @@ class SearchController extends Controller
     #[RoleOnly('pageentries-admin')]
     public function adminListSearchQueries(): void {}
 
+    #[Path('staff/search-queries/reload')]
+    #[RoleOnly('pageentries-admin')]
+    #[Component(\TN\TN_CMS\Component\Search\Admin\ListSearchQueries\ListSearchQueries::class)]
+    public function adminListSearchQueriesReload(): void {}
+
     #[Path('staff/search/queries/clear')]
     #[RoleOnly('pageentries-admin')]
     #[Component(\TN\TN_CMS\Component\Search\Admin\ListSearchQueries\ClearSearchQueries::class)]
