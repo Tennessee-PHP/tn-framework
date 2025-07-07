@@ -17,7 +17,7 @@ class SearchController extends Controller
 
     #[Path('staff/search-queries')]
     #[Component(\TN\TN_CMS\Component\Search\Admin\ListSearchQueries\ListSearchQueries::class)]
-    #[RoleOnly('content-editor')]
+    #[RoleOnly('pageentries-admin')]
     public function adminListSearchQueries(): void {}
 
     #[Path('staff/search/queries/clear')]
