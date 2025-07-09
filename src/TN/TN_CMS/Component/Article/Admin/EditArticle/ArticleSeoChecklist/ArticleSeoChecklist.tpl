@@ -18,8 +18,8 @@
                     <li id="keyword_start_title" class="list-group-item px-0 text-muted"><span id="keyword_start_title_status"><i class="bi bi-three-dots"></i></span> Keyword at start of title</li>
                     <li id="keyword_start_meta" class="list-group-item px-0 text-muted"><span id="keyword_start_meta_status"><i class="bi bi-three-dots"></i></span> Keyword at start of meta description</li>
                     <li id="keyword_in_url" class="list-group-item px-0 text-muted"><span id="keyword_in_url_status"><i class="bi bi-three-dots"></i></span> Keyword in URL</li>
-                    <li id="inbound_link" class="list-group-item px-0 text-muted"><span id="inbound_link_status"><i class="bi bi-three-dots"></i></span> At least one inbound link (domain.com)</li>
-                    <li id="outbound_link" class="list-group-item px-0 text-muted"><span id="outbound_link_status"><i class="bi bi-three-dots"></i></span> At least one outbound link (besides domain.com)</li>
+                    <li id="inbound_link" class="list-group-item px-0 text-muted"><span id="inbound_link_status"><i class="bi bi-three-dots"></i></span> At least one inbound link (footballguys.com)</li>
+                    <li id="outbound_link" class="list-group-item px-0 text-muted"><span id="outbound_link_status"><i class="bi bi-three-dots"></i></span> At least one outbound link (besides footballguys.com)</li>
                     <li id="keyword_in_alt_tag" class="list-group-item px-0 pb-0 text-muted"><span id="keyword_in_alt_tag_status"><i class="bi bi-three-dots"></i></span> At least one image with keyword as alt tag </li>
                 </ul>
             </div>

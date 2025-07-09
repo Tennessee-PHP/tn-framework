@@ -192,14 +192,14 @@ export default class ArticleSeoChecklist extends HTMLComponent {
     }
 
     protected checkInboundLink(content: any) {
-        const hasInboundLink = $(content).find('a[href*="domain.com"]').length > 0;
+        const hasInboundLink = $(content).find('a[href*="footballguys.com"]').length > 0;
         this.updateChecklistItemStatus('inbound_link', hasInboundLink);
     }
 
     protected checkOutboundLink(content: any) {
         let hasOutboundLink = false;
         $(content).find('a[href]').each((i: number, element: any) => {
-            if (!$(element).attr('href').includes('domain.com')) {
+            if (!$(element).attr('href').includes('footballguys.com')) {
                 hasOutboundLink = true;
             }
         });
