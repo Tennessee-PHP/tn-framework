@@ -92,6 +92,10 @@ class Article extends Content implements Persistence
     #[Impersistent]
     public ?string $processedDisplayContent = null;
 
+    /** @var bool flag to track if update is from page entry */
+    #[Impersistent]
+    protected bool $updateFromPageEntry = false;
+
     /**
      * loads up an object from mysql, given its id
      * @param string $urlStub
@@ -215,7 +219,12 @@ class Article extends Content implements Persistence
             if ($sortProperty === null && $i < $start) {
                 continue;
             }
-            $articles[] = static::readFromId($id);
+            $article = static::readFromId($id);
+            // Populate numTags field for the article list
+            if ($article) {
+                $article->numTags = count(TaggedContent::getFromContentItem(get_class($article), $article->id));
+            }
+            $articles[] = $article;
             if (count($articles) >= $num) {
                 break;
             }

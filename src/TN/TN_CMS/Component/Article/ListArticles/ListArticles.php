@@ -13,13 +13,14 @@ use TN\TN_Core\Component\User\Select\UserSelect\UserSelect;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\User\User;
 use \TN\TN_Core\Attribute\Components\Route;
+use \TN\TN_Core\Attribute\Components\FromQuery;
 
 #[Page('Articles', 'articles')]
 #[Route('TN_CMS:Article:listArticles')]
 #[Reloadable]
 class ListArticles extends HTMLComponent
 {
-    public ?string $tag = null;
+    #[FromQuery] public ?string $tag = null;
     public UserSelect $userSelect;
     public CategorySelect $categorySelect;
     public Pagination $pagination;

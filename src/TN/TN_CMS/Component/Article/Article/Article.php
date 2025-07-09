@@ -71,6 +71,9 @@ class Article extends HTMLComponent
             $this->editPageEntry = new EditPageEntry(['pageEntryId' => $this->pageEntry->id]);
             $this->editPageEntry->prepare();
         }
+
+        // Populate tags for the article
+        $this->tags = \TN\TN_CMS\Model\Tag\TaggedContent::getFromContentItem(ArticleModel::class, $this->article->id);
     }
 
     public function getContentPageEntry(): ?PageEntry
