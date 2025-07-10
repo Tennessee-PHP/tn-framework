@@ -117,25 +117,46 @@ class Email implements Persistence
 
         // let's see if we have a bad email address for this email, and if so we'll need to not send it
 
+        try {
+            $transport = (new \Swift_SmtpTransport($_ENV['AWS_SES_HOST'], $_ENV['AWS_SES_PORT']))
+                ->setUsername($_ENV['AWS_SES_USERNAME'])
+                ->setPassword($_ENV['AWS_SES_PASSWORD'])
+                ->setEncryption("tls");
+            $mailer = new \Swift_Mailer($transport);
+            $message = new \Swift_Message();
+            $message->setSubject(($_ENV['ENV'] !== 'production' ? (strtoupper($_ENV['ENV']) . ': ') : '') . $this->subject)
+                ->setFrom([$_ENV['SITE_EMAIL'] => $_ENV['SITE_NAME']])
+                ->setTo($this->to)
+                ->setBody($this->body)
+                ->setContentType('text/html');
 
-        $transport = (new \Swift_SmtpTransport($_ENV['AWS_SES_HOST'], $_ENV['AWS_SES_PORT']))
-            ->setUsername($_ENV['AWS_SES_USERNAME'])
-            ->setPassword($_ENV['AWS_SES_PASSWORD'])
-            ->setEncryption("tls");
-        $mailer = new \Swift_Mailer($transport);
-        $message = new \Swift_Message();
-        $message->setSubject(($_ENV['ENV'] !== 'production' ? (strtoupper($_ENV['ENV']) . ': ') : '') . $this->subject)
-            ->setFrom([$_ENV['SITE_EMAIL'] => $_ENV['SITE_NAME']])
-            ->setTo($this->to)
-            ->setBody($this->body)
-            ->setContentType('text/html');
-        $success = (bool)$mailer->send($message);
-        if ($success) {
+            $sendResult = $mailer->send($message);
+            $success = (bool)$sendResult;
+
+            if ($success) {
+                $this->update([
+                    'sent' => true,
+                    'ts' => time()
+                ]);
+            } else {
+                // Capture when send() returns 0 (no successful recipients)
+                $errorMessage = "EMAIL SEND FAILED: Mailer returned {$sendResult} successful recipients (expected 1)\n\n---ORIGINAL MESSAGE---\n\n";
+                $this->update([
+                    'body' => $errorMessage . $this->body,
+                    'ts' => time()
+                ]);
+                $this->save();
+            }
+            return $success;
+        } catch (\Exception $e) {
+            // Capture the error and prepend it to the body for debugging
+            $errorMessage = "EMAIL SEND ERROR: " . $e->getMessage() . "\n\n---ORIGINAL MESSAGE---\n\n";
             $this->update([
-                'sent' => true,
+                'body' => $errorMessage . $this->body,
                 'ts' => time()
             ]);
+            $this->save();
+            return false;
         }
-        return $success;
     }
 }
