@@ -84,11 +84,9 @@ class PaymentMethodUpdate
         // total piggy back off recur billing!
         $subscription = $this->user->getActiveSubscription();
         if (!$subscription->hasOverduePayment()) {
-            return [
-                [
-                    'error' => 'There is no payment due for this subscription'
-                ]
-            ];
+            // If there's no overdue payment but user requested to process payment,
+            // fall back to just updating the payment method instead of throwing an error
+            return $this->updateVaulted($nonce, $deviceData);
         }
         return $subscription->recurBilling($nonce, $deviceData);
     }
@@ -137,7 +135,11 @@ class PaymentMethodUpdate
                     'unitAmount' => 1.00,
                     'totalAmount' => 1.00
                 ]
-            ], $nonce, $deviceData, true);
+            ],
+            $nonce,
+            $deviceData,
+            true
+        );
 
         if (!$transaction->success) {
             throw new ValidationException($transaction->errorMsg ?? 'Unknown error occurred');
@@ -155,7 +157,5 @@ class PaymentMethodUpdate
 
         $transaction->actionRefund();
         return $transaction;
-
     }
-
 }
