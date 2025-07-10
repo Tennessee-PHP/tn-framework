@@ -44,7 +44,13 @@ class Refund implements Persistence
     /** @return string[] get the possible reason options */
     public static function getReasonOptions(): array
     {
-        return [];
+        return [
+            '30-day-guarantee' => '30-Day Money-Back Guarantee',
+            'duplicate' => 'Duplicate Payment',
+            'incorrect' => 'Incorrect Charge',
+            'issue' => 'Customer Service Issue',
+            'other' => 'Other'
+        ];
     }
 
     /**
