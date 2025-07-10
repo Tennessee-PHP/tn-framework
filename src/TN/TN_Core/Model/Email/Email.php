@@ -124,6 +124,25 @@ class Email implements Persistence
                 ->setEncryption("tls");
             $mailer = new \Swift_Mailer($transport);
             $message = new \Swift_Message();
+
+            // Debug the email address value in detail
+            $debugInfo = "DEBUG - Email address analysis:\n";
+            $debugInfo .= "Raw value: " . var_export($this->to, true) . "\n";
+            $debugInfo .= "Type: " . gettype($this->to) . "\n";
+            $debugInfo .= "Length: " . strlen($this->to) . "\n";
+            $debugInfo .= "Trimmed: '" . trim($this->to) . "'\n";
+            $debugInfo .= "ASCII codes: " . implode(',', array_map('ord', str_split($this->to))) . "\n";
+
+            if (empty($this->to)) {
+                $errorMessage = "EMAIL SEND ERROR: 'to' field is empty or null.\n" . $debugInfo . "\n---ORIGINAL MESSAGE---\n\n";
+                $this->update([
+                    'body' => $errorMessage . $this->body,
+                    'ts' => time()
+                ]);
+                $this->save();
+                return false;
+            }
+
             $message->setSubject(($_ENV['ENV'] !== 'production' ? (strtoupper($_ENV['ENV']) . ': ') : '') . $this->subject)
                 ->setFrom([$_ENV['SITE_EMAIL'] => $_ENV['SITE_NAME']])
                 ->setTo($this->to)
@@ -150,7 +169,13 @@ class Email implements Persistence
             return $success;
         } catch (\Exception $e) {
             // Capture the error and prepend it to the body for debugging
-            $errorMessage = "EMAIL SEND ERROR: " . $e->getMessage() . "\n\n---ORIGINAL MESSAGE---\n\n";
+            $errorMessage = "EMAIL SEND ERROR: " . $e->getMessage() . "\n";
+            $errorMessage .= "DEBUG - Email address analysis:\n";
+            $errorMessage .= "Raw value: " . var_export($this->to, true) . "\n";
+            $errorMessage .= "Type: " . gettype($this->to) . "\n";
+            $errorMessage .= "Length: " . strlen($this->to) . "\n";
+            $errorMessage .= "Trimmed: '" . trim($this->to) . "'\n";
+            $errorMessage .= "ASCII codes: " . implode(',', array_map('ord', str_split($this->to))) . "\n\n---ORIGINAL MESSAGE---\n\n";
             $this->update([
                 'body' => $errorMessage . $this->body,
                 'ts' => time()
