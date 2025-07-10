@@ -123,7 +123,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
         $braintree = Gateway::getInstanceByKey('braintree');
         $result = $braintree->getApiGateway()->transaction()->void($this->braintreeId);
-        return $result->success ? true : print_r($result, true);
+        return $result->success ? true : 'Braintree void failed: ' . ($result->message ?? 'Unknown error');
     }
 
     /** @return bool|string put the transaction to refund over the braintree api */
@@ -135,7 +135,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         $braintree = Gateway::getInstanceByKey('braintree');
         $result = $braintree->getApiGateway()->transaction()->refund($this->braintreeId);
 
-        return $result->success ? true : print_r($result, true);
+        return $result->success ? true : 'Braintree refund failed: ' . ($result->message ?? 'Unknown error');
     }
 
     protected function treatDescriptor(array $descriptor): array
@@ -546,21 +546,21 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     {
         if (!$this->success) {
             return [
-                'error' => 'cannot refund an unsuccessful transaction'
+                'error' => 'Cannot refund an unsuccessful transaction (Transaction ID: ' . $this->id . ', Status: ' . ($this->success ? 'success' : 'failed') . ')'
             ];
         }
 
         if ($this->refunded) {
             $this->maybeEndSubscriptionAfterRefund();
             return [
-                'error' => 'this transaction has already been refunded'
+                'error' => 'Transaction ID ' . $this->id . ' has already been refunded'
             ];
         }
 
         $res = $this->actionRefund();
         if ($res !== true) {
             return [
-                'error' => 'The credit transaction failed to complete (' . $res . ')'
+                'error' => 'The credit transaction failed to complete for Transaction ID ' . $this->id . ' (Braintree ID: ' . ($this->braintreeId ?? 'N/A') . '). Reason: ' . $res
             ];
         }
 
@@ -569,7 +569,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
 
         $refund = Refund::getInstance();
-        $res = $refund->update([
+        $refundData = [
             'ts' => Time::getNow(),
             'userId' => $this->userId,
             'transactionId' => $this->id,
@@ -577,11 +577,29 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             'amount' => $this->amount,
             'reason' => $reason,
             'comment' => $comment
-        ]);
+        ];
+
+        $res = $refund->update($refundData);
 
         if ($res !== true) {
+            $errorDetails = [];
+            $errorDetails[] = 'Transaction ID: ' . $this->id;
+            $errorDetails[] = 'Braintree ID: ' . ($this->braintreeId ?? 'N/A');
+            $errorDetails[] = 'User ID: ' . $this->userId;
+            $errorDetails[] = 'Amount: $' . number_format($this->amount, 2);
+
+            if (is_array($res)) {
+                $errorDetails[] = 'Validation errors: ' . implode(', ', $res);
+            } else if (is_string($res)) {
+                $errorDetails[] = 'Error: ' . $res;
+            } else if ($res === false) {
+                $errorDetails[] = 'Database save operation failed';
+            } else {
+                $errorDetails[] = 'Unexpected error type: ' . gettype($res) . ' (' . var_export($res, true) . ')';
+            }
+
             return [
-                'error' => 'Failed to create refund record: ' . (is_array($res) ? implode(', ', $res) : 'Unknown error')
+                'error' => 'Failed to create refund record. ' . implode(' | ', $errorDetails)
             ];
         }
 
