@@ -580,7 +580,9 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         ]);
 
         if ($res !== true) {
-            return $res;
+            return [
+                'error' => 'Failed to create refund record: ' . (is_array($res) ? implode(', ', $res) : 'Unknown error')
+            ];
         }
 
         $this->update([
