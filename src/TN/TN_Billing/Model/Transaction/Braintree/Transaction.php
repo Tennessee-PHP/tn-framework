@@ -579,24 +579,26 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             'comment' => $comment
         ];
 
-        $res = $refund->update($refundData);
-
-        if ($res !== true) {
+        try {
+            $refund->update($refundData);
+        } catch (ValidationException $e) {
             $errorDetails = [];
             $errorDetails[] = 'Transaction ID: ' . $this->id;
             $errorDetails[] = 'Braintree ID: ' . ($this->braintreeId ?? 'N/A');
             $errorDetails[] = 'User ID: ' . $this->userId;
             $errorDetails[] = 'Amount: $' . number_format($this->amount, 2);
+            $errorDetails[] = 'Validation errors: ' . implode(', ', $e->errors);
 
-            if (is_array($res)) {
-                $errorDetails[] = 'Validation errors: ' . implode(', ', $res);
-            } else if (is_string($res)) {
-                $errorDetails[] = 'Error: ' . $res;
-            } else if ($res === false) {
-                $errorDetails[] = 'Database save operation failed';
-            } else {
-                $errorDetails[] = 'Unexpected error type: ' . gettype($res) . ' (' . var_export($res, true) . ')';
-            }
+            return [
+                'error' => 'Failed to create refund record. ' . implode(' | ', $errorDetails)
+            ];
+        } catch (\Exception $e) {
+            $errorDetails = [];
+            $errorDetails[] = 'Transaction ID: ' . $this->id;
+            $errorDetails[] = 'Braintree ID: ' . ($this->braintreeId ?? 'N/A');
+            $errorDetails[] = 'User ID: ' . $this->userId;
+            $errorDetails[] = 'Amount: $' . number_format($this->amount, 2);
+            $errorDetails[] = 'Database error: ' . $e->getMessage();
 
             return [
                 'error' => 'Failed to create refund record. ' . implode(' | ', $errorDetails)
