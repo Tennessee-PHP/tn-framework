@@ -585,7 +585,10 @@ class Article extends Content implements Persistence
      */
     protected function textPreRoadblock(): string
     {
-        $parts = explode(self::ROADBLOCK_PLACEHOLDER, $this->displayContent);
+        // Regex pattern to match roadblock placeholder regardless of whitespace
+        $roadblockPattern = '/\s*<div\s+class="roadblock">\s*<h3\s+class="text-center">Roadblock\s+Placeholder<\/h3>\s*<p\s+class="align-center">If\s+the\s+user\s+needs\s+to\s+pay\s+to\s+see\s+the\s+full\s+article,\s+this\s+is\s+where\s+the\s+roadblock\s+will\s+be\.<\/p>\s*<\/div>\s*/i';
+
+        $parts = preg_split($roadblockPattern, $this->displayContent);
         return $parts[0];
     }
 
@@ -597,14 +600,17 @@ class Article extends Content implements Persistence
     {
         $adverts = Advert::getShowableAdverts(User::getActive(), 'article_mid');
         shuffle($adverts);
-        while (strpos($text, self::ADVERT_PLACEHOLDER)) {
+
+        // Regex pattern to match advertisement placeholder regardless of whitespace
+        $advertPattern = '/\s*<div\s+class="py-2\s+px-4\s+mb-2\s+bg-light\s+rounded-3">\s*<div\s+class="container-fluid\s+py-2">\s*<h2\s+class="fw-bold">Advertisement\s+Placeholder<\/h2>\s*<p\s+class="col-md-8\s+fs-4">When\s+the\s+article\s+is\s+published,\s+this\s+placeholder\s+will\s+be\s+switched\s+out\s+for\s+an\s+ad\.<\/p>\s*<button\s+class="btn\s+btn-primary\s+btn-lg"\s+type="button">Let\'s\s+Go!<\/button><\/div>\s*<\/div>\s*/i';
+
+        while (preg_match($advertPattern, $text)) {
             $advertText = '';
             if (!empty($adverts)) {
                 $advert = array_shift($adverts);
                 $advertText = $advert->advert;
             }
-            $pos = strpos($text, self::ADVERT_PLACEHOLDER);
-            $text = substr_replace($text, $advertText, $pos, strlen(self::ADVERT_PLACEHOLDER));
+            $text = preg_replace($advertPattern, $advertText, $text, 1);
         }
         return $text;
     }
@@ -614,7 +620,10 @@ class Article extends Content implements Persistence
      */
     protected function textPostRoadblock(): string
     {
-        $parts = explode(self::ROADBLOCK_PLACEHOLDER, $this->displayContent);
+        // Regex pattern to match roadblock placeholder regardless of whitespace  
+        $roadblockPattern = '/\s*<div\s+class="roadblock">\s*<h3\s+class="text-center">Roadblock\s+Placeholder<\/h3>\s*<p\s+class="align-center">If\s+the\s+user\s+needs\s+to\s+pay\s+to\s+see\s+the\s+full\s+article,\s+this\s+is\s+where\s+the\s+roadblock\s+will\s+be\.<\/p>\s*<\/div>\s*/i';
+
+        $parts = preg_split($roadblockPattern, $this->displayContent);
         return $parts[1] ?? '';
     }
 
