@@ -30,8 +30,9 @@ class RefundPayments extends JSON
             if ($transaction instanceof Transaction && $transaction->userId === $user->id && !$transaction->refunded) {
                 $res = $transaction->refund($reason, $comment, $cancelSubscription);
                 if (is_array($res)) {
-                    // Collect potential error messages from the refund attempt
-                    $resArray = array_merge($resArray, $res);
+                    // Extract error message from the returned array
+                    $errorMessage = $res['error'] ?? 'Unknown refund error';
+                    $resArray[] = $errorMessage;
                 }
             } else {
                 $resArray[] = "Invalid or already refunded transaction ID: {$transactionId}";
