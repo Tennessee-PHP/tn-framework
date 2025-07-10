@@ -266,8 +266,13 @@ export default class BillingTab extends HTMLComponent {
             };
 
             const response = await axios.post(
-                this.$element.find('#payment-form').closest('[data-update-payment-url]').data('update-payment-url'),
-                data
+                this.$element.find('#payment-form').data('update-payment-url'),
+                data,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                }
             );
 
             if (response.data.success) {
