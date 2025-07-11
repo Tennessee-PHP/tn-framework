@@ -2,11 +2,13 @@
 
 namespace TN\TN_Billing\Component\User\UserProfile\BillingTab\UpdatePaymentMethod;
 
+use TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Billing\Model\PaymentMethodUpdate;
 
+#[Route('TN_Billing:UserProfile:updatePaymentMethod')]
 class UpdatePaymentMethod extends JSON
 {
     public function prepare(): void
