@@ -231,6 +231,10 @@ class PageEntry implements Persistence
         $pageEntries = [];
         foreach ($results as $result) {
             $pageEntry = static::readFromId($result[self::cacheIndexId]);
+            if (!$pageEntry) {
+                // Skip entries that no longer exist in the database
+                continue;
+            }
             $pageEntry->primary = $result[self::cacheIndexPrimary];
             $pageEntry->matchedTag = $result[self::cacheIndexMatchedTag];
             $pageEntry->matchedTags = $result[self::cacheIndexMatchedTags];

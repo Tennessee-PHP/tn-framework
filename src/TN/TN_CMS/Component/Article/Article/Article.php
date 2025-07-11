@@ -46,6 +46,7 @@ class Article extends HTMLComponent
     {
         $request = HTTPRequest::get();
         $article = ArticleModel::readFromUrlStub($this->urlStub);
+
         if (!$article) {
             throw new ResourceNotFoundException('Article not found');
         }
