@@ -532,7 +532,7 @@ class User implements Persistence
      * @throws RandomException
      * @throws ValidationException
      */
-    protected function doLogin(): void
+    public function doLogin(): void
     {
         $request = HTTPRequest::get();
 
