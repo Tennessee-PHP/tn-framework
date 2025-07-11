@@ -277,7 +277,7 @@ class Article extends Content implements Persistence
         }
 
         // Check if published status might have changed and update PageEntry accordingly
-        if (!$this->updateFromPageEntry && !empty(array_intersect(['state', 'publishedTs'], $changedProperties))) {
+        if (!$this->updateFromPageEntry && !empty(array_intersect(['state', 'publishedTs', 'weight'], $changedProperties))) {
             $this->writeToPageEntry();
         }
 
