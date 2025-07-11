@@ -178,6 +178,11 @@ class Page extends Renderer
             $attribute->newInstance()->addResource($this);
         }
 
+        // call addTinyMceResources() if RequiresTinyMCE attribute is present
+        if ($reflection->getAttributes(RequiresTinyMCE::class)) {
+            $this->addTinyMceResources();
+        }
+
         if ($reflection->getAttributes(FullWidth::class)) {
             $this->allowFullWidth = true;
         }

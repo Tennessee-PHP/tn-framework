@@ -45,7 +45,7 @@ export default class EditArticle extends HTMLComponent {
                 'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                 'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
                 'insertdatetime', 'media', 'table', 'help', 'wordcount', 'tncms'
-            ],
+        ],
             toolbar: 'undo redo | blocks | ' +
                 'bold italic | alignleft aligncenter ' +
                 'alignright alignjustify | bullist numlist outdent indent | ' +
@@ -301,7 +301,9 @@ export default class EditArticle extends HTMLComponent {
                 // @ts-ignore
                 'tncms': TN.BASE_URL + 'fbgstatic/lib/tinymce-tncms-plugin/plugin.js',
                 // @ts-ignore
-                'tncontent': TN.BASE_URL + 'fbgstatic/lib/tinymce-tncms-plugin/plugin.js'
+                'tncontent': TN.BASE_URL + 'fbgstatic/lib/tinymce-tncms-plugin/plugin.js',
+                // @ts-ignore
+                'fbgcms': TN.BASE_URL + 'fbgstatic/lib/tinymce-fbgcms-plugin/plugin.js'
             },
 
             images_reuse_filename: true,
