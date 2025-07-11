@@ -25,6 +25,10 @@ class ResetPasswordForm extends HTMLComponent
 
     public function prepare(): void
     {
+        if (!isset($this->key) || empty($this->key)) {
+            throw new ResourceNotFoundException('Password reset key');
+        }
+
         $this->passwordReset = PasswordReset::getFromKey($this->key);
         if (!$this->passwordReset) {
             throw new ResourceNotFoundException('Password reset request');
