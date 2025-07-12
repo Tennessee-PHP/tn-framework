@@ -2,10 +2,10 @@
 
 namespace TN\TN_Core\Model\Provider\Discord\Guild;
 
+use RestCord\DiscordClient;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Provider\Discord\User;
 
-// todo: must replace the DiscordClient class because it conflicted with another library
 abstract class Guild
 {
     use \TN\TN_Core\Trait\Getter;
@@ -126,5 +126,19 @@ abstract class Guild
         foreach (array_diff($correctRoleIds, $currentRoleIds) as $roleId) {
             $this->addUserRoleId($user, $roleId);
         }
+    }
+
+    /** @return array get instances of all that extend this class */
+    public static function getInstances(): array
+    {
+        if (empty(self::$instances)) {
+            foreach (
+                \TN\TN_Core\Model\Package\Stack::getClassesInModuleNamespaces('Model/Provider/Discord/Guild') as
+                $class
+            ) {
+                $class::getInstance();
+            }
+        }
+        return self::$instances;
     }
 }
