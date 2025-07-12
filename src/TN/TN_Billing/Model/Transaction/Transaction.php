@@ -244,7 +244,13 @@ abstract class Transaction implements Persistence
 
         $stmt = $db->prepare($query);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_CLASS, get_called_class());
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $transactions = [];
+        foreach ($rows as $row) {
+            $transactions[] = static::getInstance($row);
+        }
+        return $transactions;
     }
 
     /**
