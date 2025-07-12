@@ -203,11 +203,11 @@ class Subscription implements Persistence
     public static function getCreditableUserSubscription(User $user, Plan $plan, int $exceptId = 0): ?Subscription
     {
         $subscription = self::getUserActiveSubscription($user);
-        if ($subscription instanceof Subscription && $plan->level >= $subscription->level && $subscription->id !== $exceptId) {
+        if ($subscription instanceof Subscription && $plan->level >= $subscription->getPlan()->level && $subscription->id !== $exceptId) {
             return $subscription;
         }
         $subscription = self::getUserActiveSubscription($user, 'rotopass');
-        if ($subscription instanceof Subscription && $plan->level >= $subscription->level && $subscription->id !== $exceptId) {
+        if ($subscription instanceof Subscription && $plan->level >= $subscription->getPlan()->level && $subscription->id !== $exceptId) {
             return $subscription;
         }
         return null;
@@ -550,6 +550,11 @@ class Subscription implements Persistence
      */
     public function recurBilling(string|false $nonce = false, string|false $deviceData = false): Transaction
     {
+        // Skip subscription if user doesn't exist (likely merged/deleted)
+        if (!$this->getUser()) {
+            throw new ValidationException('User not found (likely merged/deleted) - skipping subscription');
+        }
+
         $errors = [];
         if ($this->nextTransactionTs > Time::getNow()) {
             $errors[] = 'Next transaction time is not in the past';
