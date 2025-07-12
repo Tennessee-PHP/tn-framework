@@ -47,8 +47,8 @@ class CampaignDailyEntry extends AnalyticsEntry
 
         $result = Subscription::countAndTotalByType('new', $this->dayTs, strtotime('+1 day', $this->dayTs), '', '', '', null, $this->campaignId);
 
-        $data['subscriptions'] = $result['count'];
-        $data['revenue'] = $result['total'];
+        $data['subscriptions'] = $result->count;
+        $data['revenue'] = $result->total;
 
         $this->update($data);
     }
