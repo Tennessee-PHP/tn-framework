@@ -277,7 +277,7 @@ trait MySQL
             }
 
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $result = new CountAndTotalResult($result['count'], $result['sum']);
+            $result = new CountAndTotalResult($result['count'], (float)($result['sum'] ?? 0));
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
         }
