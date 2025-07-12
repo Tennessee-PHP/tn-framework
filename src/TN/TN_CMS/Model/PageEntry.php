@@ -644,6 +644,10 @@ class PageEntry implements Persistence
      */
     protected function afterSaveUpdate(array $changedProperties): void
     {
+        // Ensure cache is always invalidated when PageEntry is updated
+        // This is critical for homepage content ordering and search results
+        $this->invalidateCache();
+
         if ($this->updateFromContent) {
             return;
         }
