@@ -8,6 +8,8 @@ use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Reporting\Model\Analytics\AnalyticsEntry;
 use TN\TN_Reporting\Model\Analytics\DataSeries\AnalyticsDataSeriesColumn;
 
@@ -56,27 +58,44 @@ class RevenueRecurringEntry extends AnalyticsEntry
         $datetime->modify('-1 year');
         $annualStartTs = $datetime->getTimestamp();
 
-        $filters = [
-            'recurring' => true
+        // Build conditions for monthly recurring revenue
+        $monthlyConditions = [
+            new SearchComparison('`ts`', '>=', $monthlyStartTs),
+            new SearchComparison('`ts`', '<=', $endTs),
+            new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
         ];
 
+        // Build conditions for annual recurring revenue
+        $annualConditions = [
+            new SearchComparison('`ts`', '>=', $annualStartTs),
+            new SearchComparison('`ts`', '<=', $endTs),
+            new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
+        ];
+
+        // Add plan and billing cycle filters if specified
         if (!empty($this->planKey)) {
-            $filters['planKey'] = $this->planKey;
+            $monthlyConditions[] = new SearchComparison('`planKey`', '=', $this->planKey);
+            $annualConditions[] = new SearchComparison('`planKey`', '=', $this->planKey);
         }
         if (!empty($this->billingCycleKey)) {
-            $filters['billingCycleKey'] = $this->billingCycleKey;
+            $monthlyConditions[] = new SearchComparison('`billingCycleKey`', '=', $this->billingCycleKey);
+            $annualConditions[] = new SearchComparison('`billingCycleKey`', '=', $this->billingCycleKey);
         }
 
         if (empty($this->gatewayKey)) {
-            $transactionClass = Transaction::class;
-            $func = 'getAllCounts';
+            // Use getAllCounts for all transaction types
+            $monthlyResult = Transaction::getAllCounts(new SearchArguments(conditions: $monthlyConditions));
+            $annualResult = Transaction::getAllCounts(new SearchArguments(conditions: $annualConditions));
+            $data['monthlyRecurringRevenue'] = $monthlyResult->total;
+            $data['annualRecurringRevenue'] = $annualResult->total;
         } else {
+            // Use specific gateway transaction class
             $transactionClass = Gateway::getInstanceByKey($this->gatewayKey)->transactionClass;
-            $func = 'count';
+            $monthlyResult = $transactionClass::count(new SearchArguments(conditions: $monthlyConditions), 'amount');
+            $annualResult = $transactionClass::count(new SearchArguments(conditions: $annualConditions), 'amount');
+            $data['monthlyRecurringRevenue'] = $monthlyResult->total;
+            $data['annualRecurringRevenue'] = $annualResult->total;
         }
-
-        $data['monthlyRecurringRevenue'] = $transactionClass::$func($monthlyStartTs, $endTs, $filters)['total'];
-        $data['annualRecurringRevenue'] = $transactionClass::$func($annualStartTs, $endTs, $filters)['total'];
         $this->update($data);
     }
 
