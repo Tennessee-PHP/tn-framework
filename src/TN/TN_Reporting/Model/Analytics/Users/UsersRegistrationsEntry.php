@@ -4,6 +4,8 @@ namespace TN\TN_Reporting\Model\Analytics\Users;
 
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Reporting\Model\Analytics\AnalyticsEntry;
 use TN\TN_Reporting\Model\Analytics\DataSeries\AnalyticsDataSeriesColumn;
@@ -24,8 +26,13 @@ class UsersRegistrationsEntry extends AnalyticsEntry
     public function calculateDataAndUpdate(): void
     {
         echo 'updating user registrations report for ' . date('Y-m-d', $this->dayTs) . PHP_EOL;
+        $endTs = strtotime('+1 day', $this->dayTs) - 1;
+        $userCount = User::count(new SearchArguments(conditions: [
+            new SearchComparison('`createdTs`', '>=', $this->dayTs),
+            new SearchComparison('`createdTs`', '<=', $endTs)
+        ]));
         $this->update([
-            'userRegistrations' => User::countByCreatedTs($this->dayTs, strtotime('+1 day', $this->dayTs) - 1)
+            'userRegistrations' => $userCount
         ]);
     }
 

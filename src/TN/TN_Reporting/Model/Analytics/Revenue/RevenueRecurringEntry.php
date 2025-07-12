@@ -72,15 +72,8 @@ class RevenueRecurringEntry extends AnalyticsEntry
             new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
         ];
 
-        // Add plan and billing cycle filters if specified
-        if (!empty($this->planKey)) {
-            $monthlyConditions[] = new SearchComparison('`planKey`', '=', $this->planKey);
-            $annualConditions[] = new SearchComparison('`planKey`', '=', $this->planKey);
-        }
-        if (!empty($this->billingCycleKey)) {
-            $monthlyConditions[] = new SearchComparison('`billingCycleKey`', '=', $this->billingCycleKey);
-            $annualConditions[] = new SearchComparison('`billingCycleKey`', '=', $this->billingCycleKey);
-        }
+        // Note: Plan and billing cycle filtering should be handled at subscription level, not transaction level
+        // Transaction tables don't have planKey/billingCycleKey columns
 
         if (empty($this->gatewayKey)) {
             // Use getAllCounts for all transaction types
@@ -91,8 +84,8 @@ class RevenueRecurringEntry extends AnalyticsEntry
         } else {
             // Use specific gateway transaction class
             $transactionClass = Gateway::getInstanceByKey($this->gatewayKey)->transactionClass;
-            $monthlyResult = $transactionClass::count(new SearchArguments(conditions: $monthlyConditions), 'amount');
-            $annualResult = $transactionClass::count(new SearchArguments(conditions: $annualConditions), 'amount');
+            $monthlyResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $monthlyConditions), 'amount');
+            $annualResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $annualConditions), 'amount');
             $data['monthlyRecurringRevenue'] = $monthlyResult->total;
             $data['annualRecurringRevenue'] = $annualResult->total;
         }

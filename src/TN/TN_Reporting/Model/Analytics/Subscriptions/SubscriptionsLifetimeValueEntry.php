@@ -63,6 +63,7 @@ class SubscriptionsLifetimeValueEntry extends AnalyticsEntry
             new SearchComparison('`billingCycleKey`', '=', $this->billingCycleKey)
         ]));
 
+        $churnValues = [];
         foreach ($dayChurnReports as $dayChurnReport) {
             $churnValues[] = SubscriptionsChurnEntry::calculateChurn($dayChurnReport->churnStartCount, $dayChurnReport->endedCount) / 100;
         }

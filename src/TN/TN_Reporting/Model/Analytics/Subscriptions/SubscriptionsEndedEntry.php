@@ -26,8 +26,9 @@ class SubscriptionsEndedEntry extends \TN\TN_Reporting\Model\Analytics\Subscript
     public function calculateDataAndUpdate(): void
     {
         echo 'updating subscription ' . get_called_class()::$type . ' report for ' . date('Y-m-d', $this->dayTs) . implode(', ', [$this->gatewayKey, $this->planKey, $this->billingCycleKey, $this->endedReasonKey]) . PHP_EOL;
+        $result = Subscription::countAndTotalByType(get_called_class()::$type, $this->dayTs, strtotime('+1 day', $this->dayTs), $this->planKey ?? '', $this->billingCycleKey ?? '', $this->gatewayKey ?? '', $this->endedReasonKey);
         $this->update([
-            'count' => Subscription::count(get_called_class()::$type, $this->dayTs, strtotime('+1 day', $this->dayTs), $this->planKey ?? '', $this->billingCycleKey ?? '', $this->gatewayKey ?? '', $this->endedReasonKey)['count']
+            'count' => $result->count
         ]);
     }
 
