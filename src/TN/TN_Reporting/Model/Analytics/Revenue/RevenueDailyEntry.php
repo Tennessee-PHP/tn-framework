@@ -6,6 +6,7 @@ use TN\TN_Billing\Model\Refund\Refund;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Reporting\Model\Analytics\AnalyticsEntry;
@@ -53,7 +54,9 @@ class RevenueDailyEntry extends AnalyticsEntry
 
         if (!empty($this->productTypeKey)) {
             $conditions[] = new SearchComparison(
-                $this->productTypeKey === 'subscription' ? '`subscriptionId`' : '`giftSubscriptionId`', '>', 0
+                $this->productTypeKey === 'subscription' ? '`subscriptionId`' : '`giftSubscriptionId`',
+                '>',
+                0
             );
         }
 
@@ -67,7 +70,11 @@ class RevenueDailyEntry extends AnalyticsEntry
 
         $refundTotal = 0;
         foreach ($refunds as $refund) {
-            $transaction = $refund->transactionClass::readFromId($refund->transactionId);
+            $resolvedTransactionClass = Stack::resolveClassName($refund->transactionClass);
+            if (!$resolvedTransactionClass) {
+                continue;
+            }
+            $transaction = $resolvedTransactionClass::readFromId($refund->transactionId);
             if (!$transaction) {
                 continue;
             }
