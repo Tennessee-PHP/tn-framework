@@ -54,7 +54,7 @@
                     <div class="form-group mb-3">
                         <label for="field_username" class="form-label">Username</label>
                         <div class="d-flex">
-                            <input type="email" id="field_username" class="form-control flex-fill" name="username"
+                            <input type="text" id="field_username" class="form-control flex-fill" name="username"
                                    value="{$user->username}">
                             <button type="submit" class="btn btn-outline-primary ms-3 d-flex align-items-center">
                             <span class="spinner-border spinner-border-sm me-1 d-none" role="status"
