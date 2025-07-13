@@ -35,10 +35,10 @@ export default class BillingTab extends HTMLComponent {
         console.log('Initializing BillingTab');
 
         // Original form handling
-        this.$cancelForm = this.$element.find('#user_plans_staffer_cancel_form');
-        this.$refundForm = this.$element.find('#user_plans_staffer_refunds_form');
-        this.$refundCheckboxes = this.$element.find('.refund-check');
-        this.$refundButtons = this.$element.find('.refund-btn');
+        this.$cancelForm = $('#user_plans_staffer_cancel_form');
+        this.$refundForm = $('#user_plans_staffer_refunds_form');
+        this.$refundCheckboxes = $('.refund-check');
+        this.$refundButtons = $('.refund-btn');
 
         this.$cancelForm.on('submit', this.onCancelFormSubmit.bind(this));
         this.$refundForm.on('submit', this.onRefundFormSubmit.bind(this));
