@@ -13,20 +13,21 @@ use TN\TN_Core\Model\User\UserInactiveChange;
 
 class InactiveChange extends JSON
 {
-    public string $username;
+    public int $userId;
     public ?User $user;
     public User $observer;
     public bool $observerIsSuperUser;
 
     public function prepare(): void
     {
-        if ($this->username === 'me') {
-            $this->user = User::getActive();
-        } else {
-            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)));
-        }
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user');
+        if ($this->observerIsSuperUser) {
+            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->userId)));
+        } else {
+            $this->user = $this->observer;
+        }
+
         UserInactiveChange::createAndSave($this->user, $this->observer, $this->user->inactive, $_POST['comment']);
         $this->data = [
             'result' => 'success',

@@ -11,7 +11,7 @@
 
 
             <form id="edit_email_form"
-                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" username=$username}">
+                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" userId=$user->id}">
                 <div class="form-group mb-3">
                     <label for="field_email" class="form-label">Email Address</label>
                     <div class="d-flex">
@@ -28,7 +28,7 @@
             </form>
 
             <form id="edit_name_form"
-                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" username=$username}">
+                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" userId=$user->id}">
                 <div class="form-group mb-3">
                     <label for="field_first" class="form-label">Name</label>
                     <div class="d-flex">
@@ -50,7 +50,7 @@
 
             {if $observerIsSuperUser}
                 <form id="edit_username_form"
-                      action="{path route="TN_Core:User:userProfileEditUserTabSaveField" username=$username}">
+                      action="{path route="TN_Core:User:userProfileEditUserTabSaveField" userId=$user->id}">
                     <div class="form-group mb-3">
                         <label for="field_username" class="form-label">Username</label>
                         <div class="d-flex">
@@ -68,7 +68,7 @@
             {/if}
 
             <form id="edit_password_form"
-                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" username=$username}">
+                  action="{path route="TN_Core:User:userProfileEditUserTabSaveField" userId=$user->id}">
                 <div class="form-group mb-3">
                     {if !$observerIsSuperUser}
                         <label for="field_current_password" class="form-label">Current Password</label>
@@ -112,7 +112,7 @@
 
         {if !$user->inactive}<p class="alert alert-success">This user is currently active.</p>{else}<p class="alert alert-danger">This user is currently inactive.</p>{/if}
         <form id="user_active_change_form"
-              action="{path route="TN_Core:User:userProfileEditUserTabInactiveChange" username=$username}">
+              action="{path route="TN_Core:User:userProfileEditUserTabInactiveChange" userId=$user->id}">
             <div class="d-flex">
                 <label for="field_comment" class="form-label">Reason</label>
                 <input type="text" id="field_comment" class="form-control mx-2 flex-fill"
@@ -152,7 +152,7 @@
         <p class="alert alert-danger"><b>The account you are currently viewing will be kept. The user ID you enter below
                 will be deleted, and its data merged into this user. <i>This action cannot be undone!</i></b></p>
         <form id="merge_user_form"
-              action="{path route="TN_Core:User:userProfileEditUserTabMerge" username=$username}">
+              action="{path route="TN_Core:User:userProfileEditUserTabMerge" userId=$user->id}">
             <div class="d-flex">
                 <a href="{path route="TN_Core:User:listUsers"}" target="_blank"
                    class="btn btn-outline-primary flex-fill">Find&nbsp;User&nbsp;ID&nbsp;To&nbsp;Merge</a>

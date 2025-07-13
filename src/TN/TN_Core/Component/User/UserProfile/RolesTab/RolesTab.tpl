@@ -1,5 +1,5 @@
 <div class="{$classAttribute}" id="{$idAttribute}">
-    <form id="staff_roles_form" action="{path route="TN_Core:User:userProfileRolesTabSaveRoles" username=$username}" method="post">
+    <form id="staff_roles_form" action="{path route="TN_Core:User:userProfileRolesTabSaveRoles" userId=$user->id}" method="post">
         <input type="hidden" id="editstafferroles_id_field" value="{$user->id}">
 
         <div id="staff_roles_wrapper">

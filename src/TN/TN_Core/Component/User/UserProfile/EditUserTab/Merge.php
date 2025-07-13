@@ -12,7 +12,7 @@ use TN\TN_Core\Model\User\User;
 
 class Merge extends JSON
 {
-    public string $username;
+    public int $userId;
     public ?User $user;
     public User $observer;
     public bool $observerIsSuperUser;
@@ -20,13 +20,13 @@ class Merge extends JSON
 
     public function prepare(): void
     {
-        if ($this->username === 'me') {
-            $this->user = User::getActive();
-        } else {
-            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)));
-        }
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user');
+        if ($this->observerIsSuperUser) {
+            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->userId)));
+        } else {
+            $this->user = $this->observer;
+        }
 
         $secondaryUser = User::readFromId($_POST['secondaryUserId']);
         if ($this->user->id === $secondaryUser->id) {
