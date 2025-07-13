@@ -10,7 +10,7 @@ class CancelSubscription extends JSON
 {
     public function prepare(): void
     {
-        $user = User::readFromId($_POST['id']);
+        $user = User::readFromId($_REQUEST['id']);
         $subscription = Subscription::getUserActiveSubscription($user);
         $subscription->cancel();
         $this->data = [
