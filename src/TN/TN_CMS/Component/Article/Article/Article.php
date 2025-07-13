@@ -45,6 +45,11 @@ class Article extends HTMLComponent
     public function prepare(): void
     {
         $request = HTTPRequest::get();
+
+        if (!isset($this->urlStub)) {
+            $this->urlStub = $_GET['article'];
+        }
+
         $article = ArticleModel::readFromUrlStub($this->urlStub);
 
         if (!$article) {

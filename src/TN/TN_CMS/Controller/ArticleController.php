@@ -20,6 +20,7 @@ class ArticleController extends Controller
     public function listArticles(): void {}
 
     #[Path('article/:urlStub')]
+    #[Path('subscribers/apps/article')]
     #[Component(\TN\TN_CMS\Component\Article\Article\Article::class)]
     #[Anyone]
     public function article(): void {}
