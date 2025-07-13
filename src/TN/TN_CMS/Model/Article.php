@@ -32,7 +32,7 @@ use TN\TN_Core\Model\User\User;
  * @property-read User $author instance of the user who is the author of this article
  */
 #[TableName('cms_articles')]
-#[CacheAttribute(version: '1.1', lifespan: 3600)]
+#[CacheAttribute(version: '1.2', lifespan: 3600)]
 class Article extends Content implements Persistence
 {
     use MySQL;
