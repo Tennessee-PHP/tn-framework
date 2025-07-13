@@ -36,9 +36,9 @@ class UserProfile extends HTMLComponent
         if ($this->username === 'me') {
             $this->user = User::getActive();
         } else {
-            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)), true);
+            $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->username)), true);
             if (!$this->user) {
-                $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->username)), true);
+                $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)), true);
             }
 
             if (!User::getActive()->hasRole('super-user') && $this->user->id !== User::getActive()->id) {
