@@ -376,6 +376,7 @@ class Article extends Content implements Persistence
             $this->processedDisplayContent = $this->replaceAdvertPlaceholders(str_replace(PHP_EOL, "", $this->content));
             $this->processedDisplayContent = str_replace('blockquote class="twitter-tweet"', 'blockquote class="twitter-tweet-toload"', $this->processedDisplayContent);
         }
+        $this->processedDisplayContent = str_replace('https://staging-www.fbg-dev.com/', $_ENV['BASE_URL'], $this->processedDisplayContent);
         return $this->processedDisplayContent ?? '';
     }
 
