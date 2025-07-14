@@ -15,6 +15,8 @@ use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Model\User\User;
 
+//where it is: lib/tn-framework/src/TN/TN_Billing/Model/Transaction
+// where it's looking: lib/tn-framework/src/TN/TN_Billing/Model/Billing/Transaction/
 /**
  * a braintree transaction
  *

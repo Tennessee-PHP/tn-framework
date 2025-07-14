@@ -55,7 +55,7 @@ class ExpensesFeesEntry extends AnalyticsEntry
         }
 
         $fees = 0.0;
-        foreach($transactionClass::$func($this->dayTs, strtotime(date('Y-m-d 23:59:59', $this->dayTs)), $filters) as $transaction) {
+        foreach ($transactionClass::$func($this->dayTs, strtotime(date('Y-m-d 23:59:59', $this->dayTs)), $filters) as $transaction) {
             $fees += $transaction->getFee();
         }
         $this->update([
@@ -69,19 +69,19 @@ class ExpensesFeesEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['gatewayKey'] = [null];
+        $values['gatewayKey'] = [''];
         foreach (Gateway::getInstances() as $gateway) {
             if ($gateway->key !== 'free') {
                 $values['gatewayKey'][] = $gateway->key;
             }
         }
-        $values['planKey'] = [null];
+        $values['planKey'] = [''];
         foreach (Plan::getInstances() as $plan) {
             if ($plan->paid) {
                 $values['planKey'][] = $plan->key;
             }
         }
-        $values['billingCycleKey'] = [null];
+        $values['billingCycleKey'] = [''];
         foreach (BillingCycle::getInstances() as $billingCycle) {
             $values['billingCycleKey'][] = $billingCycle->key;
         }

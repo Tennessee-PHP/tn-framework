@@ -48,17 +48,17 @@ abstract class SubscriptionsTypeEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['gatewayKey'] = [null];
+        $values['gatewayKey'] = [''];
         foreach (Gateway::getInstances() as $gateway) {
             $values['gatewayKey'][] = $gateway->key;
         }
-        $values['planKey'] = [null];
+        $values['planKey'] = [''];
         foreach (Plan::getInstances() as $plan) {
             if ($plan->paid) {
                 $values['planKey'][] = $plan->key;
             }
         }
-        $values['billingCycleKey'] = [null];
+        $values['billingCycleKey'] = [''];
         foreach (BillingCycle::getInstances() as $billingCycle) {
             $values['billingCycleKey'][] = $billingCycle->key;
         }

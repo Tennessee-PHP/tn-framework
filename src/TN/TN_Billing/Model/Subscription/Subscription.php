@@ -334,7 +334,7 @@ class Subscription implements Persistence
             $conditions[] = new SearchComparison('`gatewayKey`', '=', $gatewayKey);
         }
         if ($endReason !== null) {
-            $conditions = new SearchComparison('`endReason`', '=', $endReason);
+            $conditions[] = new SearchComparison('`endReason`', '=', $endReason);
         }
 
         if ($campaignId !== null) {

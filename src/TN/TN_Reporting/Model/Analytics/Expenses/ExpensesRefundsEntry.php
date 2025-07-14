@@ -60,7 +60,7 @@ class ExpensesRefundsEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['refundReasonKey'] = [null];
+        $values['refundReasonKey'] = [''];
 
         $refundClass = Stack::resolveClassName(Refund::class);
         foreach ($refundClass::getReasonOptions() as $key => $label) {

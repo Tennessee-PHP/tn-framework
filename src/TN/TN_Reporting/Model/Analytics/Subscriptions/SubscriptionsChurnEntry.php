@@ -67,21 +67,21 @@ class SubscriptionsChurnEntry extends AnalyticsEntry
 
         // endedCount (for churn, less upgraded subscriptions)
         $data['endedCount'] = Subscription::countAndTotalByType(
-                'ended',
-                $churnStartTs,
-                $churnEndTs,
-                $this->planKey ?? '',
-                $this->billingCycleKey ?? '',
-                $this->gatewayKey ?? ''
-            )->count - Subscription::countAndTotalByType(
-                'ended',
-                $churnStartTs,
-                $churnEndTs,
-                $this->planKey ?? '',
-                $this->billingCycleKey ?? '',
-                $this->gatewayKey ?? '',
-                'upgraded'
-            )->count;
+            'ended',
+            $churnStartTs,
+            $churnEndTs,
+            $this->planKey ?? '',
+            $this->billingCycleKey ?? '',
+            $this->gatewayKey ?? ''
+        )->count - Subscription::countAndTotalByType(
+            'ended',
+            $churnStartTs,
+            $churnEndTs,
+            $this->planKey ?? '',
+            $this->billingCycleKey ?? '',
+            $this->gatewayKey ?? '',
+            'upgraded'
+        )->count;
 
         // endedUserCancelledCount
         $data['endedUserCancelledCount'] = Subscription::countAndTotalByType(
@@ -126,19 +126,19 @@ class SubscriptionsChurnEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['gatewayKey'] = [null];
+        $values['gatewayKey'] = [''];
         foreach (Gateway::getInstances() as $gateway) {
             if ($gateway->key !== 'free') {
                 $values['gatewayKey'][] = $gateway->key;
             }
         }
-        $values['planKey'] = [null];
+        $values['planKey'] = [''];
         foreach (Plan::getInstances() as $plan) {
             if ($plan->paid) {
                 $values['planKey'][] = $plan->key;
             }
         }
-        $values['billingCycleKey'] = [null];
+        $values['billingCycleKey'] = [''];
         foreach (BillingCycle::getInstances() as $billingCycle) {
             $values['billingCycleKey'][] = $billingCycle->key;
         }

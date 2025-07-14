@@ -62,6 +62,7 @@ class RevenueRecurringEntry extends AnalyticsEntry
         $monthlyConditions = [
             new SearchComparison('`ts`', '>=', $monthlyStartTs),
             new SearchComparison('`ts`', '<=', $endTs),
+            new SearchComparison('`success`', '=', true),
             new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
         ];
 
@@ -69,6 +70,7 @@ class RevenueRecurringEntry extends AnalyticsEntry
         $annualConditions = [
             new SearchComparison('`ts`', '>=', $annualStartTs),
             new SearchComparison('`ts`', '<=', $endTs),
+            new SearchComparison('`success`', '=', true),
             new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
         ];
 
@@ -98,19 +100,19 @@ class RevenueRecurringEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['gatewayKey'] = [null];
+        $values['gatewayKey'] = [''];
         foreach (Gateway::getInstances() as $gateway) {
             if ($gateway->key !== 'free') {
                 $values['gatewayKey'][] = $gateway->key;
             }
         }
-        $values['planKey'] = [null];
+        $values['planKey'] = [''];
         foreach (Plan::getInstances() as $plan) {
             if ($plan->paid) {
                 $values['planKey'][] = $plan->key;
             }
         }
-        $values['billingCycleKey'] = [null];
+        $values['billingCycleKey'] = [''];
         foreach (BillingCycle::getInstances() as $billingCycle) {
             $values['billingCycleKey'][] = $billingCycle->key;
         }

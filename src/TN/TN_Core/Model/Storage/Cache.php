@@ -33,13 +33,13 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $client = Redis::getInstance();
-        
+
         // Check if key exists with wrong type
         $type = $client->type($key);
         if ($type !== 'none' && $type !== 'string') {
             $client->del($key);
         }
-        
+
         $client->set($key, serialize($value));
         $client->sadd(self::$keysKey, [$key]);
         if ($lifetime) {
@@ -70,10 +70,26 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $client = Redis::getInstance();
-        $client->sadd($key, [$value]);
-        $client->sadd(self::$keysKey, [$key]);
-        $client->persist($key);
-        $client->expire($key, $lifespan);
+
+        try {
+            $client->sadd($key, [$value]);
+            $client->sadd(self::$keysKey, [$key]);
+            $client->persist($key);
+            $client->expire($key, $lifespan);
+        } catch (\Predis\Response\ServerException $e) {
+            // Handle WRONGTYPE error - key exists with different data type
+            if (str_contains($e->getMessage(), 'WRONGTYPE')) {
+                // Delete the conflicting key and retry
+                $client->del($key);
+                $client->sadd($key, [$value]);
+                $client->sadd(self::$keysKey, [$key]);
+                $client->persist($key);
+                $client->expire($key, $lifespan);
+            } else {
+                // Re-throw other Redis errors
+                throw $e;
+            }
+        }
     }
 
     public static function setRemove(string $key, string $value): void
@@ -165,8 +181,4 @@ class Cache
         }
         $client->del(self::$keysKey);
     }
-
 }
-
-
-?>

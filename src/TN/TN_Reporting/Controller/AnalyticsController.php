@@ -27,15 +27,19 @@ use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
 
 class AnalyticsController extends Controller
 {
-    //#[Schedule('*/5 * * * *')]
+    #[Schedule('*/10 * * * *')]
     #[TimeLimit(5000)]
     #[CommandName('reporting/analytics/update')]
     public function updateAnalytics(): ?string
     {
-        $ts = Time::getTodayTs();
-        $ts = strtotime('-1 day', $ts);
-        // todo: have the base entry class figure out which analytics are enabled and update them
-        while ($ts >= strtotime('2022-05-01 00:00:00')) {
+        $tses = [Time::getTodayTs()];
+
+        // if it's between 00:00:00 and 01:00:00, let's do yesterday too
+        if (date('H') < 1) {
+            $tses[] = strtotime('-1 day', Time::getTodayTs());
+        }
+
+        foreach ($tses as $ts) {
             RevenueDailyEntry::updateDayReports($ts);
             SubscriptionsChurnEntry::updateDayReports($ts);
             SubscriptionsActiveEntry::updateDayReports($ts);
@@ -50,8 +54,8 @@ class AnalyticsController extends Controller
             ExpensesFeesEntry::updateDayReports($ts);
             ExpensesRefundsEntry::updateDayReports($ts);
             CampaignDailyEntry::updateDayReports($ts);
-            $ts = strtotime('-1 day', $ts);
         }
+
         return null;
     }
 

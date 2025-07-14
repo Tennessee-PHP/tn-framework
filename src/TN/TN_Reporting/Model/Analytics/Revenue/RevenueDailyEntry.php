@@ -101,7 +101,7 @@ class RevenueDailyEntry extends AnalyticsEntry
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['productTypeKey'] = [null, 'subscription', 'giftSubscription'];
+        $values['productTypeKey'] = ['', 'subscription', 'giftSubscription'];
         return $values;
     }
 

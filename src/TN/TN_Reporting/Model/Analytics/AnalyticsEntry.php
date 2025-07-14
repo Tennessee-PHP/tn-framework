@@ -64,6 +64,29 @@ abstract class AnalyticsEntry implements Persistence
         // read all the reports for today and index them by gateway, plan and billing cycle
         $reports = self::searchByProperty('dayTs', $startDayTs);
 
+        // Clean up any null values in filter keys and convert them to empty strings
+        foreach ($reports as $report) {
+            $needsUpdate = false;
+            $updateData = [];
+
+            foreach (get_called_class()::$filters as $filter) {
+                $filterKey = $filter . 'Key';
+                if ($filter === 'campaign') {
+                    $filterKey = 'campaignId';
+                }
+
+                if (property_exists($report, $filterKey) && $report->$filterKey === null) {
+                    $updateData[$filterKey] = ($filter === 'campaign') ? 0 : '';
+                    $needsUpdate = true;
+                }
+            }
+
+            if ($needsUpdate) {
+                $report->update($updateData);
+                $report->save();
+            }
+        }
+
         // index by all the filters
         $indexedReports = [];
         foreach ($reports as $report) {

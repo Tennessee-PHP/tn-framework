@@ -284,7 +284,7 @@ abstract class Transaction implements Persistence
     public static function getAllCounts(SearchArguments $search): CountAndTotalResult
     {
         $result = new CountAndTotalResult(0, 0.0);
-        foreach (Stack::getClassesInPackageNamespaces('Model\Billing\Transaction') as $class) {
+        foreach (Stack::getClassesInPackageNamespaces('TN_Billing\Model\Transaction') as $class) {
             $typeResult = $class::countAndTotal($search, 'amount');
             $result->count += $typeResult->count;
             $result->total += $typeResult->total;

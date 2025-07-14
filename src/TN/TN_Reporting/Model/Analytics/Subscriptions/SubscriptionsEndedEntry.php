@@ -38,22 +38,22 @@ class SubscriptionsEndedEntry extends \TN\TN_Reporting\Model\Analytics\Subscript
     public static function getFilterValues(): array
     {
         $values = [];
-        $values['gatewayKey'] = [null];
+        $values['gatewayKey'] = [''];
         foreach (Gateway::getInstances() as $gateway) {
             $values['gatewayKey'][] = $gateway->key;
         }
-        $values['planKey'] = [null];
+        $values['planKey'] = [''];
         foreach (Plan::getInstances() as $plan) {
             if ($plan->paid) {
                 $values['planKey'][] = $plan->key;
             }
         }
-        $values['billingCycleKey'] = [null];
+        $values['billingCycleKey'] = [''];
         foreach (BillingCycle::getInstances() as $billingCycle) {
             $values['billingCycleKey'][] = $billingCycle->key;
         }
 
-        $values['endedReasonKey'] = [null];
+        $values['endedReasonKey'] = [''];
         foreach (Subscription::getEndReasonOptions() as $key => $label) {
             $values['endedReasonKey'][] = $key;
         }
