@@ -78,8 +78,7 @@ class TrackedVisitor implements Persistence
         }
 
         if (!$trackedVisitor) {
-            $className = Stack::resolveClassName(__CLASS__);
-            $trackedVisitor = new $className;
+            $trackedVisitor = TrackedVisitor::getInstance();
             $trackedVisitor->update([
                 'uuId' => (string)RamseyUuid::uuid4(),
                 'ip' => IP::getAddress(),
