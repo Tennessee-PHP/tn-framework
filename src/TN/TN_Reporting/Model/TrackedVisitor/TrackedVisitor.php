@@ -108,9 +108,6 @@ class TrackedVisitor implements Persistence
         return $trackedVisitor;
     }
 
-    /** set the constructor to protected */
-    protected function __construct() {}
-
     /**
      * gets all the funnels that this route appears in
      * @param string $routeCls
