@@ -18,7 +18,6 @@ export default class EditArticle extends HTMLComponent {
     private $articleTitleEditor: Cash;
     private $tagEditor: Cash;
     private $articleMetadataEditor: Cash;
-
     private $articleSeoChecklist: Cash;
     protected observe(): void {
 
@@ -111,6 +110,8 @@ export default class EditArticle extends HTMLComponent {
         this.$articleTitleEditor.on('change', this.onChange.bind(this));
         this.$articleMetadataEditor.on('change', this.onChange.bind(this));
         this.$articleSeoChecklist.on('change', this.onChange.bind(this));
+        // Use event delegation for thumbnail editor since it reloads and replaces itself
+        this.$element.on('change', '.tn-tn_cms-component-article-admin-editarticle-articlethumbnaileditor-articlethumbnaileditor', this.onChange.bind(this));
 
         this.$tagEditor.on('change', (e: Event, tags: string[]) => {
             this.onChange(e, { tags: this.$tagEditor.data('tags') });
@@ -551,6 +552,7 @@ export default class EditArticle extends HTMLComponent {
     }
 
     protected notifyArticleSeoChecklist() {
+        // Find the current SEO checklist element (may have been replaced during reload)
         this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articleseochecklist-articleseochecklist').trigger('contentchange', {
             content: this.tinyMceEditor.getContent({format: 'html'})
         });
@@ -577,6 +579,7 @@ export default class EditArticle extends HTMLComponent {
     }
 
     protected onImgSrcsUpdate() {
+        // Find the current thumbnail editor element (may have been replaced during reload)
         this.$element.find('.tn-tn_cms-component-article-admin-editarticle-articlethumbnaileditor-articlethumbnaileditor').trigger('imgSrcsUpdate', this.imgSrcs.join('|'));
     }
 
