@@ -19,6 +19,11 @@ class SaveField extends JSON
 
     public function prepare(): void
     {
+        // Handle "me" resolution
+        if ((string)$this->userId === 'me') {
+            $this->userId = User::getActive()->id;
+        }
+
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user');
         if ($this->observerIsSuperUser) {

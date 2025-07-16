@@ -7,11 +7,18 @@ use TN\TN_Core\Model\Role\Role;
 use TN\TN_Core\Model\Role\RoleGroup;
 use TN\TN_Core\Model\User\User;
 
-class SaveRoles extends JSON {
+class SaveRoles extends JSON
+{
     public function prepare(): void
     {
         $roles = Role::getInstances();
         $id = $_POST['id'] ?? '';
+
+        // Handle "me" resolution
+        if ($id === 'me') {
+            $id = User::getActive()->id;
+        }
+
         $user = User::readFromId($id);
 
         $newRoleKeys = [];

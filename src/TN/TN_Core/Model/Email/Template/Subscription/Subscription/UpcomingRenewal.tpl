@@ -4,6 +4,6 @@
 
 <p>Your subscription is set to renew for ${$price|number_format:2}.</p>
 
-<p>If you'd like to upgrade or change your subscription, you can do that <a href="{$BASE_URL}me/plans">here</a>.</p>
+<p>If you'd like to upgrade or change your subscription, you can do that <a href="{$BASE_URL}me/profile/billing">here</a>.</p>
 
 <p>Thanks again and we look forward to continuing to serve you.</p>
