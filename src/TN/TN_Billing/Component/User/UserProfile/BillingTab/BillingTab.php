@@ -30,6 +30,7 @@ class BillingTab extends UserProfileTab
     public false|float $braintreeOverduePayment;
     public bool $subscriptionsReorganized;
     public bool $activeSubscriptionIsBraintree;
+    public bool $inGracePeriod;
 
     public function prepare(): void
     {
@@ -67,5 +68,6 @@ class BillingTab extends UserProfileTab
         $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
         $this->subscriptionsReorganized = $subscriptionsReorganized;
         $this->activeSubscriptionIsBraintree = $this->user->hasActiveBraintreeSubscription();
+        $this->inGracePeriod = $this->activeSubscription && $this->activeSubscription->inGracePeriod();
     }
 }
