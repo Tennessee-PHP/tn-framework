@@ -263,27 +263,19 @@ class Cart implements Persistence
             // make sure they are valid before updating
             $plan = Plan::getInstanceByKey($planKey);
             if (!($plan instanceof Plan)) {
-                $errors[] = [
-                    'error' => 'Plan does not exist'
-                ];
+                $errors[] = 'Plan does not exist';
             }
             $billingCycle = BillingCycle::getInstanceByKey($billingCycleKey);
             if (!($billingCycle instanceof BillingCycle)) {
-                $errors[] = [
-                    'error' => 'Billing cycle does not exist'
-                ];
+                $errors[] = 'Billing cycle does not exist';
             } else {
                 // is the billing cycle currently enabled?
                 if (!$billingCycle->enabled) {
-                    $errors[] = [
-                        'error' => 'Billing cycle is not available'
-                    ];
+                    $errors[] = 'Billing cycle is not available';
                 }
                 // can the billing cycle be applied to this plan?
                 if (!$plan->billingCycleIsCompatible($billingCycle)) {
-                    $errors[] = [
-                        'error' => 'Billing cycle is not available for this plan'
-                    ];
+                    $errors[] = 'Billing cycle is not available for this plan';
                 }
                 // if not a gift, does the user already have a subscription at this level or greater?
                 if (!$this->gift && $this->getUser()) {
@@ -292,19 +284,12 @@ class Cart implements Persistence
                     $usersBillingCycle = $subscription ? $subscription->getBillingCycle() : false;
                     if ($usersPlan instanceof Plan) {
                         if ($usersBillingCycle && $usersBillingCycle->numMonths > $billingCycle->numMonths) {
-                            $errors[] = [
-                                'error' => 'You cannot move from a ' . $usersBillingCycle->name . ' plan to a ' . $billingCycle->name . ' plan. Please select a plan that lasts at least as long as your current subscription.'
-                            ];
+                            $errors[] = 'You cannot move from a ' . $usersBillingCycle->name . ' plan to a ' . $billingCycle->name . ' plan. Please select a plan that lasts at least as long as your current subscription.';
                         }
                         if ($usersPlan->level === $plan->level && !($usersBillingCycle && $usersBillingCycle->numMonths < $billingCycle->numMonths)) {
-                            $errors[] = [
-                                'error' => 'You already have a subscription to the ' . $plan->name . ' plan'
-                            ];
+                            $errors[] = 'You already have a subscription to the ' . $plan->name . ' plan';
                         } else if ($usersPlan->level > $plan->level) {
-                            $errors[] = [
-                                'error' => 'You already have a subscription to a the ' . $usersPlan->name . ', which ' .
-                                    'includes all the content and features of the ' . $plan->name . ' plan'
-                            ];
+                            $errors[] = 'You already have a subscription to a the ' . $usersPlan->name . ', which includes all the content and features of the ' . $plan->name . ' plan';
                         }
                     }
                 }
