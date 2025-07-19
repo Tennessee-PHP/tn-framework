@@ -270,11 +270,11 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         ]);
 
         if (!$result->transaction) {
-            $this->onFailure();
             $this->update([
                 'success' => false,
                 'errorMsg' => 'We were unable to attempt to process your payment: ' . $result->message
             ]);
+            $this->onFailure();
             // nothing more we can do - nothing else to process!
             return;
         }
