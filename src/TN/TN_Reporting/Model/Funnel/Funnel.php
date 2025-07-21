@@ -39,8 +39,30 @@ abstract class Funnel
     public function getStageRoute(int $stage): string
     {
         if (isset($this->stages[$stage - 1])) {
-            $route = new ($this->stages[$stage - 1])('', '');
-            return $route->getPrimaryPath();
+            $routeString = $this->stages[$stage - 1];
+            $parts = explode(':', $routeString);
+
+            if (count($parts) !== 3) {
+                return 'Invalid Route Format';
+            }
+
+            $moduleName = $parts[0];
+            $controllerName = $parts[1];
+            $methodName = $parts[2];
+
+            // Convert route string to controller class name using the same logic as Controller::path()
+            if (!str_ends_with($controllerName, 'Controller')) {
+                $controllerName .= 'Controller';
+            }
+
+            $controllerClassName = \TN\TN_Core\Model\Package\Stack::resolveClassName($moduleName . '\\Controller\\' . $controllerName);
+
+            if (!class_exists($controllerClassName)) {
+                return 'Controller Not Found: ' . $controllerClassName;
+            }
+
+            $controller = new $controllerClassName();
+            return $controller->getRoutePath($methodName);
         }
         return $this->stages[$stage - 1] ?? 'Unknown Route';
     }
