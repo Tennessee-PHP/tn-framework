@@ -145,6 +145,12 @@ class PaymentMethodUpdate
             throw new ValidationException($transaction->errorMsg ?? 'Unknown error occurred');
         }
 
+        $transaction->actionRefund();
+        $transaction->update([
+            'success' => false,
+            'errorMsg' => 'Voided due to payment method update'
+        ]);
+
         Email::sendFromTemplate(
             'payment/paymentmethodupdated',
             $this->user->email,
@@ -155,7 +161,6 @@ class PaymentMethodUpdate
             ]
         );
 
-        $transaction->actionRefund();
         return $transaction;
     }
 }

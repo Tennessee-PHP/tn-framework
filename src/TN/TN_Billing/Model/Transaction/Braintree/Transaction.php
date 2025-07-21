@@ -71,9 +71,9 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     /** @return bool|string needs to be public for voiding transactions solely created to update payment details */
     public function actionRefund(): bool|string
     {
-        if (defined('UNIT_TESTING') && UNIT_TESTING) {
+        /*if (defined('UNIT_TESTING') && UNIT_TESTING) {
             return true;
-        }
+        }*/
 
         // need to get the status
         $braintree = Gateway::getInstanceByKey('braintree');
