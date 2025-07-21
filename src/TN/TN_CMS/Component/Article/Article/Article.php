@@ -53,7 +53,7 @@ class Article extends HTMLComponent
         $article = ArticleModel::readFromUrlStub($this->urlStub);
 
         if (!$article) {
-            throw new ResourceNotFoundException('Article not found');
+            throw new ResourceNotFoundException('article');
         }
 
         $canView = $article->state === ArticleModel::STATE_PUBLISHED && $article->publishedTs < Time::getNow();

@@ -37,7 +37,7 @@ class EditVoucherCode extends HTMLComponent
         if ($this->id) {
             $this->voucher = VoucherCode::readFromId($this->id);
             if (!$this->voucher) {
-                throw new ResourceNotFoundException('Voucher code not found');
+                throw new ResourceNotFoundException('voucher code');
             }
             $this->isPhantom = false;
             $startTime = date("Y-m-d", $this->voucher->startTs);

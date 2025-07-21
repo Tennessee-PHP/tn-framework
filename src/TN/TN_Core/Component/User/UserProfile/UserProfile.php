@@ -42,12 +42,12 @@ class UserProfile extends HTMLComponent
             }
 
             if (!User::getActive()->hasRole('super-user') && $this->user->id !== User::getActive()->id) {
-                throw new ResourceNotFoundException('Cannot view this user');
+                throw new ResourceNotFoundException('user');
             }
         }
 
         if (!$this->user) {
-            throw new ResourceNotFoundException('Cannot find this user');
+            throw new ResourceNotFoundException('user');
         }
 
         $this->username = $this->user->username;

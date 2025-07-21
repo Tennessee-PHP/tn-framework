@@ -64,7 +64,7 @@ class LandingPage extends HTMLComponent
         $urlStub = trim($request->path, '/');
         $this->landingPage = LandingPageModel::getPublishedMatchingUrlStub($urlStub);
         if (!$this->landingPage) {
-            throw new ResourceNotFoundException('Landing page not found');
+            throw new ResourceNotFoundException('landing page');
         }
         $this->pageEntry = PageEntry::getPageEntryForContentItem(LandingPageModel::class, $this->landingPage->id);
         $this->userIsPageEntryAdmin = User::getActive()->hasRole('pageentries-admin');

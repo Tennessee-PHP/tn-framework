@@ -38,7 +38,7 @@ class EditLandingPage extends HTMLComponent
         if ($this->landingpageid) {
             $this->landingPage = LandingPage::readFromId($this->landingpageid);
             if (!$this->landingPage) {
-                throw new ResourceNotFoundException('Landing Page does not exist');
+                throw new ResourceNotFoundException('landing page');
             }
         } else {
             $this->landingPage = LandingPage::getInstance();
@@ -118,6 +118,5 @@ class EditLandingPage extends HTMLComponent
             $this->tagEditor->contentId = $this->landingPage->id;
             $this->tagEditor->updateTags(json_decode($data['tags'], true));
         }
-
     }
 }

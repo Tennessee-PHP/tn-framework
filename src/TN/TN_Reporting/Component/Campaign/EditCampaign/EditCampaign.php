@@ -26,15 +26,17 @@ class EditCampaign extends HTMLComponent
     public array $funnels;
     public bool $isPhantom;
 
-    public function getPageTitle(): string {
+    public function getPageTitle(): string
+    {
         return $this->isPhantom ? 'Edit A Campaign' : 'Create A New Campaign';
     }
 
-    public function prepare(): void {
+    public function prepare(): void
+    {
         $this->campaign = $this->id ? Campaign::readFromId($this->id) : Campaign::getInstance();
         $this->isPhantom = $this->id !== null;
         if (!$this->campaign) {
-            throw new ResourceNotFoundException();
+            throw new ResourceNotFoundException('campaign');
         }
         $this->vouchers = VoucherCode::search(new SearchArguments());
         $this->funnels = Funnel::getInstances();
