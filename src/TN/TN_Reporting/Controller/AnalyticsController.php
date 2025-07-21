@@ -56,12 +56,6 @@ class AnalyticsController extends Controller
             CampaignDailyEntry::updateDayReports($ts);
         }
 
-        // Re-run subscriptions renewal entry for the last 2 weeks
-        for ($i = 0; $i < 14; $i++) {
-            $ts = strtotime("-{$i} days", Time::getTodayTs());
-            SubscriptionsRenewalEntry::updateDayReports($ts);
-        }
-
         return null;
     }
 
