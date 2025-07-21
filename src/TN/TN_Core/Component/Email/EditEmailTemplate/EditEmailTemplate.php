@@ -24,6 +24,11 @@ class EditEmailTemplate extends HTMLComponent
     public string $name;
     public array $sampleData;
 
+    public function getPageTitle(): string
+    {
+        return Template::getInstanceByKey(str_replace('-', '/', $this->key))->name;
+    }
+
     public function prepare(): void
     {
         $key = str_replace('-', '/', $this->key);
