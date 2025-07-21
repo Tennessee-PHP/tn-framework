@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Model\Email;
 
+use SmartyException;
 use TN\TN_Core\Attribute\Constraints\Strlen;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Readable;
@@ -23,7 +24,7 @@ class CustomTemplate implements Persistence
 
     public string $key;
     #[Strlen(3, 500)] #[Readable('Email subject')] public string $subject;
-    #[Strlen(3, 500)] #[Readable('Email template')] public string $template;
+    #[Readable('Email template')] public string $template;
 
 
     /** apply the defaults of the template */
@@ -63,9 +64,8 @@ class CustomTemplate implements Persistence
             $engine = TemplateEngine::getInstance();
             $engine->assignData(array_merge($data, ['body' => $body]));
             return $engine->fetch('TN/Model/Email/Email.tpl');
-        } catch (\SmartyException $e) {
+        } catch (\Exception $e) {
             throw new ValidationException($e->getMessage());
         }
     }
-
 }

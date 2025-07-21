@@ -68,9 +68,9 @@ export default class EditEmailTemplate extends HTMLComponent {
             automatic_uploads: true,
             toolbar_sticky: true,
             toolbar_sticky_offset: 50,
-            plugins: 'lists, link, media, autoresize, tinymcespellchecker, preview',
+            plugins: 'lists, link, table, autoresize, tinymcespellchecker, preview',
             toolbar: [
-                'bold italic link | bullist numlist '
+                'bold italic underline | forecolor | alignleft aligncenter alignright | bullist numlist | link | table'
             ],
             menubar: false,
             // @ts-ignore
@@ -81,6 +81,14 @@ export default class EditEmailTemplate extends HTMLComponent {
     protected onFormSubmit(e: Event): void {
         e.preventDefault();
         let data: ReloadData = this.$form.getFormData();
+        
+        // Get the content from TinyMCE editor and add it to the data
+        // @ts-ignore
+        const editor = tinymce.get('editor');
+        if (editor) {
+            data.body = editor.getContent();
+        }
+        
         this.$submitBtn.hide();
         this.$loading.show();
 

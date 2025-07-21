@@ -4,7 +4,7 @@
 
         <div class="mt-2">
             Available variables for this email:
-            <ul>
+            <ul class="ms-5">
                 {foreach $sampleData as $data}
                     <li>{literal}{{/literal}${$data@key}{literal}}{/literal}</li>
                 {/foreach}

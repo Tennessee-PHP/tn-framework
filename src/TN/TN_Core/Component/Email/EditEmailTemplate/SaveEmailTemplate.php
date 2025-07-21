@@ -5,7 +5,8 @@ namespace TN\TN_Core\Component\Email\EditEmailTemplate;
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Model\Email\CustomTemplate;
 
-class SaveEmailTemplate extends JSON {
+class SaveEmailTemplate extends JSON
+{
     public function prepare(): void
     {
         $key = $_POST['key'];
@@ -16,19 +17,19 @@ class SaveEmailTemplate extends JSON {
         // save whatever values are being passed in
         $template = CustomTemplate::getFromKey($key);
 
-        if (is_bool($template)) {
+        if (!$template) {
             $template = CustomTemplate::getInstance();
         }
 
         $template->update([
             'key' => $key,
             'subject' => $subject,
-            'template' => $body,
+            'template' => $body
         ]);
 
         $this->data = [
             'success' => true,
-            'message' => 'Email template saved successfully'
+            'message' => 'Email template saved successfully: new message is "' . $body . '" and its id is ' . $template->id
         ];
     }
 }
