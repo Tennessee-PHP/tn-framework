@@ -111,6 +111,16 @@ class Customer implements Persistence
         return !empty($this->vaultedToken);
     }
 
+    /**
+     * Check if customer has a valid vaulted payment method
+     * This should be used instead of hasVaultedToken() for determining if "Previous Payment Method" option should be shown
+     * @return bool
+     */
+    public function hasValidVaultedPayment(): bool
+    {
+        return !empty($this->vaultedToken) && !empty($this->paymentMethod);
+    }
+
     /** just inserted - email the subscriber if it was created active */
     protected function afterSaveInsert(): void
     {
