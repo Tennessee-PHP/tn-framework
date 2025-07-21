@@ -307,8 +307,8 @@ class Subscription implements Persistence
                 $conditions[] = new SearchComparison('`startTs`', '<', $endTs);
                 break;
             case 'renewal':
-                $conditions[] = new SearchComparison('`nextTransactionTs`', '>=', $startTs);
-                $conditions[] = new SearchComparison('`nextTransactionTs`', '<', $endTs);
+                $conditions[] = new SearchComparison('`lastTransactionTs`', '>=', $startTs);
+                $conditions[] = new SearchComparison('`lastTransactionTs`', '<', $endTs);
                 $conditions[] = new SearchComparison('`numTransactions`', '>', 1);
                 break;
             case 'stalled':
