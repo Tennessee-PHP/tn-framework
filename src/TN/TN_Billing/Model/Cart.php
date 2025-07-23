@@ -533,7 +533,7 @@ class Cart implements Persistence
             $product = Subscription::getInstance();
             $now = Time::getNow();
             $billingCycle = $this->getBillingCycle();
-            $trackedVisitor = TrackedVisitor::getInstance();
+            $trackedVisitor = TrackedVisitor::get();
             $campaign = $trackedVisitor->getCampaign();
             $product->update([
                 'active' => false,

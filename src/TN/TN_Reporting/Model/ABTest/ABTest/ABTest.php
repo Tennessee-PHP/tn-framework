@@ -126,7 +126,7 @@ abstract class ABTest
         }
 
         // well ok, let's settle this by deciding randomly!
-        $trackedVisitor = TrackedVisitor::getInstance();
+        $trackedVisitor = TrackedVisitor::get();
         $variant = $this->getVariantFrom1ToFrequency(rand(1, 100) % $this->getVariantFrequencyCount());
         $request->setSession($sessionKey, $variant->template);
 
@@ -187,7 +187,7 @@ abstract class ABTest
         if ($t[0] === 0) {
             return 0.0;
         }
-        return $t[1]/$t[0];
+        return $t[1] / $t[0];
     }
 
     /**
@@ -200,13 +200,13 @@ abstract class ABTest
         if ($c[0] === 0 || $t[0] === 0) {
             return 0.0;
         }
-        $z = $this->cr($t)-$this->cr($c);
-        $s = ($this->cr($t)*(1-$this->cr($t)))/$t[0] +
-            ($this->cr($c)*(1-$this->cr($c)))/$c[0];
+        $z = $this->cr($t) - $this->cr($c);
+        $s = ($this->cr($t) * (1 - $this->cr($t))) / $t[0] +
+            ($this->cr($c) * (1 - $this->cr($c))) / $c[0];
         if (sqrt($s) === 0.0) {
             return 0.0;
         }
-        return $z/sqrt($s);
+        return $z / sqrt($s);
     }
 
     private function cumulativeNormalDistribution(float $x): float
@@ -219,15 +219,14 @@ abstract class ABTest
         $p  =  0.2316419;
         $c  =  0.39894228;
 
-        if($x >= 0.0) {
-            $t = 1.0 / ( 1.0 + $p * $x );
-            return (1.0 - $c * exp( -$x * $x / 2.0 ) * $t *
-                ( $t *( $t * ( $t * ( $t * $b5 + $b4 ) + $b3 ) + $b2 ) + $b1 ));
-        }
-        else {
-            $t = 1.0 / ( 1.0 - $p * $x );
-            return ( $c * exp( -$x * $x / 2.0 ) * $t *
-                ( $t *( $t * ( $t * ( $t * $b5 + $b4 ) + $b3 ) + $b2 ) + $b1 ));
+        if ($x >= 0.0) {
+            $t = 1.0 / (1.0 + $p * $x);
+            return (1.0 - $c * exp(-$x * $x / 2.0) * $t *
+                ($t * ($t * ($t * ($t * $b5 + $b4) + $b3) + $b2) + $b1));
+        } else {
+            $t = 1.0 / (1.0 - $p * $x);
+            return ($c * exp(-$x * $x / 2.0) * $t *
+                ($t * ($t * ($t * ($t * $b5 + $b4) + $b3) + $b2) + $b1));
         }
     }
 
@@ -268,7 +267,6 @@ abstract class ABTest
                     $abTest->registerSuccess();
                 }
             }
-
         }
     }
 }

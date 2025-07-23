@@ -41,7 +41,7 @@ class ABTestDataPoint implements Persistence
      */
     public static function getInstanceFromKey(string $abTestKey, string $variantTemplate, bool $create = true): ?ABTestDataPoint
     {
-        $trackedVisitor = TrackedVisitor::getInstance();
+        $trackedVisitor = TrackedVisitor::get();
 
         // viewedTs must be within self::TIME_TO_SUCCEED
         $abTestDataPoint = static::searchOne(new SearchArguments([
