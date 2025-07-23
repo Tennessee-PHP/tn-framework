@@ -9,11 +9,12 @@ use TN\TN_Reporting\Model\Campaign\Campaign;
 
 class SaveCampaign extends JSON
 {
-    public ?int $id = null;
+    #[FromPost] public ?int $id = null;
     public ?Campaign $campaign;
     #[FromPost] public string $useBaseUrl = '';
 
-    public function prepare(): void {
+    public function prepare(): void
+    {
         $this->campaign = $this->id ? Campaign::readFromId($this->id) : Campaign::getInstance();
         $useBaseUrl = ($_POST['useBaseUrl'] ?? false) === '1';
 
@@ -31,7 +32,7 @@ class SaveCampaign extends JSON
                 'siteMessageId' => $this->campaign->id,
                 'url' => $this->campaign->getUrl()
             ];
-        } catch(ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->data = [
                 'result' => 'error',
                 'error' => $e->getMessage()

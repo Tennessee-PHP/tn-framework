@@ -20,4 +20,9 @@ class CampaignController extends Controller
     #[Component(\TN\TN_Reporting\Component\Campaign\EditCampaign\EditCampaign::class)]
     #[RoleOnly('marketing-admin')]
     public function editCampaign(): void {}
+
+    #[Path('staff/campaigns/save')]
+    #[Component(\TN\TN_Reporting\Component\Campaign\EditCampaign\SaveCampaign::class)]
+    #[RoleOnly('marketing-admin')]
+    public function saveCampaign(): void {}
 }

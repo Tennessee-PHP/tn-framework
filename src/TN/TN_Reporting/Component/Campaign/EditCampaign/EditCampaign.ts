@@ -100,11 +100,6 @@ export default class EditCampaign extends HTMLComponent {
         this.$loading.hide();
 
         this.$submitBtn.prop('disabled', true);
-
-        setTimeout(() => {
-            // @ts-ignore
-            window.location.href = `${TN.BASE_URL}staff/campaigns`;
-        }, 1000);
     }
 
     onSaveSuccess(response: any): void {
@@ -113,6 +108,10 @@ export default class EditCampaign extends HTMLComponent {
             $('#advert_id_field').val(response.data.advertId);
             new SuccessToast(response.data.message);
         }
+        setTimeout(() => {
+            // @ts-ignore
+            window.location.href = `${TN.BASE_URL}staff/campaigns`;
+        }, 2000);
     }
 
     onSaveError(response: any): void {
