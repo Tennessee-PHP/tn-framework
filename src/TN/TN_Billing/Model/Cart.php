@@ -309,7 +309,7 @@ class Cart implements Persistence
         $this->updateRenewalTs();
 
         // let's see if we can add a campaign and voucher code from the tracked visitor
-        $trackedVisitor = TrackedVisitor::getInstance();
+        $trackedVisitor = TrackedVisitor::get();
         $voucherCode = $trackedVisitor->getActiveVoucherCode();
         if ($voucherCode instanceof VoucherCode) {
             $this->updateVoucherCode($voucherCode->code);
