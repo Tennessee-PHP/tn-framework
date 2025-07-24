@@ -49,7 +49,8 @@ class RevenueDailyEntry extends AnalyticsEntry
 
         $conditions = [
             new SearchComparison('`ts`', '>=', $this->dayTs),
-            new SearchComparison('`ts`', '<=', $endTs)
+            new SearchComparison('`ts`', '<=', $endTs),
+            new SearchComparison('`success`', '=', true)
         ];
 
         if (!empty($this->productTypeKey)) {
