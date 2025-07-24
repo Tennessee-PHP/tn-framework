@@ -56,17 +56,6 @@ class AnalyticsController extends Controller
             CampaignDailyEntry::updateDayReports($ts);
         }
 
-        // Recalculate RevenueDailyEntry from July 7th, 2025
-        $startDate = strtotime('2025-07-07');
-        $endDate = time(); // Current time
-        $currentDate = $startDate;
-
-        while ($currentDate <= $endDate) {
-            RevenueDailyEntry::updateDayReports($currentDate);
-            $currentDate = strtotime('+1 day', $currentDate);
-        }
-
-
         return null;
     }
 
