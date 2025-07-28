@@ -57,6 +57,11 @@ class RegisterForm extends HTMLComponent
             return;
         }
 
+        // Generate username from email if none provided
+        if (empty($this->username) && !empty($this->email)) {
+            $this->username = User::emailToUniqueUsername($this->email);
+        }
+
         $user = User::getInstance();
         try {
             $user->update([
