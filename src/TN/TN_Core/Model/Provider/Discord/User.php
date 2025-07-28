@@ -31,7 +31,7 @@ class User extends ThirdPartyUser
         return new DiscordProvider([
             'clientId' => $_ENV['DISCORD_APPLICATION_ID'],
             'clientSecret' => $_ENV['DISCORD_OAUTH_SECRET'],
-            'redirectUri' => 'https://footballguys.com/me/profile/connected-accounts/discord'
+            'redirectUri' => 'https://www.footballguys.com/me/profile/connected-accounts/discord'
         ]);
     }
 
