@@ -31,9 +31,8 @@ class User extends ThirdPartyUser
         return new DiscordProvider([
             'clientId' => $_ENV['DISCORD_APPLICATION_ID'],
             'clientSecret' => $_ENV['DISCORD_OAUTH_SECRET'],
-            'redirectUri' => $_ENV['BASE_URL'] . 'me/profile/connected-accounts?site=discord'
+            'redirectUri' => $_ENV['BASE_URL'] . 'me/profile/connected-accounts/discord'
         ]);
-
     }
 
     /** @return void redirect the user to the oauth2 login */
@@ -75,8 +74,5 @@ class User extends ThirdPartyUser
     }
 
     /** @return void actions immediately after a user is created */
-    protected function onCreate(): void
-    {
-    }
-
+    protected function onCreate(): void {}
 }
