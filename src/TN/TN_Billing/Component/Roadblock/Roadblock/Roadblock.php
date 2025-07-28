@@ -39,8 +39,14 @@ class Roadblock extends HTMLComponent
 
         // Add RegisterForm component if required plan is free
         if ($this->requiredPlan && !$this->requiredPlan->paid) {
+            // For chat responses, redirect back to the chat page, not the AJAX endpoint
+            $redirectUrl = $_ENV['BASE_URL'] . 'assistant';
+            if (!empty($_GET['conversationId'])) {
+                $redirectUrl .= '/chat/' . intval($_GET['conversationId']);
+            }
+
             $this->registerForm = new RegisterForm([
-                'redirectUrl' => $_ENV['BASE_URL'] . $request->path
+                'redirectUrl' => $redirectUrl
             ]);
             $this->registerForm->prepare();
         }

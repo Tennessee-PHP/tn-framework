@@ -67,8 +67,8 @@ class RegisterForm extends HTMLComponent
             $user->update([
                 'username' => $this->username,
                 'email' => $this->email,
-                'first' => $this->first,
-                'last' => $this->last,
+                'first' => $this->first ?? '',
+                'last' => $this->last ?? '',
                 'password' => empty($this->password) ? 'na' : $this->password,
                 'passwordRepeat' => $this->passwordRepeat
             ]);
