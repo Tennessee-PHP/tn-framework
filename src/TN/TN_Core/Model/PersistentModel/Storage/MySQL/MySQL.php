@@ -220,7 +220,7 @@ trait MySQL
         );
 
         try {
-            $db = DB::getInstance($_ENV['MYSQL_DB']);
+            $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
             $stmt = $db->prepare($select->query);
 
             if (MYSQL_DEBUG_MODE) {
@@ -260,7 +260,7 @@ trait MySQL
         );
 
         try {
-            $db = DB::getInstance($_ENV['MYSQL_DB']);
+            $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
             $stmt = $db->prepare($select->query);
 
             if (MYSQL_DEBUG_MODE) {
@@ -306,7 +306,7 @@ trait MySQL
                 self::MySQLTimerReset();
             }
 
-            $db = DB::getInstance($_ENV['MYSQL_DB']);
+            $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
             $stmt = $db->prepare($select->query);
 
             if (!$stmt->execute($select->params)) {
