@@ -14,6 +14,7 @@ use TN\TN_Core\Model\User\UserInactiveChange;
 class InactiveChange extends JSON
 {
     public int $userId;
+    #[FromPost] public string $comment = '';
     public ?User $user;
     public User $observer;
     public bool $observerIsSuperUser;
@@ -33,7 +34,7 @@ class InactiveChange extends JSON
             $this->user = $this->observer;
         }
 
-        UserInactiveChange::createAndSave($this->user, $this->observer, $this->user->inactive, $_POST['comment']);
+        UserInactiveChange::createAndSave($this->user, $this->observer, $this->user->inactive, $this->comment);
         $this->data = [
             'result' => 'success',
             'message' => 'User active status changed'
