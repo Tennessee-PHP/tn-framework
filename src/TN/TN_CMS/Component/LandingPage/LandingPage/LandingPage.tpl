@@ -26,12 +26,18 @@
 
                 <h1 class="landing-page-title">{$landingPage->title}</h1>
 
-                {foreach $landingPage->contentParts as $content}
-                    {$content}
-                    {if !$content@last}
-                        {include file="Component/Roadblock/Roadblock.tpl"}
+                {if $roadblock->user->loggedIn}
+                    {* Logged in users see all content with no roadblock *}
+                    {foreach $landingPage->contentParts as $content}
+                        {$content}
+                    {/foreach}
+                {else}
+                    {* Anonymous users see content before roadblock, then roadblock, then stop *}
+                    {$landingPage->contentParts[0]}
+                    {if count($landingPage->contentParts) > 1}
+                        {$roadblock->render()}
                     {/if}
-                {/foreach}
+                {/if}
 
             </div>
         </div>

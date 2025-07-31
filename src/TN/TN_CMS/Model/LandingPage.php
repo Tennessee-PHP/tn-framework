@@ -37,7 +37,7 @@ class LandingPage extends Content implements Persistence
     const int STATE_DRAFT = 1;
     const int STATE_PUBLISHED = 3;
 
-    const string ROADBLOCK_PLACEHOLDER = '<div class="roadblock"><h3 class="text-center">Insider Sign-Up Placeholder</h3><p class="align-center">This will appear to anonymous users, asking them to sign up.</p></div>';
+
 
     /**
      * @return array
@@ -128,9 +128,13 @@ class LandingPage extends Content implements Persistence
      * @param int $num
      * @return array
      */
-    public static function getLandingPages(array $filters = [], ?string $sortProperty = null, ?int $sortDirection = null,
-                                           int   $start = 0, int $num = 100): array
-    {
+    public static function getLandingPages(
+        array $filters = [],
+        ?string $sortProperty = null,
+        ?int $sortDirection = null,
+        int   $start = 0,
+        int $num = 100
+    ): array {
         if (!$sortDirection) {
             $sortDirection = SORT_DESC;
         }
@@ -182,7 +186,6 @@ class LandingPage extends Content implements Persistence
             if ($sortProperty === null) {
                 $sortFactors[] = self::getSortFactor($item['weight'], $item['publishedTs'], $item['id']);
             }
-
         }
 
         if ($sortProperty === null) {
@@ -290,7 +293,9 @@ class LandingPage extends Content implements Persistence
     protected function getContentParts(): array
     {
         if (!$this->processedDisplayParts) {
-            $this->processedDisplayParts = explode(self::ROADBLOCK_PLACEHOLDER, $this->content);
+            // Regex pattern to match insider roadblock placeholder regardless of whitespace and flexible p tag content
+            $roadblockPattern = '/\s*<div\s+class="roadblock">\s*<h3\s+class="text-center">Insider\s+Sign-Up\s+Placeholder<\/h3>\s*<p\s+class="align-center">[^<]*<\/p>\s*<\/div>\s*/i';
+            $this->processedDisplayParts = preg_split($roadblockPattern, $this->content);
         }
         return $this->processedDisplayParts ?? [];
     }

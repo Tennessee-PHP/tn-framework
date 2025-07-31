@@ -15,6 +15,7 @@ use TN\TN_CMS\Model\LandingPage as LandingPageModel;
 use TN\TN_Core\Model\User\User;
 use \TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Attribute\Components\HTMLComponent\HeaderImage;
+use TN\TN_Billing\Component\Roadblock\Roadblock\Roadblock;
 
 #[Page('Landing Page', '', 'View landing page', true)]
 #[Route('TN_CMS:LandingPage:landingPage')]
@@ -26,6 +27,7 @@ class LandingPage extends HTMLComponent
     public ?PageEntry $pageEntry = null;
     public bool $userIsPageEntryAdmin;
     public EditPageEntry $editPageEntry;
+    public Roadblock $roadblock;
 
     /**
      * Dynamically match campaign paths by checking if they exist in the database
@@ -72,5 +74,12 @@ class LandingPage extends HTMLComponent
             $this->editPageEntry = new EditPageEntry(['pageEntryId' => $this->pageEntry->id]);
             $this->editPageEntry->prepare();
         }
+
+        // Setup roadblock for anonymous users
+        $this->roadblock = new Roadblock([
+            'roadblocked' => !User::getActive()->loggedIn,
+            'roadblockContinueMsg' => 'to access this content'
+        ]);
+        $this->roadblock->prepare();
     }
 }
