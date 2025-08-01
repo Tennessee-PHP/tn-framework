@@ -522,7 +522,9 @@ class Subscription implements Persistence
             if (!$billingCycle) {
                 continue;
             }
-            $nextTransactionTs = $billingCycle->getNextTs($sub->lastTransactionTs);
+            $fromLastTransaction = $billingCycle->getNextTs($sub->lastTransactionTs);
+            $fromStartDate = $billingCycle->getNextTs($sub->startTs);
+            $nextTransactionTs = max($fromLastTransaction, $fromStartDate);
             if ($nextTransactionTs !== $sub->nextTransactionTs) {
                 $sub->update([
                     'nextTransactionTs' => $nextTransactionTs
@@ -537,6 +539,7 @@ class Subscription implements Persistence
         self::checkAutoRenewDates();
         return static::search(new SearchArguments([
             new SearchComparison('`active`', '=', 1),
+            new SearchComparison('`startTs`', '<=', Time::getNow()),
             new SearchComparison('`endTs`', '=', 0),
             new SearchComparison('`nextTransactionTs`', '<', Time::getNow()),
             new SearchComparison('`lastTransactionFailure`', '<', '`nextTransactionTs`'),
