@@ -533,11 +533,16 @@ class Subscription implements Persistence
         }
     }
 
-    /** @return array all subscriptions that are due a recurring bill */
+    /** 
+     * @return array all subscriptions that are due a recurring bill
+     * 
+     * INCLUDES FAILSAFE: Will NOT return subscriptions for users who have had 
+     * ANY transaction in the last 24 hours, preventing duplicate/rapid charges.
+     */
     public static function getRecurringDueSubscriptions(): array
     {
         self::checkAutoRenewDates();
-        return static::search(new SearchArguments([
+        $dueSubscriptions = static::search(new SearchArguments([
             new SearchComparison('`active`', '=', 1),
             new SearchComparison('`startTs`', '<=', Time::getNow()),
             new SearchComparison('`endTs`', '=', 0),
@@ -545,6 +550,59 @@ class Subscription implements Persistence
             new SearchComparison('`lastTransactionFailure`', '<', '`nextTransactionTs`'),
             new SearchComparison('`gatewayKey`', '=', 'braintree')
         ]));
+
+        // FAILSAFE: Filter out subscriptions for users who have had ANY transaction in the last 24 hours
+        $safeSubscriptions = [];
+        $skippedCount = 0;
+        foreach ($dueSubscriptions as $subscription) {
+            if (!self::userHasRecentTransaction($subscription->userId)) {
+                $safeSubscriptions[] = $subscription;
+            } else {
+                $skippedCount++;
+                error_log("FAILSAFE: Skipping auto-renewal for subscription ID {$subscription->id} (user {$subscription->userId}) due to recent transaction activity");
+            }
+        }
+
+        if ($skippedCount > 0) {
+            error_log("FAILSAFE: Skipped {$skippedCount} subscription auto-renewals due to recent transaction activity");
+        }
+
+        return $safeSubscriptions;
+    }
+
+    /**
+     * Check if a user has any transaction in the last 24 hours
+     * FAILSAFE: Prevents auto-renewal if user has recent payment activity
+     * 
+     * @param int $userId
+     * @return bool true if user has transaction in last 24 hours, false otherwise
+     */
+    private static function userHasRecentTransaction(int $userId): bool
+    {
+        $twentyFourHoursAgo = Time::getNow() - (24 * 60 * 60); // 24 hours in seconds
+
+        // Check all transaction types across all gateways
+        foreach (Stack::getClassesInPackageNamespaces('Model\Billing\Transaction') as $transactionClass) {
+            try {
+                // Search for any transactions by this user in the last 24 hours
+                $recentTransactions = $transactionClass::search(new SearchArguments([
+                    new SearchComparison('`userId`', '=', $userId),
+                    new SearchComparison('`ts`', '>=', $twentyFourHoursAgo),
+                    new SearchComparison('`ts`', '<=', Time::getNow())
+                ]));
+
+                // If any transactions found, return true (user has recent activity)
+                if (!empty($recentTransactions)) {
+                    return true;
+                }
+            } catch (\Exception $e) {
+                // If search fails for this transaction type, log and continue
+                // Better to be safe and skip than to risk duplicate charges
+                error_log("Failed to check recent transactions for class {$transactionClass}: " . $e->getMessage());
+            }
+        }
+
+        return false; // No recent transactions found
     }
 
     /**
