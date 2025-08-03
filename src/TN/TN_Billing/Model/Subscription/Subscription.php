@@ -726,11 +726,17 @@ class Subscription implements Persistence
             throw new ValidationException('An error occurred while setting the subscription\'s next billing date');
         }
 
-        if ($creditableSubscription instanceof Subscription) {
-            $creditableSubscription->upgradedToNewSubscription();
-        }
-
+        // Record successful transaction FIRST before attempting to end creditable subscription
         $this->addSuccessfulTransaction($transaction);
+
+        if ($creditableSubscription instanceof Subscription) {
+            try {
+                $creditableSubscription->upgradedToNewSubscription();
+            } catch (ValidationException $e) {
+                // Log but don't fail - some gateways (like RotoPass) can't be ended by the system
+                error_log("Could not end creditable subscription {$creditableSubscription->id}: " . $e->getMessage());
+            }
+        }
 
         // notify the user
         $user->subscriptionsChanged();
