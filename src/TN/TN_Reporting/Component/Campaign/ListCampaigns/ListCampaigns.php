@@ -7,6 +7,7 @@ use \TN\TN_Core\Attribute\Components\HTMLComponent\Page;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Breadcrumb;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
 use TN\TN_Core\Attribute\Components\Route;
+use TN\TN_Core\Attribute\Components\FromPost;
 use TN\TN_Core\Component\Pagination\Pagination;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchSorter;
@@ -20,14 +21,28 @@ use TN\TN_Reporting\Model\Funnel\Funnel;
 #[Reloadable]
 class ListCampaigns extends HTMLComponent
 {
+    #[FromPost] public ?int $toggleArchiveCampaignId = null;
     public Pagination $pagination;
     public array $campaigns;
     public array $funnels;
 
     public function prepare(): void
     {
+        // Handle archive toggle if requested
+        if ($this->toggleArchiveCampaignId) {
+            $campaign = Campaign::readFromId($this->toggleArchiveCampaignId);
+            if ($campaign) {
+                $campaign->update([
+                    'archived' => !$campaign->archived
+                ]);
+            }
+        }
+
         $search = new SearchArguments(
-            sorters: new SearchSorter('key', SearchSorterDirection::ASC)
+            sorters: [
+                new SearchSorter('archived', SearchSorterDirection::ASC),
+                new SearchSorter('key', SearchSorterDirection::ASC)
+            ]
         );
 
         $count = Campaign::count($search);
@@ -37,7 +52,7 @@ class ListCampaigns extends HTMLComponent
             'search' => $search
         ]);
         $this->pagination->prepare();
-        $this->campaigns = Campaign::search($search);
+        $this->campaigns = Campaign::search($search, true);
         $this->funnels = Funnel::getInstances();
     }
 }

@@ -33,6 +33,7 @@ class Campaign implements Persistence
     public int $voucherCodeId = 0;
     public int $affiliateUserId = 0;
     public string $notes = '';
+    public bool $archived = false;
 
     public function __get(string $property): mixed
     {
@@ -107,5 +108,4 @@ class Campaign implements Persistence
     {
         return $_ENV['BASE_URL'] . (!$this->useBaseUrl ? (self::routePath . '/') : '') . urlencode($this->key);
     }
-
 }

@@ -5,6 +5,7 @@ namespace TN\TN_Core\Component\Input\Select\CampaignSelect;
 use TN\TN_Core\Component\Input\Select\Option;
 use TN\TN_Core\Component\Input\Select\Select;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Reporting\Model\Campaign\Campaign;
 
 /**
@@ -21,7 +22,12 @@ class CampaignSelect extends Select
         $options = [];
         $options[] = new Option('', 'All', null, true);
 
-        foreach (Campaign::search(new SearchArguments()) as $campaign) {
+        // Only show non-archived campaigns
+        $searchArguments = new SearchArguments(
+            conditions: new SearchComparison('`archived`', '=', 0)
+        );
+
+        foreach (Campaign::search($searchArguments) as $campaign) {
             $options[] = new Option($campaign->id, $campaign->key, null);
         }
         return $options;

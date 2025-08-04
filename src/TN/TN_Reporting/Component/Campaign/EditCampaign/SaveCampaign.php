@@ -12,11 +12,13 @@ class SaveCampaign extends JSON
     #[FromPost] public ?int $id = null;
     public ?Campaign $campaign;
     #[FromPost] public string $useBaseUrl = '';
+    #[FromPost] public string $archived = '';
 
     public function prepare(): void
     {
         $this->campaign = $this->id ? Campaign::readFromId($this->id) : Campaign::getInstance();
-        $useBaseUrl = ($_POST['useBaseUrl'] ?? false) === '1';
+        $useBaseUrl = $this->useBaseUrl === '1';
+        $archived = $this->archived === '1';
 
         try {
             $this->campaign->update([
@@ -25,7 +27,8 @@ class SaveCampaign extends JSON
                 'funnelEntryStage' => (int)($_POST['funnelEntryStage'] ?? 0),
                 'voucherCodeId' => (int)($_POST['voucherCodeId'] ?? 0),
                 'notes' => (string)($_POST['notes'] ?? ''),
-                'useBaseUrl' => $useBaseUrl
+                'useBaseUrl' => $useBaseUrl,
+                'archived' => $archived
             ]);
             $this->data = [
                 'result' => 'success',
