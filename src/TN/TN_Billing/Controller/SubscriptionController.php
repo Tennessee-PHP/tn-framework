@@ -8,12 +8,18 @@ use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Command\Schedule;
 use TN\TN_Core\Attribute\Command\TimeLimit;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\UsersOnly;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\Time\Time;
 
 class SubscriptionController extends Controller
 {
+    #[Path('staff/list-subscriptions')]
+    #[RoleOnly('sales-reporting')]
+    #[Component(\TN\TN_Billing\Component\Subscription\ListSubscriptions\ListSubscriptions::class)]
+    public function listSubscriptions(): void {}
+
     #[Path('staff/users/user/:userId/plans/cancel-subscription')]
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\Subscription\CancelSubscription::class)]
