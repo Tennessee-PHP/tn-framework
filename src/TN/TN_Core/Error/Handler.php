@@ -12,6 +12,7 @@ class Handler
     public static function handle($errno, $errstr, $errfile, $errline)
     {
         $terminal = false;
+
         if (!(error_reporting() & $errno)) {
             // This error code is not included in error_reporting, so let it fall
             // through to the standard PHP error handler
@@ -87,9 +88,9 @@ class Handler
             }
         }
 
+
         /* Don't execute PHP internal error handler */
         return true;
-
     }
 
     protected static function logError(string $file, string $line, string $type, string $msg): LoggedError
@@ -129,5 +130,4 @@ class Handler
             }
         }
     }
-
 }
