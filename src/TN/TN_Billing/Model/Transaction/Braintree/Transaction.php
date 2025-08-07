@@ -36,10 +36,10 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     public string $processorResponseCode = '';
 
     /** @var string what we sent to braintree */
-    public string $encodedRequest;
+    public ?string $encodedRequest = null;
 
     /** @var string what braintree sent back to us */
-    public string $encodedResponse;
+    public ?string $encodedResponse = null;
 
     /** @var string the nonce used to communicate with braintree */
     #[Impersistent]
