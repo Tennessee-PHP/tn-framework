@@ -8,6 +8,7 @@ use \TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Component\User\RegisterForm\RegisterForm;
+use TN\TN_Core\Model\Package\Stack;
 
 class Roadblock extends HTMLComponent
 {
@@ -48,7 +49,7 @@ class Roadblock extends HTMLComponent
                 $redirectUrl = $_ENV['BASE_URL'] . 'assistant/chat/' . intval($_GET['conversationId']);
             }
 
-            $this->registerForm = new RegisterForm([
+            $this->registerForm = new (Stack::resolveClassName(RegisterForm::class))([
                 'redirectUrl' => $redirectUrl
             ]);
             $this->registerForm->prepare();
