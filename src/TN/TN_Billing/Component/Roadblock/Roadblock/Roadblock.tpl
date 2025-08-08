@@ -17,7 +17,7 @@
             </h3>
 
             {if $registerForm}
-                <div class="register-form-container">
+                <div class="register-form-container" data-bs-theme="light">
                     {$registerForm->render()}
                 </div>
             {else}

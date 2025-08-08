@@ -340,6 +340,10 @@ class PageEntry implements Persistence
                     $conditions[] = "p.`creatorId` = ?";
                     $params[] = $value;
                     break;
+                case 'excludeId':
+                    $conditions[] = "p.`id` != ?";
+                    $params[] = $value;
+                    break;
                 case 'onlyNoTags':
                     $conditions[] = 'p.`numTags` = ?';
                     $params[] = 0;

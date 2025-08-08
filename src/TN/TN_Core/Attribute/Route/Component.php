@@ -2,9 +2,11 @@
 
 namespace TN\TN_Core\Attribute\Route;
 
+use FBG\TN_Core\Component\LegacyComponent;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Component\PageComponent;
 use TN\TN_Core\Component\Renderer\CSVDownload\CSVDownload;
+use TN\TN_Core\Component\Renderer\SQLDownload\SQLDownload;
 use TN\TN_Core\Component\Renderer\HTML\HTML;
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Component\Renderer\Page\Page;
@@ -45,19 +47,19 @@ class Component extends RouteType
             return Page::class;
         }
 
-        // For non-HTML components, determine renderer based on component's parent class
-        if ($reflection->isSubclassOf(JSON::class)) {
-            return JSON::class;
-        }
-        if ($reflection->isSubclassOf(XML::class)) {
-            return XML::class;
-        }
-        if ($reflection->isSubclassOf(CSVDownload::class)) {
-            return CSVDownload::class;
+        // For non-HTML components, find the immediate Renderer subclass
+        $rendererClass = null;
+        $currentClass = $reflection;
+        while ($currentClass && !$rendererClass) {
+            $parentClass = $currentClass->getParentClass();
+            if ($parentClass && $parentClass->getName() === Renderer::class) {
+                $rendererClass = $currentClass->getName();
+            }
+            $currentClass = $parentClass;
         }
 
-        // Default to Text renderer
-        return Text::class;
+        // Return the found renderer class or default to Text
+        return $rendererClass ?: Text::class;
     }
 
     public function getRenderer(array $args = []): ?Renderer
@@ -67,7 +69,7 @@ class Component extends RouteType
         }
 
         $component = new (Stack::resolveClassName($this->componentClassName))([], $args);
-        if ($component instanceof JSON || $component instanceof Text || $component instanceof CSVDownload) {
+        if (!($component instanceof HTMLComponent) && !($component instanceof LegacyComponent)) {
             return $component;
         }
         $rendererClass = $this->getRendererClass();

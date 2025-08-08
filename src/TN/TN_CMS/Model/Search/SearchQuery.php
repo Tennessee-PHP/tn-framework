@@ -1,6 +1,7 @@
 <?php
 
 namespace TN\TN_CMS\Model\Search;
+
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
@@ -96,7 +97,7 @@ class SearchQuery implements Persistence
             'totalSelectedResults' => $this->totalSelectedResults + 1,
             'selectedRate' => (($this->totalSelectedResults + 1) / ($this->totalCount))
         ]);
-        SelectedSearchResult::record($this->id, $pageEntryId);
+        SearchSelectedResult::record($this->id, $pageEntryId);
     }
 
     /**
@@ -104,6 +105,6 @@ class SearchQuery implements Persistence
      */
     public function getSelectedPageEntryCounts(): array
     {
-        return SelectedSearchResult::getCountsForQuery($this->id);
+        return SearchSelectedResult::getCountsForQuery($this->id);
     }
 }

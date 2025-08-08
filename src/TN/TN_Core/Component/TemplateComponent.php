@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component;
 
 use TN\TN_Core\Component\Renderer\TemplateRender;
 use TN\TN_Core\Component\Component;
+use TN\TN_Core\Error\CodeException;
 use TN\TN_Core\Model\Request\HTTPRequest;
 
 /**
@@ -29,7 +30,11 @@ abstract class TemplateComponent extends Component
     public function __construct(array $options = [], array $pathArguments = [])
     {
         if (self::$numInstances === 0) {
-            $request = HTTPRequest::get();
+            try {
+                $request = HTTPRequest::get();
+            } catch (CodeException $e) {
+                $request = null;
+            }
             self::$numInstances = $request ? (min((int)$request->getRequest('componentIdNum', 0), 10000)) : 0;
         }
         self::$numInstances += 1;

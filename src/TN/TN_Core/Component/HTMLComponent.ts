@@ -24,7 +24,7 @@ let globalI: number = 0;
 abstract class HTMLComponent {
     protected $element: Cash;
     protected reloadMethod: ReloadMethod = 'get';
-protected updateUrlQueryOnReload: boolean = false;
+    protected updateUrlQueryOnReload: boolean = false;
     protected controls: Cash[] = [];
     protected i: number = 0;
     protected reloading: Boolean = false;
@@ -189,7 +189,7 @@ protected updateUrlQueryOnReload: boolean = false;
                 continue;
             }
             let value: string;
-            
+
             if (data[key] instanceof Array) {
                 value = (data[key] as string[]).join(',');
             } else {
@@ -214,7 +214,7 @@ protected updateUrlQueryOnReload: boolean = false;
         if (this.reloadTimer) {
             clearTimeout(this.reloadTimer);
         }
-        
+
         this.$element.hide();
         this.$element.before(response.data);
         let $newElement = this.$element.prev();

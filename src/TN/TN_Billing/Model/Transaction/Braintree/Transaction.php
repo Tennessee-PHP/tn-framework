@@ -24,8 +24,8 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
 {
     use MySQL;
 
-    /** @var string braintree's ID */
-    public string $braintreeId;
+    /** @var string|null braintree's ID */
+    public ?string $braintreeId = null;
 
     /** @var bool if it can be retried again (due to soft decline) */
     public bool $isRetryable = false;

@@ -14,6 +14,11 @@ abstract class PortkeyRequest extends Curl
     public ?object $jsonResponse = null;
     protected string $url = '';
     protected array $request = [];
+    /** @var callable|null */
+    protected $streamCallback = null;
+    protected bool $stream = false;
+    protected string $streamContent = '';
+    protected ?string $traceId = null;
 
     public function __construct()
     {
@@ -28,9 +33,45 @@ abstract class PortkeyRequest extends Curl
         }
 
         $this->setDefaultOptions();
+
+        if ($this->stream) {
+            $this->setupStreamHandling();
+        }
+
         $this->request();
-        $this->validateResponse();
-        $this->parseResponse();
+
+        if ($this->curl_error) {
+            throw new PortkeyException($this->curl_error_message);
+        }
+
+        $this->extractTraceId();
+
+        if (!$this->stream) {
+            $this->validateResponse();
+            $this->parseResponse();
+        }
+    }
+
+    /**
+     * Get the Portkey Trace ID from the last request
+     * @return string|null The trace ID if available, null otherwise
+     */
+    public function getTraceId(): ?string
+    {
+        return $this->traceId;
+    }
+
+    /**
+     * Extract the Trace ID from response headers
+     */
+    protected function extractTraceId(): void
+    {
+        foreach ($this->response_headers as $header) {
+            if (preg_match('/^x-portkey-trace-id:\s*(.+)$/i', $header, $matches)) {
+                $this->traceId = trim($matches[1]);
+                break;
+            }
+        }
     }
 
     protected function setDefaultOptions(): void
@@ -43,24 +84,67 @@ abstract class PortkeyRequest extends Curl
 
     protected function validateResponse(): void
     {
-        if ($this->curl_error) {
-            throw new PortkeyException($this->curl_error_message);
-        }
+        // If response starts with { or [, treat it as JSON
+        if (str_starts_with(trim($this->response), '{') || str_starts_with(trim($this->response), '[')) {
+            $this->jsonResponse = json_decode($this->response);
+            if (!$this->jsonResponse) {
+                throw new PortkeyException('Invalid JSON response from Portkey API');
+            }
 
-        // DEBUG: Output the raw response from Portkey
-        var_dump($this->response);
-
-        $this->jsonResponse = json_decode($this->response);
-        if (!$this->jsonResponse) {
-            throw new PortkeyException('Invalid JSON response from Portkey API');
+            if (isset($this->jsonResponse->error)) {
+                throw new PortkeyException(
+                    $this->jsonResponse->error->message ?? 'Unknown error from Portkey API',
+                    is_numeric($this->jsonResponse->error->code ?? 0) ? (int)($this->jsonResponse->error->code) : 0
+                );
+            }
+        } else {
+            // For non-JSON responses, store the raw text
+            $this->jsonResponse = (object)['choices' => [(object)['message' => (object)['content' => $this->response]]]];
         }
+    }
 
-        if (isset($this->jsonResponse->error)) {
-            throw new PortkeyException(
-                $this->jsonResponse->error->message ?? 'Unknown error from Portkey API',
-                is_numeric($this->jsonResponse->error->code ?? 0) ? (int)($this->jsonResponse->error->code) : 0
-            );
-        }
+    /**
+     * Set up streaming response handling
+     */
+    protected function setupStreamHandling(): void
+    {
+        // Set up callback for processing chunks
+        $this->setOpt(CURLOPT_WRITEFUNCTION, function ($ch, $data) {
+            // Each line is a separate JSON object
+            $lines = explode("\n", $data);
+            foreach ($lines as $line) {
+                if (empty(trim($line))) continue;
+
+                if (str_starts_with($line, 'data: ')) {
+                    $jsonData = substr($line, 6); // Remove 'data: ' prefix
+                    $chunk = json_decode($jsonData);
+
+                    if (isset($chunk->error)) {
+                        throw new PortkeyException(
+                            $chunk->error->message ?? 'Unknown error from Portkey API',
+                            is_numeric($chunk->error->code ?? 0) ? (int)($chunk->error->code) : 0
+                        );
+                    }
+
+                    if (isset($chunk->choices[0]->delta->content)) {
+                        $content = $chunk->choices[0]->delta->content;
+                        if ($this->streamCallback) {
+                            ($this->streamCallback)($content);
+                        }
+                        $this->streamContent .= $content;
+                    }
+
+                    // Check if this is the last chunk
+                    if (isset($chunk->choices[0]->finish_reason) && $chunk->choices[0]->finish_reason === 'stop') {
+                        // Set the final response and validate it
+                        $this->response = $this->streamContent;
+                        $this->validateResponse();
+                        $this->parseResponse();
+                    }
+                }
+            }
+            return strlen($data);
+        });
     }
 
     abstract protected function request(): void;

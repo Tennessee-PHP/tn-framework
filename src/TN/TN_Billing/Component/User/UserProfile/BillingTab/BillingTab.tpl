@@ -270,13 +270,7 @@
                         {/if}
                         We'll use this payment method for all renewals moving forwards.
                     </p>
-                    <form id="updatepaymentmethod_form" action="" method="POST">
-                        <input type="hidden" name="processpayment"
-                               value="{if $braintreeOverduePayment === false}0{else}1{/if}"/>
-                        {*{include file="Router/Route/Funnels/Checkout/Payment/Payment.tpl" submitLabel="Update Payment Method" disableVaultedPayment=true}*}
-                    </form>
-
-                    <div class="alert-danger" style="display:none;"></div>
+                    {include file="TN_Billing/Component/User/UserProfile/BillingTab/UpdatePaymentMethod/UpdatePaymentMethod.tpl"}
                 </div>
             </div>
         </div>

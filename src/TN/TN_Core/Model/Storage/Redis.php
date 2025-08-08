@@ -25,15 +25,18 @@ class Redis
         }
 
         if (!isset(self::$client)) {
-            self::$client = new Client([
-                'scheme' => $_ENV['REDIS_SCHEME'],
-                'host' => $_ENV['REDIS_HOST'],
-                'port' => $_ENV['REDIS_PORT']
-            ], $options);
+            // Use REDIS_URL if available (for Render and other cloud providers)
+            if (!empty($_ENV['REDIS_URL'])) {
+                self::$client = new Client($_ENV['REDIS_URL'], $options);
+            } else {
+                // Fallback to individual components
+                self::$client = new Client([
+                    'scheme' => $_ENV['REDIS_SCHEME'],
+                    'host' => $_ENV['REDIS_HOST'],
+                    'port' => $_ENV['REDIS_PORT']
+                ], $options);
+            }
         }
         return self::$client;
     }
-
 }
-
-?>

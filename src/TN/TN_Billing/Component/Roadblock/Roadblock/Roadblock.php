@@ -32,8 +32,11 @@ class Roadblock extends HTMLComponent
             $this->content = $request->contentRequired;
         }
 
-        $this->requiredPlan = Plan::getPlanForLevel($this->content ? $this->content->level : 0);
-        
+        // Only set requiredPlan if it hasn't been set already
+        if (!$this->requiredPlan) {
+            $this->requiredPlan = Plan::getPlanForLevel($this->content ? $this->content->level : 0);
+        }
+
         // Add RegisterForm component if required plan is free
         if ($this->requiredPlan && !$this->requiredPlan->paid) {
             $this->registerForm = new RegisterForm([
