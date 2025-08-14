@@ -16,7 +16,8 @@ abstract class Request
     /**
      * @param array $options map to properties
      */
-    public function __construct(array $options = []) {
+    public function __construct(array $options = [])
+    {
         // assign any options to properties, where possible
         foreach ($options as $key => $value) {
             if (property_exists($this, $key)) {

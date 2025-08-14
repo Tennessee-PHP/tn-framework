@@ -102,6 +102,11 @@ abstract class HTMLComponent {
         }
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
+            
+            // Skip controls without request-key (like pagination)
+            if (!key) {
+                return;
+            }
             let val = $control.val();
             if (typeof val === 'undefined' || val === '') {
                 val = $control.data('value');

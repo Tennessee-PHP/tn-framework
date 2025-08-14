@@ -14,7 +14,7 @@ class TNException extends \Exception
     protected function getUserIsAdmin(): bool
     {
         if (!isset($this->userIsAdmin)) {
-            $this->userIsAdmin = Command::get() || User::getActive()->hasRole('super-user') || User::getActive()->isLoggedInAsOther();
+            $this->userIsAdmin = Command::isRunning() || User::getActive()->hasRole('super-user') || User::getActive()->isLoggedInAsOther();
         }
         return $this->userIsAdmin;
     }

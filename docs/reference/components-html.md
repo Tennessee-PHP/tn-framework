@@ -730,6 +730,148 @@ class UserProfile extends HTMLComponent
 </div>
 ```
 
+## Component Controls System
+
+### Overview
+
+The TN Framework provides an automatic control system that allows components to react to user interactions without manual event handling. Controls automatically trigger component reloads when their values change.
+
+### Setting Up Controls
+
+#### Template Requirements
+
+Controls require specific data attributes in the template:
+
+```smarty
+<!-- Control wrapper must have framework attributes -->
+<div class="{$classAttribute}" data-request-key="{$requestKey}" data-value="{$currentValue}" id="{$idAttribute}">
+    <!-- Interactive elements need data-page, data-value, etc. -->
+    <input type="text" data-request-key="search" value="{$searchTerm}">
+    <select data-request-key="filter" data-value="{$currentFilter}">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+    </select>
+</div>
+```
+
+#### TypeScript Implementation
+
+```typescript
+export default class MyComponent extends HTMLComponent {
+    protected observe(): void {
+        // Define controls array with cash-dom elements
+        this.controls = [
+            this.$element.find('.search-input'),
+            this.$element.find('.filter-select'),
+            this.$element.find('.pagination-component')
+        ];
+        
+        // Set up automatic control observation
+        this.observeControls();
+    }
+}
+```
+
+### Control Data Attributes
+
+| Attribute | Purpose | Example |
+|-----------|---------|---------|
+| `data-request-key` | Parameter name sent to server | `data-request-key="search"` |
+| `data-value` | Current value for non-input elements | `data-value="active"` |
+
+### How Controls Work
+
+1. **Detection**: Framework finds elements in `this.controls` array
+2. **Event Binding**: Automatically binds change/click events
+3. **Data Collection**: Collects `data-request-key` and current values:
+   - For `input`/`select` elements: Uses `$element.val()` (maintain `value` attribute)
+   - For other elements: Uses `data-value` attribute
+4. **Reload Trigger**: Sends data to component's reload route
+5. **Component Update**: Server renders new component state
+
+### Complete Pagination Control Example
+
+#### PHP Component
+```php
+class ArticleList extends HTMLComponent {
+    public Pagination $pagination;
+    
+    public function prepare(): void {
+        $this->pagination = new Pagination([
+            'itemCount' => $this->getTotalArticles(),
+            'itemsPerPage' => 10,
+            'search' => $searchArgs
+        ]);
+        $this->pagination->prepare();
+    }
+}
+```
+
+#### Template
+```smarty
+<div class="{$classAttribute}" id="{$idAttribute}" data-reload-url="{path route=$reloadRoute}">
+    <!-- Article list content -->
+    
+    <!-- Pagination as a control -->
+    {$pagination->render()}
+</div>
+```
+
+#### TypeScript
+```typescript
+export default class ArticleList extends HTMLComponent {
+    protected observe(): void {
+        this.controls = [
+            this.$element.find('.tn-tn_core-component-pagination-pagination')
+        ];
+        this.observeControls();
+    }
+}
+```
+
+**Key Points:**
+- Pagination automatically includes `data-request-key="page"` and `data-value="{$page}"`
+- No manual event handling needed
+- Framework handles page changes automatically
+- Component reloads with new page data
+
+## Template Data Attributes Reference
+
+### Framework Attributes (Required)
+
+- `class="{$classAttribute}"` - Component CSS classes for identification
+- `id="{$idAttribute}"` - Unique component instance ID
+- `data-reload-url="{path route=$reloadRoute}"` - URL for component reloads
+
+### Control Attributes
+
+- `data-request-key` - Parameter name for server requests
+- `data-value` - Current value for non-input elements (pagination, buttons, etc.)
+
+### Usage Examples
+
+```smarty
+<!-- Search input control: uses value attribute -->
+<input type="text" 
+       data-request-key="search" 
+       value="{$searchTerm}"
+       class="search-input">
+
+<!-- Filter dropdown control: uses value attribute -->
+<select data-request-key="status">
+    <option value="all" {if $currentStatus == 'all'}selected{/if}>All Statuses</option>
+    <option value="active" {if $currentStatus == 'active'}selected{/if}>Active</option>
+</select>
+
+<!-- Pagination component: uses data-value attribute -->
+<nav class="{$classAttribute}" 
+     data-request-key="{$requestKey}" 
+     data-value="{$page}" 
+     id="{$idAttribute}">
+    <!-- Pagination links -->
+</nav>
+```
+
 ## Best Practices Summary
 
 1. **Component Naming**: Use descriptive, focused names without "View" suffix
