@@ -188,12 +188,14 @@ class PageEntry implements Persistence
         // apply the sorting here
         $factors = [];
         $primaries = [];
+        $timestamps = [];
         foreach ($pageEntries as $pageEntry) {
             $pageEntry->setFactor(!empty($filters['search']) ? $filters['search'] : false);
             $factors[] = $pageEntry->factor;
             $primaries[] = $pageEntry->primary;
+            $timestamps[] = $pageEntry->getTimestamp();
         }
-        array_multisort($primaries, SORT_DESC, $factors, SORT_DESC, $pageEntries);
+        array_multisort($primaries, SORT_DESC, $factors, SORT_DESC, $timestamps, SORT_DESC, $pageEntries);
 
         // now let's extract the id, primary and matchedTags, matchedWordsCount
         $results = [];

@@ -203,16 +203,18 @@ class Article extends Content implements Persistence
         $stmt->execute($values);
         $articles = [];
         $sortFactors = [];
+        $timestamps = [];
         $ids = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
             $ids[] = $item['id'];
             if ($sortProperty === null) {
                 $sortFactors[] = self::getSortFactor($item['weight'], $item['publishedTs'], $item['id']);
+                $timestamps[] = $item['publishedTs'];
             }
         }
 
         if ($sortProperty === null) {
-            array_multisort($sortFactors, SORT_DESC, $ids);
+            array_multisort($sortFactors, SORT_DESC, $timestamps, SORT_DESC, $ids);
         }
 
         foreach ($ids as $i => $id) {
@@ -241,24 +243,41 @@ class Article extends Content implements Persistence
      */
     protected static function getSortFactor(int $weight, int $publishedTs, int $id): float
     {
+        return self::calculateTimeFactor($publishedTs) + $weight;
+    }
 
-        // 1 year = 1 point per punish weight
-        //Time::getNow() - Time::ONE_YEAR // one year ago
-        // ($publishedTs - (Time::getNow() - Time::ONE_YEAR)) / Time::ONE_YEAR // this is 0-1 of a year gone since publish
-
-        $punishWeight = 11 - $weight;
-
-        // got to see how old the article is. 1 = ten years or more. 0 = brand new.
-
-        $max = Time::getNow() - (Time::ONE_YEAR * 10);
-        $min = Time::getNow();
-        $oldFactor = ($publishedTs - $min) / ($max - $min);
-        $datePunish = ($oldFactor * $punishWeight);
-
-        $weightFactor = 10 + ($weight / 2);
-        $factor = $weightFactor - $datePunish;
-
-        return $factor;
+    /**
+     * @param int $ts
+     * @return float
+     */
+    private static function calculateTimeFactor(int $ts): float
+    {
+        $diff = Time::getNow() - $ts;
+        $tsScale = [
+            Time::ONE_YEAR * 10, // 0
+            Time::ONE_YEAR * 2, // 1
+            Time::ONE_YEAR, // 2
+            Time::ONE_YEAR * 0.25, // 3
+            Time::ONE_WEEK * 4, // 4
+            Time::ONE_WEEK, // 5
+            Time::ONE_DAY * 3, // 6
+            Time::ONE_DAY, // 7
+            Time::ONE_HOUR * 5, // 8
+            Time::ONE_HOUR, // 9
+            0, // 10
+        ];
+        $i = 0;
+        while ($diff < $tsScale[$i]) {
+            $i += 1;
+        }
+        if (in_array($i, [0, 10])) {
+            $timeFactor = $i;
+        } else {
+            $timeFactor = $i + (
+                ($diff - $tsScale[$i - 1]) / ($tsScale[$i] - $tsScale[$i - 1])
+            );
+        }
+        return $timeFactor;
     }
 
     /**

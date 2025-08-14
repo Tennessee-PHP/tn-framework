@@ -1,0 +1,15 @@
+.tn-tn_cms-component-pageentry-admin-listpageentries-listpageentries {
+  // Force long URLs to wrap in the table
+  table td:first-child {
+    word-break: break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 200px; // Limit the width of the URL column
+    
+    a {
+      word-break: break-all;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+  }
+}
