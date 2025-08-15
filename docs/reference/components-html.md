@@ -61,8 +61,15 @@ src/FBG/FBG_Main/Component/User/UserProfile/
 namespace FBG\FBG_Main\Component\User;
 
 use TN\TN_Core\Component\HTMLComponent;
+use TN\TN_Core\Attribute\Components\Route;
+use TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
 use FBG\FBG_Main\Model\User\User;
 
+/**
+ * User profile component for displaying user information
+ */
+#[Route('FBG_Main:User:userProfile')]
+#[Reloadable]
 class UserProfile extends HTMLComponent
 {
     private User $user;
@@ -156,6 +163,11 @@ class UserProfile extends HTMLComponent
 - Use `{$variable|escape}` for all user-generated content
 - Follow BEM naming convention for CSS classes
 - Use semantic HTML structure
+
+**Critical Component Attributes:**
+- `#[Route('Module:Controller:method')]` - **REQUIRED** for `$reloadRoute` to work in templates
+- `#[Reloadable]` - Required for components that need AJAX reloading
+- Route must match the controller route that renders this component
 
 ### Step 6: Add TypeScript File (Optional)
 
