@@ -48,7 +48,7 @@ export default class BillingTab extends HTMLComponent {
         this.updateRefundButtonState();
 
         // Initialize payment form elements
-        this.$paymentForm = this.$element.find('#payment-form');
+        this.$paymentForm = $('#payment-form');
         this.$paymentSubmitButton = this.$paymentForm.find('input[type="submit"]');
         this.$paymentLoadingIndicator = this.$element.find('.loading');
 
