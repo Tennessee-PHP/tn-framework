@@ -21,6 +21,7 @@ use TN\TN_Core\Attribute\Components\HTMLComponent\BareRender;
 use TN\TN_Core\Attribute\Components\HTMLComponent\MetaPixelEvent;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveFooter;
+use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveMarketingNavbar;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresResource;
 use TN\TN_Core\Component\Error\Maintenance\Maintenance;
 use TN\TN_Core\Component\TemplateEngine;
@@ -77,6 +78,9 @@ class Page extends Renderer
 
     /** @var bool don't display any visual header HTML components */
     public bool $removeHeader = false;
+
+    /** @var bool should the marketing navbar (money back guarantee banner) be removed from the page? */
+    public bool $removeMarketingNavbar = false;
 
     /** @var PageComponent */
     public PageComponent $component;
@@ -193,6 +197,10 @@ class Page extends Renderer
 
         if ($reflection->getAttributes(RemoveFooter::class)) {
             $this->removeFooter = true;
+        }
+
+        if ($reflection->getAttributes(RemoveMarketingNavbar::class)) {
+            $this->removeMarketingNavbar = true;
         }
 
         foreach ($this->component->getPageJsVars() as $var => $value) {
