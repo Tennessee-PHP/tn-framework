@@ -45,6 +45,7 @@ use TN\TN_Core\Model\Storage\Redis;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Cache;
 use TN\TN_Core\Error\CodeException;
+
 /**
  * a user of the website
  *
@@ -55,7 +56,6 @@ use TN\TN_Core\Error\CodeException;
  * other site, allows for quick disabling of account at users request
  */
 #[TableName('users')]
-#[Cache(version: '1.1', lifespan: 3600)]
 class User implements Persistence
 {
     use MySQL;
@@ -313,7 +313,8 @@ class User implements Persistence
         }
 
         if ($request->getSession('TN_LoggedIn_User_Id', null) !== null) {
-            $user = self::readFromId($request->getSession('TN_LoggedIn_User_Id'));
+            $sessionUserId = $request->getSession('TN_LoggedIn_User_Id');
+            $user = static::readFromId($sessionUserId);
             if ($user instanceof User) {
                 self::setUserAsActive($user);
                 return;
@@ -356,7 +357,7 @@ class User implements Persistence
             !empty($tnLoginAsUserId) &&
             $user->hasRole('super-user')
         ) {
-            $otherUser = User::readFromId((int)$tnLoginAsUserId);
+            $otherUser = static::readFromId((int)$tnLoginAsUserId);
             if ($otherUser instanceof User) {
                 $user = $otherUser;
             }
@@ -574,7 +575,7 @@ class User implements Persistence
         if (!$this->hasRole('user-admin')) {
             throw new AccessForbiddenException('You do not have permission to login as another user');
         }
-        $otherUser = User::readFromId($otherUserId);
+        $otherUser = static::readFromId($otherUserId);
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id', null);
         if ($otherUser instanceof User && empty($tnLoginAsUserId)) {
             $request->setSession('TN_LoginAs_User_Id', $otherUserId);
