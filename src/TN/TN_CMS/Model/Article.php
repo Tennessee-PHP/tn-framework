@@ -267,7 +267,7 @@ class Article extends Content implements Persistence
             0, // 10
         ];
         $i = 0;
-        while ($diff < $tsScale[$i]) {
+        while ($i < count($tsScale) - 1 && $diff < $tsScale[$i]) {
             $i += 1;
         }
         if (in_array($i, [0, 10])) {
