@@ -22,6 +22,7 @@ use TN\TN_Core\Attribute\Components\HTMLComponent\MetaPixelEvent;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveNavigation;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RemoveFooter;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresResource;
+use TN\TN_Core\Attribute\Components\NavigationItem;
 use TN\TN_Core\Component\Error\Maintenance\Maintenance;
 use TN\TN_Core\Component\TemplateEngine;
 
@@ -89,6 +90,11 @@ class Page extends Renderer
     public bool $allowFullWidth;
     public ?PageEntry $pageEntry = null;
     public MetaPixel $metaPixel;
+
+    /**
+     * The currently selected navigation item key, or null if none selected
+     */
+    public ?string $selectedNavigation = null;
 
     /**
      * @param string $url adds an externally hosted javascript file to the page
@@ -240,6 +246,9 @@ class Page extends Renderer
             'pageEntry' => $this->pageEntry
         ]);
         $this->titleComponent?->prepare();
+
+        // Set selected navigation based on component NavigationItem attribute
+        $this->setSelectedNavigation();
     }
 
     protected function indexPageToPageEntry(): void
@@ -274,6 +283,20 @@ class Page extends Renderer
             $tagEditor->updateTags($tags);
         } catch (ValidationException) {
             return;
+        }
+    }
+
+    /**
+     * Set the selected navigation based on the component's NavigationItem attribute
+     */
+    protected function setSelectedNavigation(): void
+    {
+        $reflection = new \ReflectionClass($this->component);
+        $navigationAttributes = $reflection->getAttributes(NavigationItem::class);
+
+        if (!empty($navigationAttributes)) {
+            $navigationItem = $navigationAttributes[0]->newInstance();
+            $this->selectedNavigation = $navigationItem->navigationKey;
         }
     }
 
