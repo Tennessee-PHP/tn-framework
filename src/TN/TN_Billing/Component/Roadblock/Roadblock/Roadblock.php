@@ -44,11 +44,6 @@ class Roadblock extends HTMLComponent
             $request = HTTPRequest::get();
             $redirectUrl = $_ENV['BASE_URL'] . ltrim($request->path, '/');
 
-            // Special handling for chat responses
-            if (!empty($_GET['conversationId'])) {
-                $redirectUrl = $_ENV['BASE_URL'] . 'assistant/chat/' . intval($_GET['conversationId']);
-            }
-
             $this->registerForm = new (Stack::resolveClassName(RegisterForm::class))([
                 'redirectUrl' => $redirectUrl
             ]);

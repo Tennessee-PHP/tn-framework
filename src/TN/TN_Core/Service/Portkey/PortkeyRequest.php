@@ -24,10 +24,6 @@ abstract class PortkeyRequest extends Curl
     {
         parent::__construct();
 
-        if (empty($_ENV['PORTKEY_API_KEY'])) {
-            throw new CodeException('PORTKEY_API_KEY must be set in environment variables');
-        }
-
         if (empty($_ENV['PORTKEY_API_ENDPOINT'])) {
             throw new CodeException('PORTKEY_API_ENDPOINT must be set in environment variables');
         }
@@ -76,10 +72,31 @@ abstract class PortkeyRequest extends Curl
 
     protected function setDefaultOptions(): void
     {
-        $this->setHeader('x-portkey-api-key', $_ENV['PORTKEY_API_KEY']);
+        // Get the API key environment variable name (can be overridden by subclasses)
+        $apiKeyEnv = $this->getApiKeyEnvironmentVariable();
+
+        // Fall back to default if specified env var is empty or doesn't exist
+        if (empty($_ENV[$apiKeyEnv]) && $apiKeyEnv !== 'PORTKEY_API_KEY') {
+            $apiKeyEnv = 'PORTKEY_API_KEY';
+        }
+
+        if (empty($_ENV[$apiKeyEnv])) {
+            throw new CodeException("$apiKeyEnv must be set in environment variables");
+        }
+
+        $this->setHeader('x-portkey-api-key', $_ENV[$apiKeyEnv]);
         $this->setHeader('x-portkey-virtual-key', $_ENV['PORTKEY_API_VIRTUAL_KEY']);
         $this->setHeader('Content-Type', 'application/json');
         $this->setHeader('Accept', 'application/json');
+    }
+
+    /**
+     * Get the environment variable name for the API key
+     * Can be overridden by subclasses to use different API keys
+     */
+    protected function getApiKeyEnvironmentVariable(): string
+    {
+        return 'PORTKEY_API_KEY';
     }
 
     protected function validateResponse(): void
