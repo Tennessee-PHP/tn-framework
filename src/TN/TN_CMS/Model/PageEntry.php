@@ -605,6 +605,37 @@ class PageEntry implements Persistence
     }
 
     /**
+     * Search for page entries by path using LIKE matching
+     * @param string $pathQuery The path to search for
+     * @return array Array of PageEntry objects that match the path
+     */
+    public static function searchByPath(string $pathQuery): array
+    {
+        $db = DB::getInstance($_ENV['MYSQL_DB']);
+        $table = self::getTableName();
+
+        // Remove base URL if present at the beginning
+        $baseUrl = $_ENV['BASE_URL'] ?? '';
+        if ($baseUrl && str_starts_with($pathQuery, $baseUrl)) {
+            $pathQuery = substr($pathQuery, strlen($baseUrl));
+        }
+
+        // Remove leading slash if present
+        $pathQuery = ltrim($pathQuery, '/');
+
+        // Use LIKE with % for prefix matching
+        $stmt = $db->prepare("SELECT * FROM {$table} WHERE `path` LIKE ? ORDER BY LENGTH(`path`) ASC");
+        $stmt->execute([$pathQuery . '%']);
+
+        $results = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $results[] = static::getInstance($row);
+        }
+
+        return $results;
+    }
+
+    /**
      * @return int a timestamp for the age of this content, considering both alwaysCurrent and ts
      */
     public function getTimestamp(): int
