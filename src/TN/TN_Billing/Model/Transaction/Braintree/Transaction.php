@@ -326,6 +326,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             $update = [
                 'paymentMethod' => strtoupper($transaction->paymentInstrumentType)
             ];
+
             switch (strtoupper($transaction->paymentInstrumentType)) {
                 case 'ANDROID_PAY_CARD':
                     $update = array_merge($update, $this->cardFromTransactionDetails($transaction->googlePayCardDetails));

@@ -1,7 +1,7 @@
 {* UpdatePaymentMethod template - Braintree hosted fields integration *}
 <div class="alert alert-danger" style="display: none;"></div>
 
-<form id="payment-form" data-update-payment-url="{path route="TN_Billing:UserProfile:updatePaymentMethod"}">
+<form id="payment-form" data-update-payment-url="{path route="TN_Billing:UserProfile:updatePaymentMethod" userId=$user->id}">
         <input type="hidden" name="processpayment" value="{if isset($braintreeOverduePayment)}1{else}0{/if}">
         
         <div class="form-group mb-3">

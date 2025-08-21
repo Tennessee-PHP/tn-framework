@@ -266,7 +266,7 @@ export default class BillingTab extends HTMLComponent {
             };
 
             const response = await axios.post(
-                this.$element.find('#payment-form').data('update-payment-url'),
+                this.$paymentForm.data('update-payment-url'),
                 data,
                 {
                     headers: {
@@ -279,12 +279,12 @@ export default class BillingTab extends HTMLComponent {
                 new SuccessToast('Payment method updated successfully');
                 window.location.reload();
             } else {
-                this.handlePaymentError(response.data.error || 'An error occurred while updating your payment method');
+                this.handlePaymentError(response.data.message || response.data.error || 'An error occurred while updating your payment method');
             }
         } catch (error) {
             // @ts-ignore
             this.handlePaymentError(
-                error.response?.data?.error || error.message || 'An error occurred while processing your payment'
+                error.response?.data?.message || error.response?.data?.error || error.message || 'An error occurred while processing your payment'
             );
         } finally {
             this.hidePaymentLoading();

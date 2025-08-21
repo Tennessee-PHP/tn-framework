@@ -66,6 +66,7 @@ class Customer implements Persistence
         if (!isset($user->id)) {
             return null;
         }
+
         $customers = self::searchByProperty('userId', $user->id);
         if (count($customers) > 0) {
             return $customers[0];
@@ -87,6 +88,7 @@ class Customer implements Persistence
             'customerId' => $result->customer->id,
             'userId' => $user->id
         ]);
+
         return $customer;
     }
 
@@ -158,5 +160,118 @@ class Customer implements Persistence
             return false;
         }
         return $updateResult->success;
+    }
+
+    /**
+     * Validate that this customer exists in Braintree, recreate if not
+     * @return bool true if customer is valid, false if recreation failed
+     */
+    public function validateOrRecreateInBraintree(): bool
+    {
+        if (empty($this->customerId)) {
+            return $this->recreateInBraintree();
+        }
+
+        $braintree = Gateway::getInstanceByKey('braintree');
+        try {
+            $braintree->getApiGateway()->customer()->find($this->customerId);
+            return true;
+        } catch (\Braintree\Exception\NotFound $e) {
+            return $this->recreateInBraintree();
+        }
+    }
+
+    /**
+     * Recreate this customer in Braintree with current user data
+     * @return bool true if recreation successful
+     */
+    public function recreateInBraintree(): bool
+    {
+        $user = $this->getUser();
+        if (!$user) {
+            return false;
+        }
+
+        $braintree = Gateway::getInstanceByKey('braintree');
+        $result = $braintree->getApiGateway()->customer()->create([
+            'firstName' => $user->first,
+            'lastName' => $user->last,
+            'email' => $user->email
+        ]);
+
+        if ($result->success) {
+            $this->update([
+                'customerId' => $result->customer->id,
+                'paymentMethod' => '',
+                'cardExpiration' => '',
+                'cardType' => '',
+                'accountName' => '',
+                'vaultedToken' => ''
+            ]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Update local customer record from Braintree customer object
+     * @param object $braintreeCustomer The Braintree customer object
+     * @return void
+     */
+    public function updateFromBraintreeCustomer(object $braintreeCustomer): void
+    {
+        $update = ['customerId' => $braintreeCustomer->id];
+
+        if (!empty($braintreeCustomer->paymentMethods)) {
+            // Find the payment method with the most recent createdAt timestamp
+            $paymentMethod = null;
+            $mostRecentTime = null;
+
+            foreach ($braintreeCustomer->paymentMethods as $method) {
+                if (isset($method->createdAt)) {
+                    $createdAt = $method->createdAt;
+                    if ($createdAt instanceof \DateTime) {
+                        $timestamp = $createdAt->getTimestamp();
+                    } else {
+                        // Handle string timestamps if needed
+                        $timestamp = strtotime($createdAt);
+                    }
+
+                    if ($mostRecentTime === null || $timestamp > $mostRecentTime) {
+                        $mostRecentTime = $timestamp;
+                        $paymentMethod = $method;
+                    }
+                }
+            }
+
+            // If no timestamps found, fall back to first payment method
+            if (!$paymentMethod) {
+                $paymentMethod = $braintreeCustomer->paymentMethods[0];
+            }
+
+            // Better payment method type detection
+            if (isset($paymentMethod->cardType)) {
+                $update['paymentMethod'] = 'CREDIT_CARD';
+                $update['cardType'] = $paymentMethod->cardType;
+                $update['accountName'] = '';
+            } elseif (isset($paymentMethod->email)) {
+                $update['paymentMethod'] = 'PAYPAL_ACCOUNT';
+                $update['accountName'] = $paymentMethod->email;
+                $update['cardType'] = '';
+            } else {
+                $update['paymentMethod'] = 'UNKNOWN';
+            }
+
+            if (isset($paymentMethod->token)) {
+                $update['vaultedToken'] = $paymentMethod->token;
+            }
+
+            if (isset($paymentMethod->expirationMonth) && isset($paymentMethod->expirationYear)) {
+                $update['cardExpiration'] = $paymentMethod->expirationMonth . '/' . $paymentMethod->expirationYear;
+            }
+        }
+
+        $this->update($update);
     }
 }

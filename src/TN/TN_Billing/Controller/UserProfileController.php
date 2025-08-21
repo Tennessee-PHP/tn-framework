@@ -9,7 +9,7 @@ use TN\TN_Core\Controller\Controller;
 
 class UserProfileController extends Controller
 {
-    #[Path('user-profile/update-payment-method')]
+    #[Path(':userId/profile/action/billing/update-payment-method')]
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\User\UserProfile\BillingTab\UpdatePaymentMethod\UpdatePaymentMethod::class)]
     public function updatePaymentMethod(): void {}

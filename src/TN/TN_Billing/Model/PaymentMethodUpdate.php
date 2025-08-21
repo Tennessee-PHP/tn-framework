@@ -2,11 +2,11 @@
 
 namespace TN\TN_Billing\Model;
 
+use TN\TN_Billing\Model\Customer\Braintree\Customer;
+use TN\TN_Billing\Model\Gateway\Gateway;
 use TN\TN_Billing\Model\Subscription\Subscription;
-use TN\TN_Billing\Model\Transaction\Braintree\Transaction;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Email\Email;
-use TN\TN_Core\Model\IP\IP;
 use TN\TN_Core\Model\User\User;
 
 /**
@@ -36,9 +36,9 @@ class PaymentMethodUpdate
      * @param string $nonce
      * @param string $deviceData
      * @param bool $processPayment
-     * @return Transaction|array
+     * @return bool|array
      */
-    public function update(string $nonce, string $deviceData, bool $processPayment): Transaction|array
+    public function update(string $nonce, string $deviceData, bool $processPayment): bool|array
     {
         if (empty($deviceData)) {
             return [
@@ -77,79 +77,86 @@ class PaymentMethodUpdate
      * process a new payment
      * @param string $nonce
      * @param string $deviceData
-     * @return Transaction|array
+     * @return bool|array
      */
-    protected function processPayment(string $nonce, string $deviceData): Transaction|array
+    protected function processPayment(string $nonce, string $deviceData): bool|array
     {
-        // total piggy back off recur billing!
+        // For overdue payments, we still need to use the transaction system
         $subscription = $this->user->getActiveSubscription();
-        if (!$subscription->hasOverduePayment()) {
-            // If there's no overdue payment but user requested to process payment,
-            // fall back to just updating the payment method instead of throwing an error
-            return $this->updateVaulted($nonce, $deviceData);
+        if ($subscription->hasOverduePayment()) {
+            $result = $subscription->recurBilling($nonce, $deviceData);
+            // If transaction successful, the payment method should already be updated by Braintree
+            if ($result && !is_array($result) && $result->success) {
+                // Update our local customer record from Braintree (without using the nonce again)
+                $customer = Customer::getFromUser($this->user);
+                if ($customer->validateOrRecreateInBraintree()) {
+                    $braintree = Gateway::getInstanceByKey('braintree');
+                    $braintreeCustomer = $braintree->getApiGateway()->customer()->find($customer->customerId);
+                    $customer->updateFromBraintreeCustomer($braintreeCustomer);
+                }
+                return true;
+            }
+            // Return error array if transaction failed
+            return is_array($result) ? $result : [['error' => $result->errorMsg ?? 'Payment processing failed']];
         }
-        return $subscription->recurBilling($nonce, $deviceData);
+
+        // No overdue payment, just update the payment method
+        return $this->updatePaymentMethodOnly($nonce);
     }
 
     /**
-     * update a vaulted payment
+     * update a vaulted payment (deprecated, use updatePaymentMethodOnly)
      * @param string $nonce
      * @param string $deviceData
-     * @return Transaction
+     * @return bool
      * @throws ValidationException
      */
-    protected function updateVaulted(string $nonce, string $deviceData): Transaction
+    protected function updateVaulted(string $nonce, string $deviceData): bool
     {
-        // the transaction itself will do most of the work here! we just need to void the transaction
-        // immediately after
         $subscription = $this->user->getActiveSubscription();
         if ($subscription->hasOverduePayment()) {
             throw new ValidationException('There is a payment due for this subscription that should be processed, ' .
                 'instead of only updating the payment details');
         }
 
-        $transaction = Transaction::getInstance();
-        $transaction->update([
-            'userId' => $this->user->id,
-            'amount' => 1.00,
-            'voucherCodeId' => 0,
-            'discount' => 0,
-            'ip' => IP::getAddress()
-        ]);
+        return $this->updatePaymentMethodOnly($nonce);
+    }
 
-        // execute transaction
-        $plan = $subscription->getPlan();
-        $billingCycle = $subscription->getBillingCycle();
-        $transaction->execute(
-            [
-                'name' => $_ENV['SITE_NAME'] . '*' . $plan->name,
-                'url' => $_ENV['BASE_URL']
-            ],
-            [
-                [
-                    'description' => $plan->description,
-                    'discountAmount' => 0,
-                    'kind' => 'debit',
-                    'name' => $plan->name . ' ' . $billingCycle->name,
-                    'quantity' => 1,
-                    'unitAmount' => 1.00,
-                    'totalAmount' => 1.00
-                ]
-            ],
-            $nonce,
-            $deviceData,
-            true
-        );
+    /**
+     * Update payment method using direct Braintree API call
+     * @param string $nonce
+     * @return bool
+     * @throws ValidationException
+     */
+    protected function updatePaymentMethodOnly(string $nonce): bool
+    {
+        // Get or create customer
+        $customer = Customer::getFromUser($this->user);
 
-        if (!$transaction->success) {
-            throw new ValidationException($transaction->errorMsg ?? 'Unknown error occurred');
+        // Validate customer exists in Braintree, recreate if needed
+        if (!$customer->validateOrRecreateInBraintree()) {
+            throw new ValidationException('Unable to create or validate customer in Braintree');
         }
 
-        $transaction->actionRefund();
-        $transaction->update([
-            'success' => false,
-            'errorMsg' => 'Voided due to payment method update'
-        ]);
+        // Update payment method using Braintree API
+        $braintree = Gateway::getInstanceByKey('braintree');
+        $result = $braintree->getApiGateway()->customer()->update(
+            $customer->customerId,
+            [
+                'paymentMethodNonce' => $nonce
+            ]
+        );
+
+        if (!$result->success) {
+            throw new ValidationException('We were unable to update your payment method: ' . $result->message);
+        }
+
+        // Update local customer record
+        $customer->updateFromBraintreeCustomer($result->customer);
+
+        // Send notification email
+        $subscription = $this->user->getActiveSubscription();
+        $plan = $subscription->getPlan();
 
         Email::sendFromTemplate(
             'payment/paymentmethodupdated',
@@ -161,6 +168,6 @@ class PaymentMethodUpdate
             ]
         );
 
-        return $transaction;
+        return true;
     }
 }
