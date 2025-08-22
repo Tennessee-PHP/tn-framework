@@ -62,7 +62,7 @@ class BillingTab extends UserProfileTab
         $this->planPrices = Price::readAll();
         $this->activeSubscription = Subscription::getUserActiveSubscription($this->user);
         $this->hasHighestPlan = $userHasHighestPlan;
-                $this->braintreeCustomer = Customer::getExistingFromUser($this->user);
+        $this->braintreeCustomer = Customer::getExistingFromUser($this->user);
         $this->subscriptionPrices = $subscriptionPrices;
         $this->endReasonDescriptions = Subscription::getEndReasonOptions();
         $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
