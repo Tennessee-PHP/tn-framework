@@ -1004,6 +1004,13 @@ class Subscription implements Persistence
         }
         $price = $price->price;
 
+        // Special handling for Rotopass subscriptions when no transactions are found
+        // (due to Stack not finding RotoPass transaction classes)
+        if (empty($nonRefundedTransactions) && $this->gatewayKey === 'rotopass') {
+            // For active Rotopass subscriptions, credit the full plan price
+            return $price;
+        }
+
         if (empty($nonRefundedTransactions)) {
             $sinceTs = $this->startTs;
         } else {
