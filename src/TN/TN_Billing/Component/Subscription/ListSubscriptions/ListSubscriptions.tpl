@@ -34,7 +34,9 @@
                         <td>{$subscription->userId|escape}</td>
                         <td>
                             {if $subscription->user}
-                                {$subscription->user->username|escape}
+                                <a href="{path route='TN_Core:User:userProfile' username=$subscription->user->username}" class="text-decoration-none">
+                                    {$subscription->user->username|escape}
+                                </a>
                             {else}
                                 -
                             {/if}

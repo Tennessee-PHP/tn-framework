@@ -533,7 +533,17 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     {
         if ($this->isLatestTransactionInSubscription()) {
             $subscription = Subscription::readFromId($this->subscriptionId);
-            $subscription->end('refunded', true);
+            $subscription->end('refunded');
+        }
+    }
+
+    protected function endSubscriptionAfterRefund(): void
+    {
+        if ($this->subscriptionId > 0) {
+            $subscription = Subscription::readFromId($this->subscriptionId);
+            if ($subscription instanceof Subscription) {
+                $subscription->end('refunded');
+            }
         }
     }
 
@@ -554,7 +564,11 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
 
         if ($this->refunded) {
-            $this->maybeEndSubscriptionAfterRefund();
+            if ($cancelSubscription) {
+                $this->endSubscriptionAfterRefund();
+            } else {
+                $this->maybeEndSubscriptionAfterRefund();
+            }
             return [
                 'error' => 'Transaction ID ' . $this->id . ' has already been refunded'
             ];
@@ -568,7 +582,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         }
 
         if ($cancelSubscription) {
-            $this->maybeEndSubscriptionAfterRefund();
+            $this->endSubscriptionAfterRefund();
         }
 
         $refund = Refund::getInstance();
