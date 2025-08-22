@@ -51,6 +51,7 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'array_search', static::class . '::arraySearch');
         $this->registerPlugin('modifier', 'strtoupper', static::class . '::strtoupper');
         $this->registerPlugin('modifier', 'timezone', static::class . '::timezone');
+        $this->registerPlugin('function', 'icon', static::class . '::icon');
     }
 
     public static function reset(array $array): string
@@ -179,5 +180,34 @@ class TemplateEngine extends Smarty
     {
         $this->clearAllAssign();
         $this->assign(array_merge($this->getBaseData(), $data));
+    }
+
+    /**
+     * Generate a Font Awesome icon
+     * @param array $params Parameters from Smarty template
+     * @return string HTML for the icon
+     */
+    public static function icon(array $params): string
+    {
+        $name = $params['name'] ?? '';
+        $style = $params['style'] ?? 'fas'; // fas, far, fab, fal, fat, fad
+        $class = $params['class'] ?? '';
+        $title = $params['title'] ?? '';
+
+        if (empty($name)) {
+            return '';
+        }
+
+        $iconClass = $style . ' fa-' . $name;
+        if (!empty($class)) {
+            $iconClass .= ' ' . $class;
+        }
+
+        $attributes = '';
+        if (!empty($title)) {
+            $attributes .= ' title="' . htmlspecialchars($title) . '"';
+        }
+
+        return '<i class="' . htmlspecialchars($iconClass) . '"' . $attributes . '></i>';
     }
 }
