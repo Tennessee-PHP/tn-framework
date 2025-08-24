@@ -327,21 +327,33 @@ abstract class Controller
     private function getResponse(HTTPRequest $request, ReflectionMethod $method, Matcher $matcher): HTTPResponse
     {
         try {
+            $request->recordTiming('controller_method_start', 'Starting controller method: ' . $method->getName());
+
             $args = $this->extractArgs($request, $matcher);
             $argValues = array_values($args);
+            $request->recordTiming('args_extracted', 'Arguments extracted from route');
 
             $routeTypeAttributes = $method->getAttributes(RouteType::class, \ReflectionAttribute::IS_INSTANCEOF);
             $renderer = null;
 
             if (!empty($routeTypeAttributes)) {
+                $request->recordTiming('route_type_start', 'Processing route type attributes');
                 $routeType = $routeTypeAttributes[0]->newInstance();
                 $renderer = $routeType->getRenderer($args);
+                $request->recordTiming('route_type_complete', 'Route type renderer created');
             }
 
             if (!$renderer) {
+                $request->recordTiming('method_invoke_start', 'Invoking controller method');
                 $renderer = $method->invoke($this, ...$argValues);
+                $request->recordTiming('method_invoke_complete', 'Controller method completed');
             }
+
+            $request->recordTiming('component_prepare_start', 'Starting component preparation');
+            $request->incrementCounter('components_loaded');
             $renderer->prepare();
+            $request->recordTiming('component_prepare_complete', 'Component preparation completed');
+
             return new HTTPResponse($renderer);
         } catch (ResourceNotFoundException $e) {
             throw $e;
