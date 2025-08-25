@@ -87,6 +87,16 @@ class Redis
                     'options' => $options
                 ]);
 
+                // Check if this might be a misconfigured cluster endpoint
+                // by testing if the host contains cluster-like naming
+                $hostname = $_ENV['REDIS_HOST'] ?? '';
+                if (strpos($hostname, 'cluster') !== false || strpos($hostname, '.cache.') !== false) {
+                    var_dump([
+                        'warning' => 'Host appears to be a cluster endpoint but REDIS_CLUSTER=0',
+                        'suggestion' => 'Try setting REDIS_CLUSTER=1 in your environment'
+                    ]);
+                }
+
                 self::$client = new Client($connectionParams, $options);
             }
         }
