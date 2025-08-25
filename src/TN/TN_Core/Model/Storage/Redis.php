@@ -55,22 +55,27 @@ class Redis
 
                     self::$client = new Client($clusterNodes, $options);
                 } else {
-                    // Single configuration endpoint (AWS ElastiCache) - connect as single instance
-                    // The configuration endpoint handles cluster routing internally
-                    $connectionParams = [
-                        'scheme' => $_ENV['REDIS_SCHEME'],
-                        'host' => $_ENV['REDIS_HOST'],
-                        'port' => $_ENV['REDIS_PORT']
+                    // AWS ElastiCache configuration endpoint - use as cluster seed node
+                    $options['cluster'] = 'redis';
+
+                    // Add cluster-specific options to match PHP session configuration
+                    $options['parameters'] = [
+                        'timeout' => 5.0,
+                        'read_write_timeout' => 0,
                     ];
+
+                    // Connect to the configuration endpoint as a cluster seed node
+                    $clusterNodes = [$_ENV['REDIS_SCHEME'] . '://' . $_ENV['REDIS_HOST'] . ':' . $_ENV['REDIS_PORT']];
 
                     // DEBUG: Show what we're connecting to
                     var_dump([
-                        'connection_type' => 'cluster_config_endpoint',
-                        'connection_params' => $connectionParams,
-                        'options' => $options
+                        'connection_type' => 'cluster_seed_node',
+                        'cluster_nodes' => $clusterNodes,
+                        'options' => $options,
+                        'note' => 'Using seed node approach like PHP sessions'
                     ]);
 
-                    self::$client = new Client($connectionParams, $options);
+                    self::$client = new Client($clusterNodes, $options);
                 }
             } else {
                 // Single Redis instance configuration (non-cluster)
