@@ -10,9 +10,7 @@ class Breadcrumb
     public function __construct(
         public string $textOrClass,
         public string $path = ''
-    )
-    {
-    }
+    ) {}
 
     public function getBreadcrumbEntry(): BreadcrumbEntry
     {
