@@ -25,7 +25,8 @@ trait State
     {
         try {
             $changedProperties = array_merge($changedProperties, $this->beforeSave($changedProperties));
-            if ($this->saveStorage($changedProperties) === SaveType::Update) {
+            $saveType = $this->saveStorage($changedProperties);
+            if ($saveType === SaveType::Update) {
                 $this->afterSaveUpdate($changedProperties);
                 if (count($changedProperties) > 0) {
                     $this->invalidateCache();

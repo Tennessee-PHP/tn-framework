@@ -145,9 +145,28 @@ trait Cache
         if (!static::cacheEnabled()) {
             return;
         }
+
+        // Invalidate object cache for the current class
         CacheStorage::delete(static::getCacheKey('object', $this->id));
         CacheStorage::setRemove(static::getCacheKey('set', 'objects'), static::getCacheKey('object', $this->id));
+
+        // Invalidate search/count caches for the current class
         static::invalidateCacheSet('searches');
         static::invalidateCacheSet('counts');
+
+        // CRITICAL FIX: Also invalidate caches for all parent classes in the inheritance hierarchy
+        $parentClass = get_parent_class(static::class);
+        while ($parentClass && method_exists($parentClass, 'cacheEnabled')) {
+            // Invalidate object cache for parent class
+            $parentCacheKey = implode(':', [$parentClass, static::getCacheVersion(), 'object', $this->id]);
+            CacheStorage::delete($parentCacheKey);
+            CacheStorage::setRemove(implode(':', [$parentClass, static::getCacheVersion(), 'set', 'objects']), $parentCacheKey);
+
+            // Invalidate search/count caches for parent class
+            $parentClass::invalidateCacheSet('searches');
+            $parentClass::invalidateCacheSet('counts');
+
+            $parentClass = get_parent_class($parentClass);
+        }
     }
 }
