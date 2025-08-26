@@ -137,7 +137,18 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         $braintree = Gateway::getInstanceByKey('braintree');
         $result = $braintree->getApiGateway()->transaction()->refund($this->braintreeId);
 
-        return $result->success ? true : 'Braintree refund failed: ' . ($result->message ?? 'Unknown error');
+        if ($result->success) {
+            return true;
+        }
+
+        // Check if the error is because it's already refunded
+        $errorMessage = $result->message ?? 'Unknown error';
+        if (stripos($errorMessage, 'already been') !== false && stripos($errorMessage, 'refunded') !== false) {
+            // Transaction is already refunded in Braintree, treat as success
+            return true;
+        }
+
+        return 'Braintree refund failed: ' . $errorMessage;
     }
 
     protected function treatDescriptor(array $descriptor): array
@@ -574,8 +585,17 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
             ];
         }
 
+        // Atomically mark as refunded to prevent race conditions
+        $this->update([
+            'refunded' => true
+        ]);
+
         $res = $this->actionRefund();
         if ($res !== true) {
+            // Revert the refunded flag if Braintree call failed
+            $this->update([
+                'refunded' => false
+            ]);
             return [
                 'error' => 'The credit transaction failed to complete for Transaction ID ' . $this->id . ' (Braintree ID: ' . ($this->braintreeId ?? 'N/A') . '). Reason: ' . $res
             ];
@@ -621,10 +641,6 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
                 'error' => 'Failed to create refund record. ' . implode(' | ', $errorDetails)
             ];
         }
-
-        $this->update([
-            'refunded' => true
-        ]);
 
         $user = $this->getUser();
         if ($user instanceof User) {
