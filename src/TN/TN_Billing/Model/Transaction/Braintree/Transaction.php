@@ -552,7 +552,7 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     {
         if ($this->subscriptionId > 0) {
             $subscription = Subscription::readFromId($this->subscriptionId);
-            if ($subscription instanceof Subscription) {
+            if ($subscription instanceof Subscription && !$subscription->hasEndTs()) {
                 $subscription->end('refunded');
             }
         }
