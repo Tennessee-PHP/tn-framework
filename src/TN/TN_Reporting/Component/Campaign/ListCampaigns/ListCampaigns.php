@@ -48,7 +48,7 @@ class ListCampaigns extends HTMLComponent
         $count = Campaign::count($search);
         $this->pagination = new Pagination([
             'itemCount' => $count,
-            'itemsPerPage' => 200,
+            'itemsPerPage' => 100,
             'search' => $search
         ]);
         $this->pagination->prepare();

@@ -7,6 +7,11 @@ export default class ListCampaigns extends HTMLComponent {
     private toggleArchiveCampaignId: number|null = null;
 
     protected observe(): void {
+        this.controls = [
+            this.$element.find('.tn-tn_core-component-pagination-pagination')
+        ];
+        this.observeControls();
+        
         this.$element.on('click', '.toggle-archive-btn', this.onToggleArchiveClick.bind(this));
     }
     
