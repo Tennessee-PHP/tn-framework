@@ -522,6 +522,171 @@ docker exec container-name php src/run.php components/map
 
 This regenerates the componentMap.ts file that tells the TN Framework which TypeScript classes to instantiate for each component.
 
+## Load More (Infinite Scroll) Components
+
+### Overview
+
+The TN Framework provides built-in infinite scroll functionality through the `#[LoadMore]` attribute. This creates a seamless user experience where new content loads automatically as users scroll.
+
+### Basic Setup
+
+#### 1. Add LoadMore Attribute
+
+```php
+<?php
+namespace Package\Module\Component\Controller;
+
+use TN\TN_Core\Component\HTMLComponent;
+use TN\TN_Core\Attribute\Components\HTMLComponent\LoadMore;
+use TN\TN_Core\Attribute\Components\FromQuery;
+
+#[LoadMore]
+class ListItems extends HTMLComponent
+{
+    #[FromQuery] public int $more = 0;     // AJAX load more flag
+    #[FromQuery] public int $fromId = 0;   // Cursor for pagination
+    
+    public array $items = [];
+    public bool $hasMore = false;
+    
+    public function prepare(): void
+    {
+        $this->loadItems();
+    }
+    
+    private function loadItems(): void
+    {
+        $itemsPerLoad = 24;
+        
+        // Build search with cursor-based pagination
+        $search = new SearchArguments();
+        $search->sorters = [new SearchSorter('createdAt', SearchSorterDirection::DESC)];
+        
+        // Add cursor condition for load more requests
+        if ($this->more === 1 && $this->fromId > 0) {
+            $fromItem = Item::readFromId($this->fromId);
+            if ($fromItem) {
+                $search->conditions[] = new SearchComparison('`createdAt`', '<', 
+                    $fromItem->createdAt->format('Y-m-d H:i:s')
+                );
+            }
+        }
+        
+        // Limit to itemsPerLoad + 1 to check if there are more items
+        $search->limit = new SearchLimit(0, $itemsPerLoad + 1);
+        
+        // Fetch items
+        $results = Item::search($search);
+        
+        // Check if there are more items
+        if (count($results) > $itemsPerLoad) {
+            $this->hasMore = true;
+            array_pop($results);
+        }
+        
+        $this->items = $results;
+    }
+}
+```
+
+#### 2. Template Structure
+
+```smarty
+{* Full page render? Show page wrapper *}
+{if $more != "1"}
+<div class="{$classAttribute}" id="{$idAttribute}" 
+     data-reload-url="{path route=$reloadRoute}"
+     {if $supportsLoadMore}data-load-more-url="{path route=$loadMoreRoute}" data-supports-load-more="true"{/if}>
+    
+    {* Page header, filters, etc. *}
+    <div class="header">...</div>
+    
+    {if $items}
+        <div class="{tw component='layout-grid'}" data-items-container="true">
+    {else}
+        <div class="{tw component='empty-state'}">No items found</div>
+    {/if}
+{/if}
+
+{* Items content - always rendered *}
+{if $items}
+    {foreach $items as $item}
+        {assign var='isLastItem' value=($item@last)}
+        <div class="item-card" data-item-id="{$item->id}"{if $isLastItem} data-has-more="{if $hasMore}true{else}false{/if}"{/if}>
+            {* Item content *}
+        </div>
+    {/foreach}
+{/if}
+
+{* Close wrapper if not a load more request *}
+{if $more != "1"}
+    {if $items}
+        </div> {* Close data-items-container *}
+    {/if}
+    
+    {* Load More Status *}
+    <div class="load-more-status-container">
+        {* Loading state *}
+        <div class="{tw component='load-more-trigger'}" data-load-more-state="loading"{if !$hasMore} style="display: none;"{/if}>
+            <div class="{tw component='load-more-spinner'}">
+                <span class="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+                <span>Loading more items...</span>
+            </div>
+        </div>
+        
+        {* No more state *}
+        {if $items}
+            <div class="{tw component='load-more-trigger'}" data-load-more-state="no-more"{if $hasMore} style="display: none;"{/if}>
+                <div class="text-center text-gray-500 dark:text-gray-400">
+                    {icon_material name='list' size='lg' color='text-muted'}
+                    <p class="mt-2">No more items found</p>
+                </div>
+            </div>
+        {/if}
+    </div>
+    
+</div>
+{/if}
+```
+
+### Key Requirements
+
+#### Template Data Attributes
+
+- **`data-items-container="true"`** - Marks the container holding items
+- **`data-item-id="{$item->id}"`** - Unique ID for each item (for cursor pagination)
+- **`data-has-more="true/false"`** - On last item only, indicates if more items exist
+- **`data-load-more-state="loading|no-more"`** - Controls visibility of status messages
+- **`data-supports-load-more="true"`** - Enables infinite scroll on component
+
+#### Cursor-Based Pagination
+
+Always use cursor-based pagination for reliable results:
+
+```php
+// Use backticks around column names in SearchComparison
+$search->conditions[] = new SearchComparison('`createdAt`', '<', $timestamp);
+```
+
+#### Partial Rendering
+
+The template must support both full page and partial (AJAX) rendering:
+- **Full page**: `$more != "1"` - Renders complete component with status container
+- **AJAX load more**: `$more == "1"` - Renders only new items
+
+### LoadMore Routes
+
+The framework automatically provides load more routes when using `#[LoadMore]`:
+
+```php
+// Controller routes
+#[Path('items')]
+#[Component(\Package\Module\Component\Controller\ListItems::class)]
+public function listItems(): void {}
+
+// Load more route is automatically available at same URL with ?more=1&fromId=123
+```
+
 ## Best Practices
 
 ### Data Processing

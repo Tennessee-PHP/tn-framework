@@ -108,4 +108,113 @@ private makeApiCall(): void {
 }
 ```
 
+## Load More (Infinite Scroll) Components
+
+### Overview
+
+TypeScript components that use the `#[LoadMore]` attribute automatically inherit infinite scroll functionality from the base `HTMLComponent` class. No additional TypeScript code is required for basic infinite scroll.
+
+### Automatic Behavior
+
+The framework automatically:
+- Detects scroll position and triggers load more requests
+- Manages loading states and error handling  
+- Updates the status container (loading/no-more messages)
+- Appends new items to the existing container
+- Observes new items for component initialization
+
+### Custom Item Observation
+
+Override `observeItems()` to add custom behavior for newly loaded items:
+
+```typescript
+import HTMLComponent from '@tn/TN_Core/Component/HTMLComponent';
+
+export default class ListItems extends HTMLComponent {
+    protected updateUrlQueryOnReload: boolean = true;
+
+    protected observe(): void {
+        // Initialize existing items on page load
+        this.observeExistingItems();
+    }
+
+    /**
+     * Observe existing items on page load
+     */
+    private observeExistingItems(): void {
+        const $existingItems = this.$element.find('[data-items-container] > *');
+        this.observeItems($existingItems);
+    }
+
+    /**
+     * Override to add custom behavior for new items
+     */
+    protected observeItems($items: Cash): void {
+        // Call parent to handle component instantiation
+        super.observeItems($items);
+        
+        // Add custom item-specific functionality
+        this.setupImageLazyLoading($items);
+        this.setupItemHoverEffects($items);
+        this.setupItemClickHandlers($items);
+    }
+
+    private setupImageLazyLoading($items: Cash): void {
+        $items.find('img').each((i, img) => {
+            const $img = $(img);
+            if (!$img.attr('loading')) {
+                $img.attr('loading', 'lazy');
+            }
+        });
+    }
+
+    private setupItemHoverEffects($items: Cash): void {
+        $items.on('mouseenter', (e) => {
+            $(e.currentTarget).addClass('hover-effect');
+        }).on('mouseleave', (e) => {
+            $(e.currentTarget).removeClass('hover-effect');
+        });
+    }
+
+    private setupItemClickHandlers($items: Cash): void {
+        $items.find('.item-action-btn').on('click', (e) => {
+            e.preventDefault();
+            const itemId = $(e.currentTarget).closest('[data-item-id]').data('item-id');
+            this.handleItemAction(itemId);
+        });
+    }
+
+    private handleItemAction(itemId: number): void {
+        // Custom item action logic
+    }
+}
+```
+
+### Framework Integration
+
+LoadMore components automatically integrate with:
+
+- **Scroll Detection**: 500px from bottom triggers load more
+- **Throttling**: 1-second delay prevents rapid requests  
+- **Error Handling**: Stops requests on error, shows error toast
+- **State Management**: Manages `loadingMore` and `hasMore` states
+- **DOM Updates**: Appends new items and updates status messages
+
+### Status Container Management
+
+The framework automatically manages status messages using template data attributes:
+
+- **`[data-load-more-state="loading"]`** - Shows during load requests
+- **`[data-load-more-state="no-more"]`** - Shows when no more items exist
+
+No TypeScript code needed - the framework handles show/hide automatically.
+
+### Best Practices
+
+- **Keep TypeScript behavioral only** - Never put HTML strings in TypeScript
+- **Use data attributes** - Let templates control content and structure  
+- **Override observeItems()** - Add custom behavior for newly loaded items
+- **Call super.observeItems()** - Ensure framework component initialization
+- **Test with existing items** - Initialize behavior for items on page load
+
 That's it. These are the core patterns for TN Framework TypeScript components.
