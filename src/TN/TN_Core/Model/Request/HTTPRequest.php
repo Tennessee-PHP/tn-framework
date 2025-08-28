@@ -43,6 +43,9 @@ class HTTPRequest extends Request
 
     /** @var bool  */
     public bool $notFound = false;
+    
+    /** @var bool Whether this request will render a full page or just a component */
+    public bool $isFullPageRender = true;
 
     protected array $query;
     protected array $post;

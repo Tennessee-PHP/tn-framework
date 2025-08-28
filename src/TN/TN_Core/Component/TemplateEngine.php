@@ -52,6 +52,16 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'strtoupper', static::class . '::strtoupper');
         $this->registerPlugin('modifier', 'timezone', static::class . '::timezone');
         $this->registerPlugin('function', 'icon', static::class . '::icon');
+        
+        // Tailwind class generation system
+        $this->registerPlugin('function', 'tw', \TN\TN_Core\Component\TailwindClassGenerator::class . '::generateClasses');
+        $this->registerPlugin('modifier', 'tw_color', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getColor');
+        $this->registerPlugin('modifier', 'tw_component', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getComponent');
+        $this->registerPlugin('modifier', 'tw_text_color', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getTextColor');
+        
+        // Icon generation system
+        $this->registerPlugin('function', 'icon_material', \TN\TN_Core\Component\MaterialIconGenerator::class . '::generateIcon');
+        $this->registerPlugin('function', 'icon_flag', \TN\TN_Core\Component\FlagIconGenerator::class . '::generateFlag');
     }
 
     public static function reset(array $array): string

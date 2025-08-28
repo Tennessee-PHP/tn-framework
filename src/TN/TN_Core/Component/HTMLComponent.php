@@ -97,6 +97,9 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     protected ?string $title = null;
     protected ?string $subtitle = null;
     protected ?string $description = null;
+    
+    /** @var bool Whether this component is being rendered as part of a full page or standalone */
+    public bool $isFullPageRender;
 
     /**
      * @return string
@@ -112,6 +115,10 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     public function __construct(array $options = [], array $pathArguments = [])
     {
         parent::__construct($options, $pathArguments);
+
+        // Get the render mode from the request (already determined by framework routing)
+        $request = \TN\TN_Core\Model\Request\HTTPRequest::get();
+        $this->isFullPageRender = $request->isFullPageRender;
 
         // get a reflection class of the static class
         $reflection = new \ReflectionClass(static::class);
@@ -131,7 +138,9 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     {
         $data = [
             'id' => $this->getHtmlId(),
-            'theme' => Theme::getTheme()
+            'theme' => Theme::getTheme(),
+            'title' => $this->getPageTitle(),
+            'breadcrumbEntries' => $this->getBreadcrumbEntries()
         ];
         $pageAttribute = $this->getFirstAttributeInstance(Page::class);
         $routeAttribute = $this->getFirstAttributeInstance(Route::class);
@@ -291,4 +300,6 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     {
         return [];
     }
+
+
 }

@@ -65,11 +65,13 @@ use TN\TN_Core\Attribute\Relationships\CreatedTimestamp;
 use TN\TN_Core\Attribute\Relationships\UpdatedTimestamp;
 
 #[CreatedTimestamp]
-public int $createdTs;      // Auto-set on creation
+public DateTime $createdAt;      // Auto-set on creation
 
 #[UpdatedTimestamp] 
-public int $updatedTs;      // Auto-updated on save
+public DateTime $updatedAt;      // Auto-updated on save
 ```
+
+**Important:** Always use `DateTime` objects for all date/time fields in TN Framework projects. Never use integer timestamps.
 
 ## Parent-Child Relationships
 

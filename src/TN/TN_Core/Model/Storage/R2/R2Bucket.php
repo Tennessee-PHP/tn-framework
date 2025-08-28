@@ -224,6 +224,29 @@ abstract class R2Bucket
     }
 
     /**
+     * Check if a file exists in the R2 bucket
+     * 
+     * @param string $key File key/path in bucket
+     * @return bool True if file exists, false otherwise
+     */
+    public function fileExists(string $key): bool
+    {
+        try {
+            $client = $this->getClient();
+            
+            $client->headObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $key
+            ]);
+            
+            return true;
+        } catch (\Exception $e) {
+            // File doesn't exist or other error occurred
+            return false;
+        }
+    }
+
+    /**
      * Get MIME type of file
      */
     private function getMimeType(string $filePath): string
