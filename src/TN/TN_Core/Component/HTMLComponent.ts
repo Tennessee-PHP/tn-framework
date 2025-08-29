@@ -88,9 +88,18 @@ abstract class HTMLComponent {
 
     protected observeControls(): void {
         this.controls.forEach((control: Cash) => {
-            control.on('change', this.reload.bind(this));
-            if (control.is('input[type=text], input[type=password], input[type=email]')) {
-                control.on('keyup', this.onControlKeyUp.bind(this));
+            // For LoadMore components, handle control changes differently
+            if (this.$element.data('supports-load-more')) {
+                control.on('change', this.onLoadMoreControlChange.bind(this));
+                if (control.is('input[type=text], input[type=password], input[type=email]')) {
+                    control.on('keyup', this.onLoadMoreControlKeyUp.bind(this));
+                }
+            } else {
+                // Standard behavior for non-LoadMore components
+                control.on('change', this.reload.bind(this));
+                if (control.is('input[type=text], input[type=password], input[type=email]')) {
+                    control.on('keyup', this.onControlKeyUp.bind(this));
+                }
             }
         });
     }
@@ -101,6 +110,30 @@ abstract class HTMLComponent {
             clearTimeout(this.reloadTimer);
         }
         this.reloadTimer = setTimeout(this.reload.bind(this), this.keyUpReloadDelay);
+    }
+
+    /**
+     * Handle control changes for LoadMore components
+     */
+    protected onLoadMoreControlChange(): void {
+        // Clear existing items and restart from beginning
+        const $itemsContainer = this.$element.find('[data-items-container]');
+        if ($itemsContainer.length > 0) {
+            $itemsContainer.empty();
+        }
+        this.lastItemId = 0; // Reset to start from beginning
+        this.hasMore = true; // Reset hasMore flag
+        this.loadMoreFromControlChange(); // Use special method for control changes
+    }
+
+    /**
+     * Handle keyup events for LoadMore components 
+     */
+    protected onLoadMoreControlKeyUp(e: any): void {
+        if (this.reloadTimer) {
+            clearTimeout(this.reloadTimer);
+        }
+        this.reloadTimer = setTimeout(this.onLoadMoreControlChange.bind(this), this.keyUpReloadDelay);
     }
 
     protected getReloadData(): ReloadData {
@@ -114,8 +147,8 @@ abstract class HTMLComponent {
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
             
-            // Skip controls without request-key (like pagination)
-            if (!key) {
+            // Skip controls without request-key unless they have request-unpack-value-from-json
+            if (!key && $control.data('request-unpack-value-from-json') !== 'yes') {
                 return;
             }
             let val = $control.val();
@@ -130,8 +163,7 @@ abstract class HTMLComponent {
             }
 
             if ($control.data('request-unpack-value-from-json') === 'yes') {
-                // @ts-ignore
-                _.assign(data, JSON.parse(val));
+                _.assign(data, typeof val === 'object' ? val : JSON.parse(val));
             } else {
                 data[key] = val;
             }
@@ -211,7 +243,11 @@ abstract class HTMLComponent {
             } else {
                 value = data[key] as string;
             }
-            thisUrl.searchParams.set(key, value);
+            
+            // Skip empty values to keep URLs clean
+            if (value && value.trim() !== '') {
+                thisUrl.searchParams.set(key, value);
+            }
         }
         history.pushState(null, '', thisUrl.href);
     }
@@ -298,7 +334,15 @@ abstract class HTMLComponent {
             const hasMoreData = lastItem.data('has-more');
             this.hasMore = hasMoreData === 'true' || hasMoreData === true;
         } else {
-            this.hasMore = false;
+            // Check for hidden div with data-has-more when no items
+            const $hasMoreDiv = this.$element.find('[data-has-more]');
+            if ($hasMoreDiv.length > 0) {
+                const hasMoreData = $hasMoreDiv.data('has-more');
+                this.hasMore = hasMoreData === 'true' || hasMoreData === true;
+            } else {
+                // Fallback: set to true to allow filters to trigger loading
+                this.hasMore = true;
+            }
         }
     }
 
@@ -334,6 +378,43 @@ abstract class HTMLComponent {
         setTimeout(() => {
             const loadMoreData = this.getLoadMoreData();
             
+            if (this.updateUrlQueryOnReload) {
+                // Get data without reload/more/fromId params for URL update
+                const urlData = this.getReloadData();
+                this.updateUrlQuery(urlData);
+            }
+            
+            axios.get(this.$element.data('load-more-url'), {
+                params: loadMoreData
+            })
+            .then(this.onLoadMoreSuccess.bind(this))
+            .catch((error) => {
+                this.hasMore = false; // Stop trying on error
+                this.onLoadMoreError(error);
+            });
+        }, 1000);
+    }
+
+    /**
+     * Load more items triggered by control change (no fromId)
+     */
+    protected loadMoreFromControlChange(): void {
+        if (this.loadingMore) {
+            return;
+        }
+
+        this.setLoadingMore(true);
+
+        // Wait 1 second before firing the request
+        setTimeout(() => {
+            const loadMoreData = this.getLoadMoreDataFromControlChange();
+            
+            if (this.updateUrlQueryOnReload) {
+                // Get data without reload/more/fromId params for URL update
+                const urlData = this.getReloadData();
+                this.updateUrlQuery(urlData);
+            }
+            
             axios.get(this.$element.data('load-more-url'), {
                 params: loadMoreData
             })
@@ -353,6 +434,17 @@ abstract class HTMLComponent {
         data['reload'] = 1;  // This triggers component-only rendering
         data['more'] = 1;
         data['fromId'] = this.lastItemId;
+        return data;
+    }
+
+    /**
+     * Get data for load more request from control change (no fromId)
+     */
+    protected getLoadMoreDataFromControlChange(): ReloadData {
+        const data = this.getReloadData();
+        data['reload'] = 1;  // This triggers component-only rendering
+        data['more'] = 1;
+        // Don't include fromId - start fresh
         return data;
     }
 
@@ -407,8 +499,8 @@ abstract class HTMLComponent {
         
         if (loading) {
             // Show loading state, hide no-more state
-            this.$element.find('[data-load-more-state="loading"]').show();
-            this.$element.find('[data-load-more-state="no-more"]').hide();
+            this.$element.find('[data-load-more-state="loading"]').removeClass('hidden');
+            this.$element.find('[data-load-more-state="no-more"]').addClass('hidden');
         }
     }
 
@@ -418,12 +510,12 @@ abstract class HTMLComponent {
     protected updateStatusContainer(): void {
         if (this.hasMore) {
             // Show loading state, hide no-more state
-            this.$element.find('[data-load-more-state="loading"]').show();
-            this.$element.find('[data-load-more-state="no-more"]').hide();
+            this.$element.find('[data-load-more-state="loading"]').removeClass('hidden');
+            this.$element.find('[data-load-more-state="no-more"]').addClass('hidden');
         } else {
             // Hide loading state, show no-more state
-            this.$element.find('[data-load-more-state="loading"]').hide();
-            this.$element.find('[data-load-more-state="no-more"]').show();
+            this.$element.find('[data-load-more-state="loading"]').addClass('hidden');
+            this.$element.find('[data-load-more-state="no-more"]').removeClass('hidden');
         }
     }
 

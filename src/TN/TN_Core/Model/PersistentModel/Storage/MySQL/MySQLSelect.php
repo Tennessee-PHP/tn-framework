@@ -8,6 +8,7 @@ use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonArgument;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonJoin;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonOperator;
 use TN\TN_Core\Model\PersistentModel\Search\SearchCondition;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLogical;
@@ -75,7 +76,13 @@ class MySQLSelect
 
     private function getConditionForeignTables(SearchCondition $condition): void
     {
-        if ($condition instanceof SearchComparison) {
+        if ($condition instanceof SearchComparisonJoin) {
+            // SearchComparisonJoin extends SearchComparison, so handle it first
+            $this->getComparisonForeignTables($condition);
+            // Also add the joined classes to foreign tables
+            $this->addClassToForeignTables($condition->joinFromClass);
+            $this->addClassToForeignTables($condition->joinToClass);
+        } else if ($condition instanceof SearchComparison) {
             $this->getComparisonForeignTables($condition);
         } else if ($condition instanceof SearchLogical) {
             foreach ($condition->conditions as $subCondition) {
@@ -98,15 +105,23 @@ class MySQLSelect
         }
 
         foreach ($classes as $class) {
-            $reflection = new \ReflectionClass($class);
-            $attributes = $reflection->getAttributes(TableName::class);
-            if (empty($attributes)) {
-                continue;
-            }
-            $table = $attributes[0]->newInstance()->name;
-            if ($table !== $this->table) {
-                $this->foreignTables[$class] = $table;
-            }
+            $this->addClassToForeignTables($class);
+        }
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    private function addClassToForeignTables(string $class): void
+    {
+        $reflection = new \ReflectionClass($class);
+        $attributes = $reflection->getAttributes(TableName::class);
+        if (empty($attributes)) {
+            return;
+        }
+        $table = $attributes[0]->newInstance()->name;
+        if ($table !== $this->table) {
+            $this->foreignTables[$class] = $table;
         }
     }
 
