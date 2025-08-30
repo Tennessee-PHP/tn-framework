@@ -154,6 +154,11 @@ class PaymentMethodUpdate
         // Update local customer record
         $customer->updateFromBraintreeCustomer($result->customer);
 
+        // Ensure new payment method is set as default in Braintree
+        if (!empty($customer->vaultedToken)) {
+            $customer->updateDefaultPaymentMethodToken();
+        }
+
         // Send notification email
         $subscription = $this->user->getActiveSubscription();
         $plan = $subscription->getPlan();
