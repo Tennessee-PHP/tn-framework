@@ -87,25 +87,28 @@ abstract class HTMLComponent {
     protected unobserve(): void {}
 
     protected observeControls(): void {
-    
-        console.log('observeControls', this.controls);
         this.controls.forEach((control: Cash) => {
             // For LoadMore components, handle control changes differently
             if (this.$element.data('supports-load-more')) {
-                console.log('supports load more!', control);
-                control.on('change', this.onLoadMoreControlChange.bind(this));
+                control.on('change', this.onLoadMoreControlChange.bind(this, control));
                 if (control.is('input[type=text], input[type=password], input[type=email]')) {
                     control.on('keyup', this.onLoadMoreControlKeyUp.bind(this));
                 }
             } else {
-                console.log('observeControls', control);
                 // Standard behavior for non-LoadMore components
-                control.on('change', this.reload.bind(this));
+                control.on('change', this.onControlChange.bind(this, control));
                 if (control.is('input[type=text], input[type=password], input[type=email]')) {
                     control.on('keyup', this.onControlKeyUp.bind(this));
                 }
             }
         });
+    }
+
+    private onControlChange($control: Cash): void {
+        // Set timestamp when control changes
+        const timestamp = Date.now();
+        $control.attr('data-timestamp', timestamp.toString());
+        this.reload();
     }
 
     onControlKeyUp(e: any): void {
@@ -116,10 +119,15 @@ abstract class HTMLComponent {
         this.reloadTimer = setTimeout(this.reload.bind(this), this.keyUpReloadDelay);
     }
 
+
+
     /**
      * Handle control changes for LoadMore components
      */
-    protected onLoadMoreControlChange(): void {
+    protected onLoadMoreControlChange($control: Cash): void {
+        // Set timestamp when control changes
+        const timestamp = Date.now();
+        $control.attr('data-timestamp', timestamp.toString());
         // Clear existing items and restart from beginning
         const $itemsContainer = this.$element.find('[data-items-container]');
         if ($itemsContainer.length > 0) {
@@ -148,9 +156,13 @@ abstract class HTMLComponent {
         if (this.cloudflareTurnstileToken) {
             data['cloudflareTurnstileToken'] = this.cloudflareTurnstileToken;
         }
+
+        // Track values by key, prioritizing controls with most recent timestamp
+        const valuesByKey: Map<string, {value: any, timestamp: number, $control: Cash}> = new Map();
+
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
-            
+
             // Skip controls without request-key unless they have request-unpack-value-from-json
             if (!key && $control.data('request-unpack-value-from-json') !== 'yes') {
                 return;
@@ -169,8 +181,22 @@ abstract class HTMLComponent {
             if ($control.data('request-unpack-value-from-json') === 'yes') {
                 _.assign(data, typeof val === 'object' ? val : JSON.parse(val));
             } else {
-                data[key] = val;
+                // Get timestamp from the control
+                const timestamp = parseInt($control.attr('data-timestamp') || '0', 10);
+
+                // Check if we already have a value for this key
+                const existing = valuesByKey.get(key);
+
+                // If no existing value, or this control has a newer timestamp, use this value
+                if (!existing || timestamp > existing.timestamp) {
+                    valuesByKey.set(key, { value: val, timestamp, $control });
+                }
             }
+        });
+
+        // Apply the values to the data object
+        valuesByKey.forEach(({ value }, key) => {
+            data[key] = value;
         });
 
         return data;
@@ -244,10 +270,13 @@ abstract class HTMLComponent {
 
             if (data[key] instanceof Array) {
                 value = (data[key] as string[]).join(',');
-            } else {
+            } else if (typeof data[key] === 'string') {
                 value = data[key] as string;
+            } else {
+                // Convert non-string values to string safely
+                value = String(data[key]);
             }
-            
+
             // Skip empty values to keep URLs clean
             if (value && value.trim() !== '') {
                 thisUrl.searchParams.set(key, value);

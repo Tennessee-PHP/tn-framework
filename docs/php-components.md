@@ -255,6 +255,79 @@ class ControllerName extends Controller
 }
 ```
 
+### Reloadable Components
+
+Components that support AJAX reloading need specific attributes and both main and reload routes:
+
+#### Component Attributes
+```php
+<?php
+namespace TN\TN_Comment\Component\ListComments;
+
+use TN\TN_Core\Component\HTMLComponent;
+use TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
+use TN\TN_Core\Attribute\Components\Route;
+
+/**
+ * Reusable comments list component for displaying paginated comments
+ */
+#[Reloadable]  // Enables AJAX reloading functionality
+#[Route('TN_Comment:CommentsController:listComments')]  // Links to controller method
+class ListComments extends HTMLComponent
+{
+    // Component implementation
+}
+```
+
+#### Controller Routes
+```php
+<?php
+namespace TN\TN_Comment\Controller;
+
+use TN\TN_Core\Controller\Controller;
+use TN\TN_Core\Attribute\Route\Path;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
+use TN\TN_Core\Attribute\Route\Component;
+
+class CommentsController extends Controller
+{
+    /**
+     * Main route - used for initial page loads and direct navigation
+     */
+    #[Path('comments/list')]
+    #[Anyone]
+    #[Component(\TN\TN_Comment\Component\ListComments\ListComments::class)]
+    public function listComments(): void {}
+
+    /**
+     * Reload route - used for AJAX reloads (pagination, filtering, etc.)
+     * Same component, different route for framework reload handling
+     */
+    #[Path('component/reload/list-comments')]
+    #[Anyone]
+    #[Component(\TN\TN_Comment\Component\ListComments\ListComments::class)]
+    public function listCommentsComponent(): void {}
+}
+```
+
+#### Framework Integration
+
+The framework automatically:
+- Uses the main route for initial page loads and direct navigation
+- Uses the reload route for AJAX updates (pagination, filtering, form submissions)
+- Manages URL parameters and browser history
+- Handles loading states and error conditions
+- Maintains component state across reloads
+
+#### Template Setup
+
+Ensure your component template includes the reload URL attribute:
+```smarty
+<div class="{$classAttribute}" id="{$idAttribute}" data-reload-url="{path route=$reloadRoute}">
+    {* Component content *}
+</div>
+```
+
 ### Route Attributes
 
 **Authentication requirements:**
