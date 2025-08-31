@@ -1,5 +1,68 @@
 # PHP Models
 
+## 🚨 CRITICAL FRAMEWORK RULES 🚨
+
+### ❌ NEVER VIOLATE THESE RULES ❌
+
+1. **NEVER use string literals for class references - ALWAYS use `::class`**
+   ```php
+   // ❌ WRONG - String literals are forbidden
+   $className = 'MyNamespace\\MyClass';
+   Stack::resolveClassName('Package\\Model\\User');
+   
+   // ✅ CORRECT - Always use ::class
+   $className = MyClass::class;
+   Stack::resolveClassName(User::class);
+   ```
+
+2. **Framework code MUST NEVER reference site-specific code**
+   ```php
+   // ❌ WRONG - Framework referencing site code
+   use NE\NE_Main\Model\Something;
+   Stack::resolveClassName('NE_Main\\Model\\Comment');
+   
+   // ✅ CORRECT - Framework stays generic
+   use TN\TN_Core\Model\Something;
+   Stack::resolveClassName(Comment::class);
+   ```
+
+**Violating these rules breaks the entire framework architecture and is unforgivable.**
+
+## ⚠️ CRITICAL MODEL PATTERNS
+
+### Creating New Model Instances
+
+**ALWAYS use this pattern - no exceptions:**
+
+```php
+// ✅ CORRECT: The ONLY way to create models
+$user = User::getInstance();
+$user->update([
+    'username' => 'john',
+    'email' => 'john@example.com',
+    'isActive' => true
+]);
+// Automatically persisted - NEVER call save()
+```
+
+**NEVER do any of these:**
+
+```php
+// ❌ FORBIDDEN: Never use constructor
+$user = new User();
+
+// ❌ FORBIDDEN: Never call save()
+$user->save();
+
+// ❌ FORBIDDEN: Never set properties directly
+$user->username = 'john';
+
+// ❌ FORBIDDEN: Never pass data to getInstance()
+$user = User::getInstance(['username' => 'john']);
+```
+
+---
+
 ## Creating Models
 
 Every persistent model must implement the `Persistence` interface and use required traits:
@@ -132,15 +195,16 @@ foreach ($conversation->messages as $message) {
 
 ## Model Operations
 
-### Creating Models
+### Updating Existing Models
+
 ```php
-$user = User::getInstance();
+// ✅ CORRECT: Update existing model
+$user = User::readFromId($userId);
 $user->update([
-    'username' => 'john',
-    'email' => 'john@example.com',
-    'isActive' => true
+    'email' => 'newemail@example.com',
+    'isActive' => false
 ]);
-// Automatically saved - never call save()
+// Automatically persisted - NEVER call save()
 ```
 
 ### Querying Models

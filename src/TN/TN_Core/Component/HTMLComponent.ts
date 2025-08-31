@@ -87,14 +87,18 @@ abstract class HTMLComponent {
     protected unobserve(): void {}
 
     protected observeControls(): void {
+    
+        console.log('observeControls', this.controls);
         this.controls.forEach((control: Cash) => {
             // For LoadMore components, handle control changes differently
             if (this.$element.data('supports-load-more')) {
+                console.log('supports load more!', control);
                 control.on('change', this.onLoadMoreControlChange.bind(this));
                 if (control.is('input[type=text], input[type=password], input[type=email]')) {
                     control.on('keyup', this.onLoadMoreControlKeyUp.bind(this));
                 }
             } else {
+                console.log('observeControls', control);
                 // Standard behavior for non-LoadMore components
                 control.on('change', this.reload.bind(this));
                 if (control.is('input[type=text], input[type=password], input[type=email]')) {

@@ -167,4 +167,67 @@ class TaggedContent implements Persistence
         return $taggedContents;
     }
 
+    /**
+     * Add a single tag to content item
+     * 
+     * @param string $contentClass
+     * @param string $contentId
+     * @param Tag $tag
+     * @param bool $primary
+     * @return TaggedContent
+     * @throws ValidationException
+     */
+    public static function addTag(string $contentClass, string $contentId, Tag $tag, bool $primary = false): TaggedContent
+    {
+        // Check if tag is already associated
+        if (self::contentItemHasTag($contentClass, $contentId, $tag)) {
+            throw new \InvalidArgumentException("Tag '{$tag->text}' is already associated with this content item");
+        }
+
+        $taggedContent = self::getInstance();
+        $taggedContent->update([
+            'contentClass' => $contentClass,
+            'contentId' => $contentId,
+            'tagId' => $tag->id,
+            'primary' => $primary
+        ]);
+
+        // Update numTags on the page entry
+        $pageEntry = PageEntry::getPageEntryForContentItem($contentClass, $contentId);
+        if ($pageEntry) {
+            $pageEntry->updateNumTags();
+        }
+
+        return $taggedContent;
+    }
+
+    /**
+     * Remove a tag from content item
+     * 
+     * @param string $contentClass
+     * @param string $contentId
+     * @param Tag $tag
+     * @return bool True if tag was removed, false if not found
+     */
+    public static function removeTag(string $contentClass, string $contentId, Tag $tag): bool
+    {
+        $existingTags = self::getFromContentItem($contentClass, $contentId);
+        
+        foreach ($existingTags as $taggedContent) {
+            if ($taggedContent->tagId === $tag->id) {
+                $taggedContent->erase();
+                
+                // Update numTags on the page entry
+                $pageEntry = PageEntry::getPageEntryForContentItem($contentClass, $contentId);
+                if ($pageEntry) {
+                    $pageEntry->updateNumTags();
+                }
+                
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
 }

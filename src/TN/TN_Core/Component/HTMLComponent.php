@@ -139,13 +139,13 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         $data = [
             'id' => $this->getHtmlId(),
             'theme' => Theme::getTheme(),
+            'pageTitle' => $this->getPageTitle(),
             'title' => $this->getPageTitle(),
             'breadcrumbEntries' => $this->getBreadcrumbEntries()
         ];
         $pageAttribute = $this->getFirstAttributeInstance(Page::class);
         $routeAttribute = $this->getFirstAttributeInstance(Route::class);
         if ($pageAttribute) {
-            $data['pageTitle'] = $pageAttribute->title;
             $data['pageRoute'] = $routeAttribute?->route ?? '';
             $data['pageDescription'] = $pageAttribute->description;
         }
@@ -256,7 +256,9 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         $reflection = new \ReflectionClass($this);
         $breadcrumbEntries = [];
         foreach ($reflection->getAttributes(Breadcrumb::class) as $breadcrumbAttribute) {
-            $breadcrumbEntries[] = $breadcrumbAttribute->newInstance()->getBreadcrumbEntry();
+            $breadcrumbEntry = $breadcrumbAttribute->newInstance()->getBreadcrumbEntry();
+            $breadcrumbEntry->prepare();
+            $breadcrumbEntries[] = $breadcrumbEntry;
         }
         return $breadcrumbEntries;
     }

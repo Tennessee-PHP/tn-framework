@@ -24,9 +24,13 @@ class SearchComparison extends SearchCondition
     public SearchComparisonArgument $argument2;
 
     /**
-     * @param mixed $argument1 Column name (with backticks) or SearchComparisonArgument
-     * @param SearchComparisonOperator|string $operator Comparison operator ('=', '<', '>', etc.)
+     * @param mixed $argument1 Column name (MUST be wrapped in backticks like '`columnName`') or SearchComparisonArgument
+     * @param SearchComparisonOperator|string $operator Comparison operator ('=', '<', '>', '!=', 'LIKE', etc.)
      * @param mixed $argument2 Value to compare against or SearchComparisonArgument
+     * 
+     * @example Column name with backticks (REQUIRED):
+     * new SearchComparison('`username`', '=', 'john')     // ✅ CORRECT: username = 'john'
+     * new SearchComparison('username', '=', 'john')       // ❌ WRONG: 'username' = 'john'
      */
     public function __construct(mixed $argument1, SearchComparisonOperator|string $operator, mixed $argument2)
     {

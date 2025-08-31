@@ -4,6 +4,34 @@
 
 These standards ensure consistent, maintainable, and high-quality PHP code across all TN Framework projects. Following these standards is mandatory for all contributions.
 
+## 🚨 CRITICAL FRAMEWORK RULES 🚨
+
+### ❌ NEVER VIOLATE THESE RULES ❌
+
+1. **NEVER use string literals for class references - ALWAYS use `::class`**
+   ```php
+   // ❌ WRONG - String literals are forbidden
+   $className = 'MyNamespace\\MyClass';
+   Stack::resolveClassName('Package\\Model\\User');
+   
+   // ✅ CORRECT - Always use ::class
+   $className = MyClass::class;
+   Stack::resolveClassName(User::class);
+   ```
+
+2. **Framework code MUST NEVER reference site-specific code**
+   ```php
+   // ❌ WRONG - Framework referencing site code
+   use NE\NE_Main\Model\Something;
+   Stack::resolveClassName('NE_Main\\Model\\Comment');
+   
+   // ✅ CORRECT - Framework stays generic
+   use TN\TN_Core\Model\Something;
+   Stack::resolveClassName(Comment::class);
+   ```
+
+**Violating these rules breaks the entire framework architecture and is unforgivable.**
+
 ## Execution Environment
 
 - All PHP scripts, including tests, MUST be executed from within the appropriate Docker container
