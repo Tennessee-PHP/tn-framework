@@ -12,9 +12,6 @@ namespace TN\TN_Core\Model\Storage;
  */
 class Cache
 {
-    /** @var string the redis key at which to store the set of cache keys */
-    private static string $keysKey = 'Cache::_keys';
-
     /** @var array request-level cache to avoid duplicate Redis calls within same HTTP request */
     private static array $requestCache = [];
 
@@ -44,7 +41,6 @@ class Cache
         }
 
         $client->set($storageKey, serialize($value));
-        $client->sadd(self::$keysKey, [$storageKey]);
         if ($lifetime > 0) {
             $client->expire($storageKey, $lifetime);
         }
@@ -85,23 +81,21 @@ class Cache
 
     public static function setAdd(string $key, string $value, int $lifespan): void
     {
-        $key = self::getStorageKey($key);
+        $storageKey = self::getStorageKey($key);
         $client = Redis::getInstance();
 
         try {
-            $client->sadd($key, [$value]);
-            $client->sadd(self::$keysKey, [$key]);
-            $client->persist($key);
-            $client->expire($key, $lifespan);
+            $client->sadd($storageKey, [$value]);
+            $client->persist($storageKey);
+            $client->expire($storageKey, $lifespan);
         } catch (\Predis\Response\ServerException $e) {
             // Handle WRONGTYPE error - key exists with different data type
             if (str_contains($e->getMessage(), 'WRONGTYPE')) {
                 // Delete the conflicting key and retry
-                $client->del($key);
-                $client->sadd($key, [$value]);
-                $client->sadd(self::$keysKey, [$key]);
-                $client->persist($key);
-                $client->expire($key, $lifespan);
+                $client->del($storageKey);
+                $client->sadd($storageKey, [$value]);
+                $client->persist($storageKey);
+                $client->expire($storageKey, $lifespan);
             } else {
                 // Re-throw other Redis errors
                 throw $e;
@@ -135,7 +129,6 @@ class Cache
         $key = self::getStorageKey($key);
         $client = Redis::getInstance();
         $client->hset($key, $field, serialize($value));
-        $client->sadd(self::$keysKey, [$key]);
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
@@ -159,9 +152,7 @@ class Cache
     {
         $storageKey = self::getStorageKey($key);
         $client = Redis::getInstance();
-        $client->set($storageKey, false);
         $client->del($storageKey);
-        $client->srem(self::$keysKey, [$storageKey]);
 
         // Remove from request cache
         unset(self::$requestCache[$storageKey]);
@@ -188,17 +179,13 @@ class Cache
     public static function getCacheKeysSize(): int
     {
         $client = Redis::getInstance();
-        return $client->scard(self::$keysKey);
+        return count($client->keys('Cache:*'));
     }
 
     /** delete everything in the cache WARNING: this should only be consumed by some kind of admin panel!! */
     public static function deleteAll()
     {
         $client = Redis::getInstance();
-        $keys = $client->smembers(self::$keysKey);
-        foreach ($keys as $key) {
-            $client->del($key);
-        }
-        $client->del(self::$keysKey);
+        $client->flushdb();
     }
 }
