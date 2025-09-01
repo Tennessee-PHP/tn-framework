@@ -1,6 +1,7 @@
 <?php
 
 namespace TN\TN_Core\Model\PersistentModel\Storage;
+
 use TN\TN_Core\Model\Storage\Redis as RedisDB;
 
 /**
@@ -120,7 +121,10 @@ trait Redis
      */
     protected function afterSave(): void
     {
-
+        // Set default expiration of 1 hour for Redis objects
+        $client = RedisDB::getInstance();
+        $key = self::getObjectKey($this->id);
+        $client->expire($key, 3600);
     }
 
     /**
@@ -145,7 +149,7 @@ trait Redis
         $client = RedisDB::getInstance();
         foreach ($sets as $set) {
             $key = self::getSetKey($set);
-            $client->sadd($key, [ $this->id ]);
+            $client->sadd($key, [$this->id]);
         }
     }
 }

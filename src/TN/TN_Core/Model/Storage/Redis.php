@@ -49,7 +49,7 @@ class Redis
                     // Add cluster-specific options to match PHP session configuration
                     $options['parameters'] = [
                         'timeout' => 5.0,
-                        'read_write_timeout' => 0,
+                        'read_write_timeout' => 5.0,
                     ];
 
                     // Connect to the seed node, Predis will discover other cluster nodes

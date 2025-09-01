@@ -15,6 +15,9 @@ class Cache
     /** @var string the redis key at which to store the set of cache keys */
     private static string $keysKey = 'Cache::_keys';
 
+    /** @var array request-level cache to avoid duplicate Redis calls within same HTTP request */
+    private static array $requestCache = [];
+
     /**
      * set some data in the cache
      * 
@@ -22,29 +25,32 @@ class Cache
      * handled by a prefix constant passed to the client at instantiation.
      * @param string $key the key to store it against
      * @param mixed $value the value to store - can be anything that can be run through php's serialize
-     * @param int $lifetime in seconds. Cache data on this key will expire after this time. Default of 0 = forever
+     * @param int $lifetime in seconds. Cache data on this key will expire after this time. Default of 3600 = 1 hour
      * @see https://www.php.net/manual/en/function.serialize.php
      * @example
      * <code>
      * \TN\Util\Cache::set('articleresult', $articles, 86400);
      * </code>
      */
-    public static function set(string $key, mixed $value, int $lifetime = 0)
+    public static function set(string $key, mixed $value, int $lifetime = 3600)
     {
-        $key = self::getStorageKey($key);
+        $storageKey = self::getStorageKey($key);
         $client = Redis::getInstance();
 
         // Check if key exists with wrong type
-        $type = $client->type($key);
+        $type = $client->type($storageKey);
         if ($type !== 'none' && $type !== 'string') {
-            $client->del($key);
+            $client->del($storageKey);
         }
 
-        $client->set($key, serialize($value));
-        $client->sadd(self::$keysKey, [$key]);
-        if ($lifetime) {
-            $client->expire($key, $lifetime);
+        $client->set($storageKey, serialize($value));
+        $client->sadd(self::$keysKey, [$storageKey]);
+        if ($lifetime > 0) {
+            $client->expire($storageKey, $lifetime);
         }
+
+        // Update request cache with new value
+        self::$requestCache[$storageKey] = $value;
     }
 
     /**
@@ -61,9 +67,20 @@ class Cache
      */
     public static function get(string $key): mixed
     {
-        $key = self::getStorageKey($key);
+        $storageKey = self::getStorageKey($key);
+
+        // Check request-level cache first
+        if (isset(self::$requestCache[$storageKey])) {
+            return self::$requestCache[$storageKey];
+        }
+
         $client = Redis::getInstance();
-        return unserialize($client->get($key));
+        $result = unserialize($client->get($storageKey));
+
+        // Store in request cache for future lookups in same request
+        self::$requestCache[$storageKey] = $result;
+
+        return $result;
     }
 
     public static function setAdd(string $key, string $value, int $lifespan): void
@@ -140,11 +157,14 @@ class Cache
      */
     public static function delete(string $key): void
     {
-        $key = self::getStorageKey($key);
+        $storageKey = self::getStorageKey($key);
         $client = Redis::getInstance();
-        $client->set($key, false);
-        $client->del($key);
-        $client->srem(self::$keysKey, [$key]);
+        $client->set($storageKey, false);
+        $client->del($storageKey);
+        $client->srem(self::$keysKey, [$storageKey]);
+
+        // Remove from request cache
+        unset(self::$requestCache[$storageKey]);
     }
 
     /**
