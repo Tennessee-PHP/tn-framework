@@ -11,6 +11,7 @@ use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonOperator;
 use TN\TN_Core\Model\PersistentModel\Search\SearchSorter;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLimit;
 use TN\TN_Comment\Model\Comment\CommentAttachment;
@@ -100,7 +101,7 @@ class Comment implements Persistence
             conditions: [
                 new SearchComparison('`contentType`', '=', $contentType),
                 new SearchComparison('`contentId`', '=', $contentId),
-                new SearchComparison('`parentId`', '=', 0)
+                new SearchComparison('`parentId`', SearchComparisonOperator::IsNull, null)
             ],
             sorters: [
                 new SearchSorter('createdAt', 'ASC')
@@ -124,10 +125,10 @@ class Comment implements Persistence
             conditions: [
                 new SearchComparison('`contentType`', '=', $contentType),
                 new SearchComparison('`contentId`', '=', $contentId),
-                new SearchComparison('`parentId`', '=', 0)
+                new SearchComparison('`parentId`', SearchComparisonOperator::IsNull, null)
             ]
         );
-        
+
         return static::count($searchArgs);
     }
 }

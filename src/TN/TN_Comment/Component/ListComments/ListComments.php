@@ -20,7 +20,7 @@ use TN\TN_Core\Model\Package\Stack;
 #[Route('TN_Comment:CommentsController:listComments')]
 class ListComments extends HTMLComponent
 {
-    public Commentable $contentModel;
+    public ?Commentable $contentModel = null;
     public array $comments = [];
     public Pagination $pagination;
     public int $itemsPerPage = 20;
@@ -28,11 +28,11 @@ class ListComments extends HTMLComponent
     public function prepare(): void
     {
         // If contentModel is not set, try to reconstruct it from reload data
-        if (!isset($this->contentModel)) {
+        if ($this->contentModel === null) {
             $this->reconstructContentModel();
         }
 
-        if (!isset($this->contentModel)) {
+        if ($this->contentModel === null) {
             return; // No content model available, show empty state
         }
 
@@ -89,7 +89,7 @@ class ListComments extends HTMLComponent
         $data = parent::getTemplateData();
 
         // Add content model information for AJAX reloads
-        if (isset($this->contentModel)) {
+        if ($this->contentModel !== null) {
             $data['contentType'] = get_class($this->contentModel);
             $data['contentId'] = $this->contentModel->id ?? null;
         }
