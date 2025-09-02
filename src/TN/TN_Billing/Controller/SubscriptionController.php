@@ -80,7 +80,7 @@ class SubscriptionController extends Controller
 
             $now = Time::getNow();
             $expired = $now - $start;
-            if ($expired >= (Time::ONE_MINUTE - 1)) {
+            if ($expired >= (Time::ONE_MINUTE * 4)) {
                 echo 'one expired. ending!';
                 break;
             }
