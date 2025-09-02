@@ -91,6 +91,10 @@ class Page extends Renderer
     public ?PageEntry $pageEntry = null;
     public MetaPixel $metaPixel;
 
+    // Performance monitoring components (conditionally loaded)
+    public ?\TN\TN_Core\Component\PerformanceButton\PerformanceButton $performanceButton = null;
+    public ?\TN\TN_Core\Component\PerformanceModal\PerformanceModal $performanceModal = null;
+
     /**
      * The currently selected navigation item key, or null if none selected
      */
@@ -227,6 +231,15 @@ class Page extends Renderer
 
         $this->metaPixel = new MetaPixel();
         $this->metaPixel->prepare();
+
+        // Conditionally load performance monitoring components for super-users
+        if ($this->user->hasRole('super-user')) {
+            $this->performanceButton = new \TN\TN_Core\Component\PerformanceButton\PerformanceButton();
+            $this->performanceButton->prepare();
+
+            $this->performanceModal = new \TN\TN_Core\Component\PerformanceModal\PerformanceModal();
+            $this->performanceModal->prepare();
+        }
 
         $reflection = new \ReflectionClass($this->component);
         if ($reflection->getAttributes(MetaPixelEvent::class)) {

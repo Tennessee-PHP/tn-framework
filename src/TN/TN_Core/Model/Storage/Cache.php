@@ -2,6 +2,8 @@
 
 namespace TN\TN_Core\Model\Storage;
 
+use TN\TN_Core\Trait\PerformanceRecorder;
+
 /**
  * Cache data, predominantly to avoid repeated requests to databases or APIs
  * 
@@ -12,6 +14,8 @@ namespace TN\TN_Core\Model\Storage;
  */
 class Cache
 {
+    use PerformanceRecorder;
+
     /** @var string the redis key at which to store the set of cache keys */
     private static string $keysKey = 'Cache::_keys';
 
@@ -32,6 +36,8 @@ class Cache
     public static function set(string $key, mixed $value, int $lifetime = 0)
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SET {$key}", ['lifetime' => $lifetime]);
+        
         $client = Redis::getInstance();
 
         // Check if key exists with wrong type
@@ -45,6 +51,8 @@ class Cache
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
+        
+        $event?->end();
     }
 
     /**
@@ -62,32 +70,50 @@ class Cache
     public static function get(string $key): mixed
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "GET {$key}");
+        
         $client = Redis::getInstance();
-        return unserialize($client->get($key));
+        $result = unserialize($client->get($key));
+        
+        $event?->end();
+        return $result;
     }
 
     public static function setAdd(string $key, string $value, int $lifespan): void
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
+        
         $client = Redis::getInstance();
         $client->sadd($key, [$value]);
         $client->sadd(self::$keysKey, [$key]);
         $client->persist($key);
         $client->expire($key, $lifespan);
+        
+        $event?->end();
     }
 
     public static function setRemove(string $key, string $value): void
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SREM {$key} {$value}");
+        
         $client = Redis::getInstance();
         $client->srem($key, [$value]);
+        
+        $event?->end();
     }
 
     public static function setMembers(string $key): array
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SMEMBERS {$key}");
+        
         $client = Redis::getInstance();
-        return $client->smembers($key);
+        $result = $client->smembers($key);
+        
+        $event?->end();
+        return $result;
     }
 
     /**
@@ -100,19 +126,28 @@ class Cache
     public static function hashSet(string $key, string $field, mixed $value, int $lifetime = 0): void
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "HSET {$key} {$field}", ['lifetime' => $lifetime]);
+        
         $client = Redis::getInstance();
         $client->hset($key, $field, serialize($value));
         $client->sadd(self::$keysKey, [$key]);
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
+        
+        $event?->end();
     }
 
     public static function hashGet(string $key, string $field): mixed
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "HGET {$key} {$field}");
+        
         $client = Redis::getInstance();
-        return unserialize($client->hget($key, $field));
+        $result = unserialize($client->hget($key, $field));
+        
+        $event?->end();
+        return $result;
     }
 
     /**
@@ -125,10 +160,14 @@ class Cache
     public static function delete(string $key): void
     {
         $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "DEL {$key}");
+        
         $client = Redis::getInstance();
         $client->set($key, false);
         $client->del($key);
         $client->srem(self::$keysKey, [$key]);
+        
+        $event?->end();
     }
 
     /**
@@ -151,18 +190,27 @@ class Cache
     /** @return int the number of items currently stored in the cache */
     public static function getCacheKeysSize(): int
     {
+        $event = (new self())->startPerformanceEvent('Redis', "SCARD " . self::$keysKey);
+        
         $client = Redis::getInstance();
-        return $client->scard(self::$keysKey);
+        $result = $client->scard(self::$keysKey);
+        
+        $event?->end();
+        return $result;
     }
 
     /** delete everything in the cache WARNING: this should only be consumed by some kind of admin panel!! */
     public static function deleteAll()
     {
+        $event = (new self())->startPerformanceEvent('Redis', "FLUSHALL (deleteAll)");
+        
         $client = Redis::getInstance();
         $keys = $client->smembers(self::$keysKey);
         foreach ($keys as $key) {
             $client->del($key);
         }
         $client->del(self::$keysKey);
+        
+        $event?->end();
     }
 }

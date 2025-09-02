@@ -21,6 +21,7 @@ use TN\TN_Core\Model\PersistentModel\SaveType;
 use TN\TN_Core\Model\PersistentModel\Search\CountAndTotalResult;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\Storage\DB;
+use TN\TN_Core\Trait\PerformanceRecorder;
 
 /** @var int set to 1 to echo all queries and how long they took */
 const MYSQL_DEBUG_MODE = 0;
@@ -30,15 +31,7 @@ const MYSQL_DEBUG_MODE = 0;
  */
 trait MySQL
 {
-    protected static function MySQLTimerReset(): void
-    {
-        $GLOBALS['mySQLTimer'] = microtime(true);
-    }
-
-    protected static function MySQLTimerOutput(): void
-    {
-        echo sprintf("%.2f ms\n", (microtime(true) - $GLOBALS['mySQLTimer']) * 1000);
-    }
+    use PerformanceRecorder;
 
     /**
      * get the name of the property that has the AutoIncrement attribute
@@ -96,23 +89,21 @@ trait MySQL
             return;
         }
 
+        $query = "DELETE FROM {$table} WHERE {$idProp} IN (" .
+            implode(',', array_fill(0, count($objectIds), '?')) . ")";
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $objectIds]);
+
         if (MYSQL_DEBUG_MODE) {
-            echo "DELETE FROM {$table} WHERE {$idProp} IN (" .
-                implode(',', array_fill(0, count($objectIds), '?')) . ")";
-            self::MySQLTimerReset();
+            echo $query;
         }
 
-        $res = $db->prepare("DELETE FROM {$table} WHERE {$idProp} IN (" .
-            implode(',', array_fill(0, count($objectIds), '?')) . ")")
-            ->execute($objectIds);
+        $res = $db->prepare($query)->execute($objectIds);
 
         if (!$res) {
             throw new DBException('Failed to execute batch erase query');
         }
 
-        if (MYSQL_DEBUG_MODE) {
-            self::MySQLTimerOutput();
-        }
+        $event?->end();
     }
 
     /**
@@ -153,15 +144,15 @@ trait MySQL
         $idProp = self::getAutoIncrementProperty();
 
         $properties = implode(', ', $props);
+        $query = "INSERT INTO {$table} ({$properties}) VALUES " .
+            implode(',', array_fill(0, count($objects), '(' . $placeHolders . ')'));
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values, 'objectCount' => count($objects)]);
 
         if (MYSQL_DEBUG_MODE) {
-            echo "INSERT INTO {$table} ({$properties}) VALUES " .
-                implode(',', array_fill(0, count($objects), '(' . $placeHolders . ')')) . PHP_EOL;
-            self::MySQLTimerReset();
+            echo $query . PHP_EOL;
         }
 
-        $stmt = $db->prepare("INSERT INTO {$table} ({$properties}) VALUES " .
-            implode(',', array_fill(0, count($objects), '(' . $placeHolders . ')')));
+        $stmt = $db->prepare($query);
 
         try {
             $stmt->execute($values);
@@ -169,9 +160,7 @@ trait MySQL
             throw new DBException(static::class . ': ' . $e->getMessage());
         }
 
-        if (MYSQL_DEBUG_MODE) {
-            self::MySQLTimerOutput();
-        }
+        $event?->end();
 
         // let's check the number
         if ($stmt->rowCount() !== count($objects)) {
@@ -220,24 +209,23 @@ trait MySQL
         );
 
         try {
+            $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params]);
+            
             $db = DB::getInstance($_ENV['MYSQL_DB']);
             $stmt = $db->prepare($select->query);
 
             if (MYSQL_DEBUG_MODE) {
                 echo $select->query . PHP_EOL;
-                self::MySQLTimerReset();
             }
 
             if (!$stmt->execute($select->params)) {
                 throw new DBException('Failed to execute count query');
             }
 
-            if (MYSQL_DEBUG_MODE) {
-                self::MySQLTimerOutput();
-            }
-
             $result = $stmt->fetch(PDO::FETCH_NUM);
             $result = (int)$result[0];
+            
+            $event?->end();
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
         }
@@ -260,24 +248,23 @@ trait MySQL
         );
 
         try {
+            $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params, 'sumProperty' => $propertyToTotal]);
+            
             $db = DB::getInstance($_ENV['MYSQL_DB']);
             $stmt = $db->prepare($select->query);
 
             if (MYSQL_DEBUG_MODE) {
                 echo $select->query . PHP_EOL;
-                self::MySQLTimerReset();
             }
 
             if (!$stmt->execute($select->params)) {
                 throw new DBException('Failed to execute count query');
             }
 
-            if (MYSQL_DEBUG_MODE) {
-                self::MySQLTimerOutput();
-            }
-
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $result = new CountAndTotalResult($result['count'], $result['sum']);
+            
+            $event?->end();
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
         }
@@ -301,9 +288,10 @@ trait MySQL
         );
 
         try {
+            $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params]);
+            
             if (MYSQL_DEBUG_MODE) {
                 echo $select->query . PHP_EOL;
-                self::MySQLTimerReset();
             }
 
             $db = DB::getInstance($_ENV['MYSQL_DB']);
@@ -313,11 +301,8 @@ trait MySQL
                 throw new DBException('Failed to execute search query');
             }
 
-            if (MYSQL_DEBUG_MODE) {
-                self::MySQLTimerOutput();
-            }
-
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $event?->end();
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
         }
@@ -339,22 +324,20 @@ trait MySQL
         $db = DB::getInstance($_ENV['MYSQL_DB'], true);
         $table = self::getTableName();
         $idProp = self::getAutoIncrementProperty();
+        $query = "DELETE FROM {$table} WHERE `{$idProp}`=?";
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => [$this->$idProp]]);
 
         if (MYSQL_DEBUG_MODE) {
-            echo "DELETE FROM {$table} WHERE `{$idProp}`=?" . PHP_EOL;
-            self::MySQLTimerReset();
+            echo $query . PHP_EOL;
         }
 
-        $res = $db->prepare("DELETE FROM {$table} WHERE `{$idProp}`=?")
-            ->execute([$this->$idProp]);
-
-        if (MYSQL_DEBUG_MODE) {
-            self::MySQLTimerOutput();
-        }
+        $res = $db->prepare($query)->execute([$this->$idProp]);
 
         if (!$res) {
             throw new DBException('Failed to execute erase query');
         }
+        
+        $event?->end();
     }
 
     /**
@@ -394,22 +377,22 @@ trait MySQL
 
         $sets = implode(', ', $sets);
         $idProp = self::getAutoIncrementProperty();
+        $query = "UPDATE {$table} SET {$sets} WHERE `{$idProp}`=?";
+        $params = array_merge($values, [$this->$idProp]);
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $params, 'changedProperties' => $properties]);
 
         if (MYSQL_DEBUG_MODE) {
-            echo "UPDATE {$table} SET {$sets} WHERE `{$idProp}`=?" . PHP_EOL;
-            self::MySQLTimerReset();
+            echo $query . PHP_EOL;
         }
 
-        $stmt = $db->prepare("UPDATE {$table} SET {$sets} WHERE `{$idProp}`=?");
-        $res = $stmt->execute(array_merge($values, [$this->$idProp]));
+        $stmt = $db->prepare($query);
+        $res = $stmt->execute($params);
 
         if (!$res) {
             throw new DBException('Failed to execute update query');
         }
 
-        if (MYSQL_DEBUG_MODE) {
-            self::MySQLTimerOutput();
-        }
+        $event?->end();
 
         if ($stmt->rowCount() === 0) {
             $stmt = $db->prepare("SELECT * FROM {$table} WHERE `{$idProp}`=?");
@@ -454,22 +437,21 @@ trait MySQL
             $props[] = '`' . $prop . '`';
         }
         $properties = implode(', ', $props);
+        $query = "INSERT INTO {$table} ({$properties}) VALUES ({$placeHolders})";
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values]);
 
         if (MYSQL_DEBUG_MODE) {
-            echo "INSERT INTO {$table} ({$properties}) VALUES ({$placeHolders})" . PHP_EOL;
-            self::MySQLTimerReset();
+            echo $query . PHP_EOL;
         }
 
-        $stmt = $db->prepare("INSERT INTO {$table} ({$properties}) VALUES ({$placeHolders})");
+        $stmt = $db->prepare($query);
         try {
             $stmt->execute($values);
         } catch (\PDOException $e) {
             throw new DBException(static::class . ': ' . $e->getMessage());
         }
 
-        if (MYSQL_DEBUG_MODE) {
-            self::MySQLTimerOutput();
-        }
+        $event?->end();
 
         if (!$useSetId || !isset($this->$idProp)) {
             $this->$idProp = (int)$db->lastInsertId();

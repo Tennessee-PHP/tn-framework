@@ -4,6 +4,7 @@ namespace TN\TN_Core\Model\Storage\R2;
 
 use TN\TN_Core\Trait\ExtendedSingletons;
 use TN\TN_Core\Trait\Getter;
+use TN\TN_Core\Trait\PerformanceRecorder;
 use TN\TN_Core\Error\ValidationException;
 use Aws\S3\S3Client;
 
@@ -14,6 +15,7 @@ abstract class R2Bucket
 {
     use ExtendedSingletons;
     use Getter;
+    use PerformanceRecorder;
 
     /** @var string Unique identifier for this bucket */
     protected string $key;
@@ -56,6 +58,8 @@ abstract class R2Bucket
     public function uploadFile(string $filePath, string $key, ?string $contentType = null): string
     {
         try {
+            $event = self::startPerformanceEvent('R2', "PUT {$key}", ['bucket' => $this->bucketName, 'contentType' => $contentType]);
+            
             $client = $this->getClient();
 
             $client->putObject([
@@ -65,7 +69,9 @@ abstract class R2Bucket
                 'ContentType' => $contentType ?? $this->getMimeType($filePath),
             ]);
 
-            return $this->getPublicUrl($key);
+            $result = $this->getPublicUrl($key);
+            $event?->end();
+            return $result;
         } catch (\Exception $e) {
             throw new ValidationException('Failed to upload file to R2 storage: ' . $e->getMessage());
         }
@@ -208,6 +214,8 @@ abstract class R2Bucket
     public function deleteByKey(string $key): bool
     {
         try {
+            $event = self::startPerformanceEvent('R2', "DELETE {$key}", ['bucket' => $this->bucketName]);
+            
             $client = $this->getClient();
 
             $client->deleteObject([
@@ -215,6 +223,7 @@ abstract class R2Bucket
                 'Key' => $key
             ]);
 
+            $event?->end();
             return true;
         } catch (\Exception $e) {
             // Log error but don't throw - deletion failure shouldn't break upload
@@ -232,6 +241,8 @@ abstract class R2Bucket
     public function fileExists(string $key): bool
     {
         try {
+            $event = self::startPerformanceEvent('R2', "HEAD {$key}", ['bucket' => $this->bucketName]);
+            
             $client = $this->getClient();
             
             $client->headObject([
@@ -239,6 +250,7 @@ abstract class R2Bucket
                 'Key' => $key
             ]);
             
+            $event?->end();
             return true;
         } catch (\Exception $e) {
             // File doesn't exist or other error occurred
