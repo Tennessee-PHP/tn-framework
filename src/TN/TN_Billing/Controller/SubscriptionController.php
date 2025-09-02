@@ -55,7 +55,7 @@ class SubscriptionController extends Controller
         ]);
     }
 
-    #[Schedule('*/5 9-12 * * *')]
+    #[Schedule('*/5 9-23 * * *')]
     #[TimeLimit(Time::ONE_MINUTE)]
     #[CommandName('subscription/attempt-auto-renew-subscriptions')]
     public function attemptAutoRenewSubscriptions(): ?string
