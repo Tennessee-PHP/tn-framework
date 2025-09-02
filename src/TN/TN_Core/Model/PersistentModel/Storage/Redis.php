@@ -47,7 +47,19 @@ trait Redis
     {
         $client = RedisDB::getInstance();
         $key = self::getObjectKey($id);
-        return unserialize($client->get($key));
+        $data = $client->get($key);
+
+        if ($data === null || $data === false) {
+            return null;
+        }
+
+        try {
+            return unserialize($data);
+        } catch (\Exception $e) {
+            // Clean up corrupted key and return null
+            $client->del($key);
+            return null;
+        }
     }
 
     /**

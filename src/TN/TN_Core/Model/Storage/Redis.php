@@ -68,4 +68,23 @@ class Redis
         }
         return self::$client;
     }
+
+    /**
+     * Cleanup Redis connection and reset singleton instance
+     * Useful for error recovery and explicit connection management
+     */
+    public static function cleanup(): void
+    {
+        if (isset(self::$client)) {
+            try {
+                self::$client->disconnect();
+            } catch (\Exception $e) {
+                // Ignore disconnect errors, we're cleaning up anyway
+            }
+            unset(self::$client);
+        }
+    }
 }
+
+/** register Redis cleanup method on PHP shutdown, however that occurs */
+register_shutdown_function([Redis::class, 'cleanup']);
