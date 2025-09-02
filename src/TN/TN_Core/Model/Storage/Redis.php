@@ -14,8 +14,8 @@ use Predis\Client;
  */
 class Redis
 {
-    /** @var Client local instance of the caching client */
-    private static Client $client;
+    /** @var Client|null local instance of the caching client */
+    private static ?Client $client = null;
 
     /** @return Client get an instance of the client, instantiating it if necessary */
     public static function getInstance()
@@ -24,7 +24,7 @@ class Redis
             'prefix' => $_ENV['REDIS_PREFIX']
         ];
 
-        if (!isset(self::$client)) {
+        if (self::$client === null) {
             if (($_ENV['REDIS_CLUSTER'] ?? 0) == 1) {
                 // Check if we have multiple cluster nodes (direct cluster access)
                 // or a single seed node (AWS ElastiCache style)
@@ -75,13 +75,13 @@ class Redis
      */
     public static function cleanup(): void
     {
-        if (isset(self::$client)) {
+        if (self::$client !== null) {
             try {
                 self::$client->disconnect();
             } catch (\Exception $e) {
                 // Ignore disconnect errors, we're cleaning up anyway
             }
-            unset(self::$client);
+            self::$client = null;
         }
     }
 }
