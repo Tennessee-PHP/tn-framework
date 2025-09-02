@@ -105,7 +105,8 @@ class PerformanceLog
      */
     public function getMetrics(): array
     {
-        $totalTime = $this->endTime ? ($this->endTime - $this->startTime) : 0.0;
+        // Calculate total time - use current time if request hasn't ended yet
+        $totalTime = $this->endTime ? ($this->endTime - $this->startTime) : (microtime(true) - $this->startTime);
         $memoryPeak = memory_get_peak_usage(true);
         
         // Group events by type

@@ -233,12 +233,10 @@ class Page extends Renderer
         $this->metaPixel->prepare();
 
         // Conditionally load performance monitoring components for super-users
+        // Note: prepare() is called later from the footer template for accurate timing
         if ($this->user->hasRole('super-user')) {
             $this->performanceButton = new \TN\TN_Core\Component\PerformanceButton\PerformanceButton();
-            $this->performanceButton->prepare();
-
             $this->performanceModal = new \TN\TN_Core\Component\PerformanceModal\PerformanceModal();
-            $this->performanceModal->prepare();
         }
 
         $reflection = new \ReflectionClass($this->component);

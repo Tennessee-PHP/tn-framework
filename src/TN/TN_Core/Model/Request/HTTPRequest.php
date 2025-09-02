@@ -244,7 +244,6 @@ class HTTPRequest extends Request
             header('Access-Control-Allow-Credentials: true');
             header('Access-Control-Max-Age: 86400');
             http_response_code(204);
-            \TN\TN_Core\Model\Performance\PerformanceLog::endRequest();
             exit;
         }
 
@@ -253,7 +252,6 @@ class HTTPRequest extends Request
             // for these older files, let's reduce the reporting level or we'll just drown in them
             error_reporting(E_ALL & ~E_NOTICE);
             include($_ENV['TN_WEB_ROOT'] . $filename);
-            \TN\TN_Core\Model\Performance\PerformanceLog::endRequest();
             return;
         }
 
@@ -278,9 +276,6 @@ class HTTPRequest extends Request
         }
 
         $response->respond();
-        
-        // End performance logging
-        \TN\TN_Core\Model\Performance\PerformanceLog::endRequest();
     }
 
     public function redirect(string $url): void
