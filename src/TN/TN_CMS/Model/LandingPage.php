@@ -443,6 +443,18 @@ class LandingPage extends Content implements Persistence
     }
 
     /** @inheritDoc */
+    protected function getPageEntryRelevantProperties(): array
+    {
+        return [
+            'title',        // getTitle()
+            'description',  // getDescription()
+            'thumbnailSrc', // getThumbnailSrc()
+            'path',         // getUrl()
+            'weight',       // getWeight()
+        ];
+    }
+
+    /** @inheritDoc */
     public function updateFromPageEntry(PageEntry $pageEntry): void
     {
         $this->updateFromPageEntry = true;

@@ -78,6 +78,14 @@ abstract class Content
     abstract static public function getImpersistentPageEntryFields(): array;
 
     /**
+     * Get properties that should trigger PageEntry cache invalidation when changed
+     * Content classes should return an array of property names that affect PageEntry fields
+     * 
+     * @return string[] Array of property names that trigger PageEntry updates
+     */
+    abstract protected function getPageEntryRelevantProperties(): array;
+
+    /**
      * @param PageEntry $pageEntry
      * @return void
      */
@@ -88,6 +96,21 @@ abstract class Content
     {
         $pageEntry = PageEntry::getPageEntryForContentItem(get_class($this), $this->id);
         $pageEntry?->erase();
+    }
+
+    /**
+     * Check if PageEntry should be updated based on changed properties
+     * Only updates PageEntry if properties that affect PageEntry fields have changed
+     * 
+     * @param array $changedProperties Properties that have changed in the content object
+     * @return bool True if PageEntry should be updated
+     */
+    protected function shouldUpdatePageEntry(array $changedProperties): bool
+    {
+        $pageEntryRelevantProperties = $this->getPageEntryRelevantProperties();
+        $relevantChanges = array_intersect(array_keys($changedProperties), $pageEntryRelevantProperties);
+        
+        return !empty($relevantChanges);
     }
 
     /** @return void */
@@ -129,5 +152,18 @@ abstract class Content
         $pageEntry->updateFromContent = true;
         $pageEntry->update($update);
         $pageEntry->updateFromContent = false;
+    }
+
+    /**
+     * Framework-level hook for Content classes to handle PageEntry updates intelligently
+     * Content classes should call this from their afterSaveUpdate() method
+     * 
+     * @param array $changedProperties Properties that have changed
+     */
+    protected function handlePageEntryUpdate(array $changedProperties): void
+    {
+        if ($this->shouldUpdatePageEntry($changedProperties)) {
+            $this->writeToPageEntry();
+        }
     }
 }

@@ -29,6 +29,14 @@ class PerformanceEvent
     }
 
     /**
+     * Update or add metadata to the event
+     */
+    public function setMetadata(array $metadata): void
+    {
+        $this->metadata = array_merge($this->metadata, $metadata);
+    }
+
+    /**
      * Mark the event as completed and register it with PerformanceLog
      */
     public function end(): void

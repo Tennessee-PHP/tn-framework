@@ -15,6 +15,7 @@ use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Attribute\Cache as CacheAttribute;
+use TN\TN_Core\Trait\PerformanceRecorder;
 use TN\TN_Core\Model\Storage\Cache as CacheStorage;
 use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Strings\Strings;
@@ -29,11 +30,12 @@ use TN\TN_Core\Model\User\User;
  * @property-read string $finalVThumbnailSrc
  */
 #[TableName('cms_page_entries')]
-#[CacheAttribute('v1.3')]
+#[CacheAttribute('v1.3', 3600)]
 class PageEntry implements Persistence
 {
     use MySQL;
     use PersistentModel;
+    use PerformanceRecorder;
 
     const string cacheIndexId = 'i';
     const string cacheIndexPrimary = 'p';
@@ -118,8 +120,11 @@ class PageEntry implements Persistence
     {
         $db = DB::getInstance($_ENV['MYSQL_DB']);
         $table = self::getTableName();
-        $stmt = $db->prepare("SELECT contentId FROM {$table} WHERE `contentClass` = ?");
+        $query = "SELECT contentId FROM {$table} WHERE `contentClass` = ?";
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => [$contentClass]]);
+        $stmt = $db->prepare($query);
         $stmt->execute([$contentClass]);
+        $event?->end();
         $ids = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $ids[] = $row['contentId'];
@@ -374,8 +379,10 @@ class PageEntry implements Persistence
             LIMIT 0, 1000
             ";
 
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $params]);
         $stmt = $db->prepare($query);
         $stmt->execute($params);
+        $event?->end();
 
         $objects = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $result) {

@@ -18,14 +18,30 @@ trait Taggable
      * 
      * @return Tag[] Array of tag objects
      */
+    private ?array $cachedTags = null;
+    
     public function getTags(): array
     {
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+        $caller = isset($backtrace[1]) ? $backtrace[1]['class'] . '::' . $backtrace[1]['function'] : 'unknown';
+        error_log("TAGGABLE DEBUG: getTags() called on " . static::class . " ID {$this->id} by $caller");
+        
+        // Return cached tags if available
+        if ($this->cachedTags !== null) {
+            error_log("TAGGABLE DEBUG: Returning cached tags for " . static::class . " ID {$this->id}");
+            return $this->cachedTags;
+        }
+        
         $taggedContents = TaggedContent::getFromContentItem(static::class, $this->id);
         $tags = [];
         
         foreach ($taggedContents as $taggedContent) {
             $tags[] = $taggedContent->tag;
         }
+        
+        // Cache the tags for subsequent calls
+        $this->cachedTags = $tags;
+        error_log("TAGGABLE DEBUG: Cached " . count($tags) . " tags for " . static::class . " ID {$this->id}");
         
         return $tags;
     }
@@ -39,7 +55,10 @@ trait Taggable
      */
     public function addTag(Tag $tag, bool $primary = false): TaggedContent
     {
-        return TaggedContent::addTag(static::class, $this->id, $tag, $primary);
+        $result = TaggedContent::addTag(static::class, $this->id, $tag, $primary);
+        // Clear cache since tags have changed
+        $this->cachedTags = null;
+        return $result;
     }
 
     /**
@@ -50,7 +69,10 @@ trait Taggable
      */
     public function removeTag(Tag $tag): bool
     {
-        return TaggedContent::removeTag(static::class, $this->id, $tag);
+        $result = TaggedContent::removeTag(static::class, $this->id, $tag);
+        // Clear cache since tags have changed
+        $this->cachedTags = null;
+        return $result;
     }
 
     /**
@@ -62,6 +84,9 @@ trait Taggable
      */
     public function setTags(array $tags, bool $eraseExisting = true): array
     {
-        return TaggedContent::setTags(static::class, $this->id, [], $tags, $eraseExisting);
+        $result = TaggedContent::setTags(static::class, $this->id, [], $tags, $eraseExisting);
+        // Clear cache since tags have changed
+        $this->cachedTags = null;
+        return $result;
     }
 }

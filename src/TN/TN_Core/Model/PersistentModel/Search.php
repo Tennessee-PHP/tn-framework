@@ -55,6 +55,36 @@ trait Search
         return count($results) > 0 ? $results[0] : null;
     }
 
+    /**
+     * Bulk load objects by multiple IDs
+     * @param array $ids Array of IDs to load
+     * @param bool $absoluteLatest Whether to bypass cache
+     * @return static[] Array of objects indexed by ID
+     */
+    public static function readFromIds(array $ids, bool $absoluteLatest = false): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+        
+        // Remove duplicates and ensure proper type
+        $ids = array_unique($ids);
+        
+        $searchArgs = new SearchArguments([
+            new SearchComparison('`id`', 'IN', $ids)
+        ]);
+        
+        $objects = static::search($searchArgs, $absoluteLatest);
+        
+        // Index by ID for easy lookup
+        $objectsById = [];
+        foreach ($objects as $object) {
+            $objectsById[$object->id] = $object;
+        }
+        
+        return $objectsById;
+    }
+
     public static function searchOne(SearchArguments $search, bool $absoluteLatest = false): ?static
     {
         if (!$search->limit) {

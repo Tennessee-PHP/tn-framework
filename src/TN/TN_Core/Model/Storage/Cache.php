@@ -75,8 +75,63 @@ class Cache
         $client = Redis::getInstance();
         $result = unserialize($client->get($key));
         
+        // Add hit/miss information to performance tracking
+        $isHit = $result !== false && $result !== null;
+        $event?->setMetadata(['hit' => $isHit, 'miss' => !$isHit]);
         $event?->end();
+        
         return $result;
+    }
+
+    /**
+     * Get multiple cache values at once using Redis MGET
+     * 
+     * @param array $keys Array of cache keys to fetch
+     * @return array Associative array with keys as requested and values as unserialized data
+     */
+    public static function mget(array $keys): array
+    {
+        if (empty($keys)) {
+            return [];
+        }
+        
+        // Convert keys to storage keys
+        $storageKeys = [];
+        $keyMapping = [];
+        foreach ($keys as $key) {
+            $storageKey = self::getStorageKey($key);
+            $storageKeys[] = $storageKey;
+            $keyMapping[$storageKey] = $key;
+        }
+        
+        $event = (new self())->startPerformanceEvent('Redis', "MGET " . implode(' ', $storageKeys));
+        
+        $client = Redis::getInstance();
+        $results = $client->mget($storageKeys);
+        
+        // Process results and map back to original keys
+        $output = [];
+        $hits = 0;
+        $misses = 0;
+        
+        foreach ($results as $index => $result) {
+            $storageKey = $storageKeys[$index];
+            $originalKey = $keyMapping[$storageKey];
+            
+            if ($result !== false && $result !== null) {
+                $output[$originalKey] = unserialize($result);
+                $hits++;
+            } else {
+                $output[$originalKey] = null;
+                $misses++;
+            }
+        }
+        
+        // Add hit/miss metadata and end the event
+        $event?->setMetadata(['hits' => $hits, 'misses' => $misses, 'keys' => count($keys)]);
+        $event?->end();
+        
+        return $output;
     }
 
     public static function setAdd(string $key, string $value, int $lifespan): void
@@ -146,7 +201,11 @@ class Cache
         $client = Redis::getInstance();
         $result = unserialize($client->hget($key, $field));
         
+        // Add hit/miss information to performance tracking
+        $isHit = $result !== false && $result !== null;
+        $event?->setMetadata(['hit' => $isHit, 'miss' => !$isHit]);
         $event?->end();
+        
         return $result;
     }
 

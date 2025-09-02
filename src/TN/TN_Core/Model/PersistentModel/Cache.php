@@ -68,14 +68,35 @@ trait Cache
             return null;
         }
 
-        $results = [];
+        // Build cache keys for all objects
+        $cacheKeys = [];
         foreach ($ids as $id) {
-            $result = static::objectCache($id);
-            if (!$result) {
-                $result = static::readFromId($id, true);
+            $cacheKeys[$id] = static::getCacheKey('object', $id);
+        }
+        
+        // Single MGET call to get all cached objects
+        $cachedObjects = CacheStorage::mget(array_values($cacheKeys));
+        
+        // Determine which objects are missing from cache
+        $missingIds = [];
+        $results = [];
+        
+        foreach ($ids as $id) {
+            $cacheKey = $cacheKeys[$id];
+            $cachedObject = $cachedObjects[$cacheKey] ?? null;
+            
+            if ($cachedObject) {
+                $results[] = $cachedObject;
+            } else {
+                $missingIds[] = $id;
             }
-            if ($result) {
-                $results[] = $result;
+        }
+        
+        // Single bulk query to fill in missing objects (with absoluteLatest=true to avoid recursion)
+        if (!empty($missingIds)) {
+            $missingObjects = static::readFromIds($missingIds, true);
+            foreach ($missingObjects as $object) {
+                $results[] = $object;
             }
         }
 
