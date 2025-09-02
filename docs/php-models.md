@@ -220,16 +220,37 @@ $users = User::searchByProperties([
 
 // Complex queries with SearchArguments
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
-use TN\TN_Core\Model\PersistentModel\Search\SearchCondition;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 
 $searchArgs = new SearchArguments(
     conditions: [
-        new SearchCondition('status', 'active'),
-        new SearchCondition('userId', $user->id)
+        new SearchComparison('`status`', '=', 'active'),
+        new SearchComparison('`userId`', '=', $user->id)
     ]
 );
 $records = Model::search($searchArgs);
 ```
+
+## 🚨 SearchComparison Critical Rule
+
+**ALWAYS wrap column names in backticks when using SearchComparison:**
+
+```php
+// ✅ CORRECT - Column names with backticks
+new SearchComparison('`username`', '=', 'john');
+new SearchComparison('`screenshotId`', 'IN', [1, 2, 3]);
+new SearchComparison('`age`', '>', 18);
+new SearchComparison('`createdAt`', '<', '2024-01-01');
+
+// ❌ WRONG - Without backticks (generates broken SQL)
+new SearchComparison('username', '=', 'john');          // 'username' = 'john' [WRONG]
+new SearchComparison('screenshotId', 'IN', [1, 2, 3]);  // ? IN (1,2,3) [BROKEN]
+```
+
+**Why this matters:**
+- Without backticks: Column names are treated as string literals
+- With backticks: Column names are treated as actual database columns
+- This is the #1 most common SearchComparison mistake
 
 ## API Serialization
 

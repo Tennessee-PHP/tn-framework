@@ -624,11 +624,6 @@ class ListItems extends HTMLComponent
     
     public function prepare(): void
     {
-        $this->loadItems();
-    }
-    
-    private function loadItems(): void
-    {
         $itemsPerLoad = 24;
         
         // Build search with cursor-based pagination

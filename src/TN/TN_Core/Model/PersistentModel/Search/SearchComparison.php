@@ -24,13 +24,25 @@ class SearchComparison extends SearchCondition
     public SearchComparisonArgument $argument2;
 
     /**
+     * 🚨 CRITICAL: Column names MUST be wrapped in backticks!
+     * 
      * @param mixed $argument1 Column name (MUST be wrapped in backticks like '`columnName`') or SearchComparisonArgument
-     * @param SearchComparisonOperator|string $operator Comparison operator ('=', '<', '>', '!=', 'LIKE', etc.)
+     * @param SearchComparisonOperator|string $operator Comparison operator ('=', '<', '>', '!=', 'LIKE', 'IN', etc.)
      * @param mixed $argument2 Value to compare against or SearchComparisonArgument
      * 
-     * @example Column name with backticks (REQUIRED):
-     * new SearchComparison('`username`', '=', 'john')     // ✅ CORRECT: username = 'john'
-     * new SearchComparison('username', '=', 'john')       // ❌ WRONG: 'username' = 'john'
+     * 🚨 COMMON MISTAKE - Always use backticks for column names:
+     * 
+     * ✅ CORRECT:
+     * new SearchComparison('`username`', '=', 'john')        // username = 'john'
+     * new SearchComparison('`screenshotId`', 'IN', [1,2,3])  // screenshotId IN (1,2,3)
+     * new SearchComparison('`age`', '>', 18)                 // age > 18
+     * 
+     * ❌ WRONG (generates invalid SQL):
+     * new SearchComparison('username', '=', 'john')          // 'username' = 'john'
+     * new SearchComparison('screenshotId', 'IN', [1,2,3])    // ? IN (1,2,3) [BROKEN]
+     * new SearchComparison('age', '>', 18)                   // 'age' > 18
+     * 
+     * Without backticks, column names are treated as string literals!
      */
     public function __construct(mixed $argument1, SearchComparisonOperator|string $operator, mixed $argument2)
     {

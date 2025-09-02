@@ -21,7 +21,7 @@ class PerformanceEvent
     {
         $event = new self();
         $event->type = $type;
-        $event->query = $query;
+        $event->query = preg_replace('/\s+/', ' ', trim($query));
         $event->startTime = microtime(true);
         $event->metadata = $metadata;
         

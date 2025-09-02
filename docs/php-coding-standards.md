@@ -32,6 +32,17 @@ These standards ensure consistent, maintainable, and high-quality PHP code acros
 
 **Violating these rules breaks the entire framework architecture and is unforgivable.**
 
+3. **ALWAYS wrap column names in backticks for SearchComparison**
+   ```php
+   // ❌ WRONG - Column names without backticks are treated as string literals
+   new SearchComparison('screenshotId', 'IN', [1, 2, 3]);    // Generates: ? IN (1,2,3) [BROKEN]
+   new SearchComparison('username', '=', 'john');            // Generates: 'username' = 'john' [WRONG]
+   
+   // ✅ CORRECT - Always use backticks for column names
+   new SearchComparison('`screenshotId`', 'IN', [1, 2, 3]);  // Generates: screenshotId IN (1,2,3)
+   new SearchComparison('`username`', '=', 'john');          // Generates: username = 'john'
+   ```
+
 ## Execution Environment
 
 - All PHP scripts, including tests, MUST be executed from within the appropriate Docker container
