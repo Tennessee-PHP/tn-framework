@@ -259,6 +259,32 @@ abstract class R2Bucket
     }
 
     /**
+     * Get file size from R2 bucket
+     * 
+     * @param string $key File key/path in bucket
+     * @return int File size in bytes, or 0 if file doesn't exist
+     */
+    public function getFileSize(string $key): int
+    {
+        try {
+            $event = self::startPerformanceEvent('R2', "HEAD {$key} (size)", ['bucket' => $this->bucketName]);
+            
+            $client = $this->getClient();
+            
+            $result = $client->headObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $key
+            ]);
+            
+            $event?->end();
+            return (int) $result['ContentLength'];
+        } catch (\Exception $e) {
+            // File doesn't exist or other error occurred
+            return 0;
+        }
+    }
+
+    /**
      * Get MIME type of file
      */
     private function getMimeType(string $filePath): string
