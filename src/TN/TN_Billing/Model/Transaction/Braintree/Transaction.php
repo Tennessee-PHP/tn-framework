@@ -221,6 +221,11 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
         if ($user instanceof User) {
             $customer = Customer::getFromUser($user);
             $options['customerId'] = $customer->customerId;
+
+            // If no nonce provided, use the customer's stored vaulted token
+            if ($nonce === false && !empty($customer->vaultedToken)) {
+                $options['paymentMethodToken'] = $customer->vaultedToken;
+            }
         }
 
         // device data from the client (all the way from JS!), and use this to set the transaction source also

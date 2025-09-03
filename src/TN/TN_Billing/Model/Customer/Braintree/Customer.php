@@ -150,10 +150,12 @@ class Customer implements Persistence
     {
         $braintree = Gateway::getInstanceByKey('braintree');
         try {
-            $updateResult = $braintree->getApiGateway()->customer()->update(
-                $this->customerId,
+            $updateResult = $braintree->getApiGateway()->paymentMethod()->update(
+                $this->vaultedToken,
                 [
-                    'defaultPaymentMethodToken' => $this->vaultedToken
+                    'options' => [
+                        'makeDefault' => true
+                    ]
                 ]
             );
         } catch (\Braintree\Exception\NotFound $e) {
