@@ -77,6 +77,9 @@ class PageEntry implements Persistence
     #[Impersistent] public bool $updateFromContent = false;
     #[Impersistent] public int $searchSelectedCount = 0;
     #[Impersistent] public float $searchSelectedRate = 0.0;
+    #[Impersistent] public ?string $creatorName = null;
+    #[Impersistent] public ?string $creatorAvatar = null;
+    #[Impersistent] public mixed $content = null;
 
     /**
      * @return string[]
@@ -232,20 +235,30 @@ class PageEntry implements Persistence
         // now slice the results
         $results = array_slice($results, $start, $num);
 
-        // now instantiate each page entry (maybe again!) and return
+        // Bulk load all PageEntries at once instead of N+1 queries
+        $ids = array_column($results, self::cacheIndexId);
+        $pageEntriesById = static::readFromIds($ids);
+        
+        // Build final array with impersistent properties set
         $pageEntries = [];
         foreach ($results as $result) {
-            $pageEntry = static::readFromId($result[self::cacheIndexId]);
-            $pageEntry->primary = $result[self::cacheIndexPrimary];
-            $pageEntry->matchedTag = $result[self::cacheIndexMatchedTag];
-            $pageEntry->matchedTags = $result[self::cacheIndexMatchedTags];
-            $pageEntry->matchedWordsCount = $result[self::cacheIndexMatchedWordsCount];
-            $pageEntry->timeFactor = $result[self::cacheTimeFactor];
-            $pageEntry->searchTitleFactor = $result[self::cacheSearchTitleFactor];
-            $pageEntry->searchWordsFactor = $result[self::cacheSearchWordsFactor];
-            $pageEntry->factor = $result[self::cacheFactor];
-            $pageEntries[] = $pageEntry;
+            $pageEntry = $pageEntriesById[$result[self::cacheIndexId]] ?? null;
+            if ($pageEntry) {
+                $pageEntry->primary = $result[self::cacheIndexPrimary];
+                $pageEntry->matchedTag = $result[self::cacheIndexMatchedTag];
+                $pageEntry->matchedTags = $result[self::cacheIndexMatchedTags];
+                $pageEntry->matchedWordsCount = $result[self::cacheIndexMatchedWordsCount];
+                $pageEntry->timeFactor = $result[self::cacheTimeFactor];
+                $pageEntry->searchTitleFactor = $result[self::cacheSearchTitleFactor];
+                $pageEntry->searchWordsFactor = $result[self::cacheSearchWordsFactor];
+                $pageEntry->factor = $result[self::cacheFactor];
+                $pageEntries[] = $pageEntry;
+            }
         }
+        
+        // Bulk load creator data for all PageEntries
+        self::loadCreatorData($pageEntries);
+        
         return $pageEntries;
     }
 
@@ -559,8 +572,6 @@ class PageEntry implements Persistence
     {
         $val = match ($name) {
             'readableContentType' => $this->getReadableContentTypeFromClass(),
-            'creatorName' => $this->getCreatorName(),
-            'creatorAvatar' => $this->getCreatorAvatar(),
             'finalThumbnailSrc' => !empty($this->thumbnailSrc) ? $this->thumbnailSrc : $_ENV['IMG_BASE_URL'] . 'content-landing-pages/defaultthumbnail.png',
             'finalVThumbnailSrc' => !empty($this->vThumbnailSrc) ? $this->vThumbnailSrc : $_ENV['IMG_BASE_URL'] . 'content-landing-pages/defaultthumbnail.png',
             default => (property_exists($this, $name) && isset($this->$name)) ? $this->$name : null
@@ -570,15 +581,86 @@ class PageEntry implements Persistence
     }
 
     /**
-     * @return string|null
+     * Bulk load and set creator data for multiple PageEntries to avoid N+1 queries
+     * Sets the creatorName and creatorAvatar properties directly on each PageEntry
+     * 
+     * @param PageEntry[] $pageEntries Array of PageEntry objects
      */
-    protected function getCreatorName(): ?string
+    public static function loadCreatorData(array $pageEntries): void
     {
-        if (!$this->creatorId) {
-            return null;
+        // Collect unique creator IDs
+        $creatorIds = [];
+        foreach ($pageEntries as $pageEntry) {
+            if ($pageEntry->creatorId) {
+                $creatorIds[] = $pageEntry->creatorId;
+            }
         }
-        $user = User::readFromId($this->creatorId);
-        return $user->name;
+        
+        if (empty($creatorIds)) {
+            return; // No creators to load
+        }
+        
+        // Bulk load users
+        $creatorIds = array_unique($creatorIds);
+        $users = User::readFromIds($creatorIds);
+        
+        // Create lookup arrays
+        $userNames = [];
+        foreach ($users as $user) {
+            $userNames[$user->id] = $user->name;
+        }
+        
+        // Set creator properties on each PageEntry
+        foreach ($pageEntries as $pageEntry) {
+            if ($pageEntry->creatorId) {
+                $pageEntry->creatorName = $userNames[$pageEntry->creatorId] ?? null;
+                $pageEntry->creatorAvatar = null; // Set to null for now as requested
+            }
+        }
+    }
+    
+    /**
+     * Bulk load and set content for multiple PageEntries to avoid N+1 queries
+     * Groups PageEntries by contentClass and bulk loads each group
+     * 
+     * @param PageEntry[] $pageEntries Array of PageEntry objects
+     */
+    public static function loadContent(array $pageEntries): void
+    {
+        // Group PageEntries by contentClass
+        $pageEntriesByClass = [];
+        foreach ($pageEntries as $pageEntry) {
+            $contentClass = $pageEntry->getContentClass();
+            if ($contentClass === self::class) {
+                // Self-referencing PageEntries use themselves as content
+                $pageEntry->content = $pageEntry;
+            } else {
+                $pageEntriesByClass[$contentClass][] = $pageEntry;
+            }
+        }
+        
+        // Bulk load content for each class
+        foreach ($pageEntriesByClass as $contentClass => $classPageEntries) {
+            // Collect content IDs for this class
+            $contentIds = [];
+            foreach ($classPageEntries as $pageEntry) {
+                $contentIds[] = $pageEntry->contentId;
+            }
+            
+            if (empty($contentIds)) {
+                continue;
+            }
+            
+            // Bulk load content items
+            $contentIds = array_unique($contentIds);
+            $resolvedClass = Stack::resolveClassName($contentClass);
+            $contentItems = $resolvedClass::readFromIds($contentIds);
+            
+            // Set content property on each PageEntry
+            foreach ($classPageEntries as $pageEntry) {
+                $pageEntry->content = $contentItems[$pageEntry->contentId] ?? null;
+            }
+        }
     }
 
     /**
@@ -679,9 +761,15 @@ class PageEntry implements Persistence
     {
         if ($this->getContentClass() === self::class) {
             return $this;
-        } else {
-            return Stack::resolveClassName($this->getContentClass())::getContentItem($this->contentId);
         }
+        
+        // Return cached content if available
+        if ($this->content !== null) {
+            return $this->content;
+        }
+        
+        // Fall back to individual loading if not bulk-loaded
+        return Stack::resolveClassName($this->getContentClass())::getContentItem($this->contentId);
     }
 
     /**

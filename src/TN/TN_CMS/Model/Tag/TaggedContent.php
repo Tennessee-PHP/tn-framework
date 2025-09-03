@@ -112,8 +112,6 @@ class TaggedContent implements Persistence
      */
     public static function getFromContentItem(string $contentClass, string $contentId): array
     {
-        error_log("TAGGEDCONTENT DEBUG: getFromContentItem called for $contentClass ID $contentId");
-        
         // Use framework's cached search system
         $searchArgs = new SearchArguments([
             new SearchComparison('`contentClass`', '=', $contentClass),
@@ -121,7 +119,6 @@ class TaggedContent implements Persistence
         ]);
         
         $taggedContents = self::search($searchArgs);
-        error_log("TAGGEDCONTENT DEBUG: Found " . count($taggedContents) . " tagged contents");
         
         // Bulk load all tags at once instead of N+1 queries
         $tagIds = [];
@@ -130,7 +127,6 @@ class TaggedContent implements Persistence
         }
         
         if (!empty($tagIds)) {
-            error_log("TAGGEDCONTENT DEBUG: Bulk loading Tag IDs: " . implode(', ', $tagIds));
             $tagsById = Tag::readFromIds($tagIds);
             
             // Assign the loaded tags to each TaggedContent

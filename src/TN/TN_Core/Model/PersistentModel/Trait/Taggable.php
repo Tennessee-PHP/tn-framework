@@ -22,13 +22,8 @@ trait Taggable
     
     public function getTags(): array
     {
-        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
-        $caller = isset($backtrace[1]) ? $backtrace[1]['class'] . '::' . $backtrace[1]['function'] : 'unknown';
-        error_log("TAGGABLE DEBUG: getTags() called on " . static::class . " ID {$this->id} by $caller");
-        
         // Return cached tags if available
         if ($this->cachedTags !== null) {
-            error_log("TAGGABLE DEBUG: Returning cached tags for " . static::class . " ID {$this->id}");
             return $this->cachedTags;
         }
         
@@ -41,7 +36,6 @@ trait Taggable
         
         // Cache the tags for subsequent calls
         $this->cachedTags = $tags;
-        error_log("TAGGABLE DEBUG: Cached " . count($tags) . " tags for " . static::class . " ID {$this->id}");
         
         return $tags;
     }
