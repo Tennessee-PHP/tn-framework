@@ -30,7 +30,7 @@ Create `src/css/tailwind.json` in your project:
   },
   "components": {
     "button-primary": "inline-flex items-center px-4 py-2 bg-{primary} text-{primary-foreground} font-medium rounded-lg hover:bg-{primary-hover} transition-colors",
-    "card": "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden",
+    "card": "bg-{surface} rounded-lg border border-{border} overflow-hidden",
     "container": "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
   },
   "sizes": {
@@ -120,12 +120,39 @@ Components can use `{colorName}` placeholders that get replaced with actual Tail
     "surface": "gray-100"
   },
   "components": {
-    "my-component": "bg-{primary} text-white hover:bg-{surface}"
+    "my-component": "bg-{primary} text-{foreground} hover:bg-{surface}"
   }
 }
 ```
 
-This becomes: `bg-red-600 text-white hover:bg-gray-100`
+This becomes: `bg-red-600 text-gray-900 hover:bg-gray-100`
+
+### Critical Rule: No Hardcoded Colors in Components
+
+**❌ WRONG - Never use literal color names in components:**
+```json
+{
+  "components": {
+    "bad-example": "bg-gray-800 text-white border-red-500"
+  }
+}
+```
+
+**✅ CORRECT - Always use semantic color placeholders:**
+```json
+{
+  "colors": {
+    "surface": "gray-800",
+    "foreground": "white", 
+    "error": "red-500"
+  },
+  "components": {
+    "good-example": "bg-{surface} text-{foreground} border-{error}"
+  }
+}
+```
+
+This ensures all colors are centralized in the `colors` section and can be easily changed project-wide.
 
 ## PHP Integration
 
@@ -181,20 +208,85 @@ TailwindClassGenerator::setColor('brand', 'purple-600');
 }
 ```
 
-### Color Consistency
+### Color Definition Rules
 
+**1. Use Tailwind Color Names (Preferred)**
 ```json
 {
   "colors": {
-    // Define semantic roles, not specific colors
-    "primary": "red-600",        // Brand primary
-    "secondary": "gray-600",     // Secondary actions
+    "primary": "red-600",        // Standard Tailwind color
+    "secondary": "gray-600",     // Standard Tailwind color
     "surface": "gray-100",       // Background surfaces
     "foreground": "gray-900",    // Primary text
     "muted": "gray-500"          // Secondary text
   }
 }
 ```
+
+**2. For Custom Brand Colors, Use Bracket Notation**
+```json
+{
+  "colors": {
+    "brand-primary": "[#f5d561]",     // Custom hex color
+    "brand-accent": "[#1a202c]"       // Custom hex color
+  }
+}
+```
+
+**3. For CSS Variable References**
+```json
+{
+  "colors": {
+    "primary": "[color:var(--color-primary)]",    // Reference CSS custom property
+    "surface": "[color:var(--color-surface)]"     // Reference CSS custom property
+  }
+}
+```
+
+**❌ Never use raw hex codes without brackets:**
+```json
+{
+  "colors": {
+    "primary": "#f5d561"  // WRONG - will not work
+  }
+}
+```
+
+## Tailwind JIT Configuration
+
+For proper class generation, ensure your `tailwind.config.js` includes the configuration file:
+
+```javascript
+module.exports = {
+  content: [
+    './src/**/*.{php,tpl,ts,js}',
+    './src/css/tailwind.json',  // Include your semantic config
+    './lib/tn-framework/src/**/*.{php,tpl,ts,js}'
+  ],
+  // Add classes that might not be detected by JIT scanner
+  safelist: [
+    'fixed', 'bottom-4', 'right-4', 'z-50',  // Common positioning classes
+    // Add other classes that are dynamically generated
+  ]
+}
+```
+
+## Common Pitfalls
+
+### 1. JSON Formatting
+- **Preserve whitespace** when editing JSON files
+- Use consistent indentation (2 or 4 spaces)
+- Avoid reformatting that changes existing structure
+
+### 2. Color Reference Errors
+- Don't mix color definition styles within the same project
+- Always test color references after changes
+- Use browser dev tools to verify generated classes
+
+### 3. Component Abstraction
+- Start with hardcoded Tailwind classes in templates
+- Gradually extract common patterns into `tailwind.json` components
+- Don't over-abstract - some one-off styling is acceptable
 
 ## Framework Notes
 
@@ -204,4 +296,4 @@ TailwindClassGenerator::setColor('brand', 'purple-600');
 - The system supports both light and dark mode through standard Tailwind classes
 - Components can be extended or overridden at runtime for customization
 
-This integration maintains template readability while providing the flexibility and performance benefits of Tailwind CSS.
+This integration maintains template readability while providing the flexibility and performance benefits of Tailwind CSS, with a clear separation between design tokens and implementation details.
