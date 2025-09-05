@@ -137,7 +137,8 @@ Smarty templates in the TN Framework provide server-side rendering for HTML comp
 
 ### Comments
 
-- Use Smarty comments, not HTML comments
+- **Always use Smarty comments `{* *}`, never HTML comments `<!-- -->`**
+- HTML comments appear in the rendered HTML source and can expose sensitive information
 - Document complex logic and required variables
 - Include template documentation headers
 
@@ -156,8 +157,8 @@ Smarty templates in the TN Framework provide server-side rendering for HTML comp
     {assign var="avgScore" value=($stats.totalScore / $stats.gamesPlayed)}
 {/if}
 
-{* HTML comments are visible in source - never use these *}
-<!-- This comment appears in HTML source -->
+{* ❌ BAD - Never use HTML comments in templates *}
+<!-- This comment appears in HTML source and is a security risk -->
 ```
 
 ### Inline CSS

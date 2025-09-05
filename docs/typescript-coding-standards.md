@@ -38,6 +38,24 @@ element.classList.add('active'); // Never use vanilla JS
 button.addEventListener('click', handleClick); // Never use vanilla JS
 ```
 
+### Data Attributes
+
+**Always use `.data()` methods for data attributes, never `.attr('data-...')`:**
+
+```typescript
+// ✅ GOOD - Use .data() methods for reading/setting, removeAttr for removing
+const apiUrl = this.$element.data('api-url');
+const userId = this.$element.data('user-id');
+button.data('loading', 'true');
+button.data('user-reacted', 'false');
+button.removeAttr('data-loading'); // Remove data attribute
+
+// ❌ BAD - Never use .attr() for data attributes
+const apiUrl = this.$element.attr('data-api-url'); // Never do this
+const userId = this.$element.attr('data-user-id'); // Never do this
+button.attr('data-loading', 'true'); // Never do this
+```
+
 ## Type Safety
 
 ### Framework Integration
@@ -73,6 +91,94 @@ function findUser(id: number): UserData | null {
     // Implementation
     return null;
 }
+```
+
+## Event Handling
+
+### Framework Event Binding
+
+**Always use proper `.bind(this)` for event handlers** - Never use nested anonymous functions or lose context:
+
+```typescript
+// ✅ GOOD - Clean framework pattern with proper binding
+protected observe(): void {
+    this.initializeData();
+    this.$element.find('button').on('click', this.handleButtonClick.bind(this));
+    this.$element.find('form').on('submit', this.handleFormSubmit.bind(this));
+}
+
+private handleButtonClick(e: Event): void {
+    e.preventDefault();
+    const $button = $(e.target as HTMLElement);
+    // Handle button click with proper context
+}
+
+// ❌ BAD - Disgusting nested anonymous methods that lose context
+this.$element.find('button').each((index, element) => {
+    const $button = $(element);
+    $button.on('click', (e) => {
+        e.preventDefault();
+        this.handleButtonClick($button); // Passing element instead of event
+    });
+});
+
+// ❌ BAD - Arrow functions that can lose context
+this.$element.find('button').on('click', (e) => this.handleClick(e));
+```
+
+### Event Handler Signatures
+
+**Always use standard Event parameter** - Don't create custom parameter signatures:
+
+```typescript
+// ✅ GOOD - Standard event signature
+private handleClick(e: Event): void {
+    e.preventDefault();
+    const $target = $(e.target as HTMLElement);
+    // Work with the target element
+}
+
+// ❌ BAD - Custom element parameter
+private handleClick(button: HTMLElement): void {
+    // This breaks the framework pattern
+}
+
+// ❌ BAD - Cash parameter
+private handleClick($button: Cash): void {
+    // This breaks the framework pattern
+}
+```
+
+### Context and Binding Best Practices
+
+**Never lose `this` context through lazy coding** - Always be explicit about binding:
+
+```typescript
+// ✅ GOOD - Explicit binding maintains context
+protected observe(): void {
+    this.$element.find('.toggle').on('click', this.handleToggle.bind(this));
+    this.$element.find('.save').on('click', this.handleSave.bind(this));
+}
+
+// ✅ GOOD - Proper method binding for callbacks
+private setupTimer(): void {
+    setInterval(this.updateStatus.bind(this), 1000);
+}
+
+// ❌ BAD - Losing context through lazy habits
+protected observe(): void {
+    const self = this; // Never use self = this
+    this.$element.find('.toggle').on('click', function() {
+        self.handleToggle(); // Ugly context workaround
+    });
+}
+
+// ❌ BAD - Double-nested anonymous functions
+this.$element.find('button').each((i, el) => {
+    $(el).on('click', (e) => {
+        this.doSomething($(el)); // Messy nested closures
+    });
+});
 ```
 
 ## Code Style
@@ -162,37 +268,97 @@ import { ComponentConfig } from './types';
 
 ### Axios Integration
 
-- Use Axios for all HTTP requests
-- Use proper error handling with try-catch
-- Handle loading states appropriately
+**Use Axios for all HTTP requests** - Never use `fetch()` or other HTTP libraries:
 
 ```typescript
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-private async loadData(endpoint: string): Promise<any> {
+// ✅ GOOD - Axios with proper promise chaining (not async/await)
+private makeRequest(endpoint: string, data: any): void {
+    axios.post(endpoint, new URLSearchParams(data))
+        .then((response: AxiosResponse) => {
+            this.handleSuccess(response.data);
+        })
+        .catch((error: AxiosError) => {
+            this.handleError(error);
+        })
+        .finally(() => {
+            this.clearLoadingState();
+        });
+}
+
+// ❌ BAD - Using fetch() instead of axios
+fetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(data)
+}).then(response => response.json()); // Never use fetch
+
+// ❌ BAD - Using async/await (prefer promise chains)
+private async makeRequest(endpoint: string): Promise<any> {
     try {
-        const response: AxiosResponse = await axios.get(endpoint);
+        const response = await axios.get(endpoint);
         return response.data;
-        
-    } catch (error: AxiosError) {
-        console.error('API request failed:', error);
+    } catch (error) {
         throw error;
     }
 }
+```
 
-private async saveData(endpoint: string, data: any): Promise<any> {
-    try {
-        const response: AxiosResponse = await axios.post(endpoint, data, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
+### Form Data Handling
+
+**Always use `URLSearchParams` for form-encoded data** - Never send JSON to form endpoints:
+
+```typescript
+// ✅ GOOD - Form-encoded data for PHP endpoints
+axios.post(apiUrl, new URLSearchParams({
+    modelType: this.contentType,
+    contentId: this.contentId.toString(),
+    reactionType: reactionType
+}));
+
+// ❌ BAD - Sending JSON to form endpoints
+axios.post(apiUrl, {
+    modelType: this.contentType,
+    contentId: this.contentId,
+    reactionType: reactionType
+}); // This won't work with #[FromPost] attributes
+```
+
+### Promise Patterns
+
+**Use `.then().catch().finally()` chains** - Avoid async/await for simple HTTP requests:
+
+```typescript
+// ✅ GOOD - Clean promise chain
+private submitData(): void {
+    button.data('loading', 'true');
+    
+    axios.post(this.apiUrl, this.prepareData())
+        .then((response) => {
+            this.updateUI(response.data);
+            new SuccessToast('Data saved successfully');
+        })
+        .catch((error) => {
+            console.error('Request failed:', error);
+            new ErrorToast('Failed to save data');
+        })
+        .finally(() => {
+            button.removeAttr('data-loading');
         });
-        
-        return response.data;
-        
-    } catch (error: AxiosError) {
-        console.error('Save failed:', error);
-        throw error;
+}
+
+// ❌ BAD - Unnecessary async/await complexity
+private async submitData(): Promise<void> {
+    try {
+        button.data('loading', 'true');
+        const response = await axios.post(this.apiUrl, this.prepareData());
+        this.updateUI(response.data);
+        new SuccessToast('Data saved successfully');
+    } catch (error) {
+        console.error('Request failed:', error);
+        new ErrorToast('Failed to save data');
+    } finally {
+        button.removeAttr('data-loading');
     }
 }
 ```
@@ -214,26 +380,58 @@ private async loadData(): Promise<void> {
 }
 ```
 
+### User Feedback Patterns
+
+**Always use Toast components for user feedback** - Never use `console.log` or `alert()`:
+
+```typescript
+import SuccessToast from '@ne/TN_Core/Component/Toast/SuccessToast';
+import ErrorToast from '@ne/TN_Core/Component/Toast/ErrorToast';
+
+// ✅ GOOD - Proper user feedback with Toast components
+private handleSuccess(message: string): void {
+    new SuccessToast(message);
+}
+
+private handleError(error: any): void {
+    console.error('Operation failed:', error); // Log for debugging
+    new ErrorToast('Operation failed. Please try again.');
+}
+
+// ❌ BAD - Using console.log for user feedback
+private handleSuccess(): void {
+    console.log('Success!'); // Users can't see this
+}
+
+// ❌ BAD - Using alert() for user feedback
+private handleError(): void {
+    alert('Error occurred!'); // Ugly and blocks UI
+}
+```
+
 ### Error Message Patterns
 
 ```typescript
-// Basic error handling
-try {
-    await this.processData();
-    console.log('Data processed successfully');
-} catch (error) {
-    console.error('Processing failed:', error);
-    // Handle error appropriately
+// ✅ GOOD - Comprehensive error handling with user feedback
+private processData(): void {
+    axios.post(this.apiUrl, this.data)
+        .then((response) => {
+            new SuccessToast('Data processed successfully');
+            this.updateUI(response.data);
+        })
+        .catch((error) => {
+            console.error('Processing failed:', error); // For developers
+            new ErrorToast('Failed to process data'); // For users
+        });
 }
 
-// Async/await error patterns
-async function fetchUserData(id: number): Promise<UserData | null> {
+// ❌ BAD - Console-only error handling
+private processData(): void {
     try {
-        const response = await axios.get(`/api/users/${id}`);
-        return response.data;
+        // ... some processing
+        console.log('Data processed successfully'); // Users can't see this
     } catch (error) {
-        console.error('Failed to fetch user:', error);
-        return null;
+        console.error('Processing failed:', error); // Only developers see this
     }
 }
 ```
