@@ -73,25 +73,25 @@ trait Cache
         foreach ($ids as $id) {
             $cacheKeys[$id] = static::getCacheKey('object', $id);
         }
-        
+
         // Single MGET call to get all cached objects
         $cachedObjects = CacheStorage::mget(array_values($cacheKeys));
-        
+
         // Determine which objects are missing from cache
         $missingIds = [];
         $results = [];
-        
+
         foreach ($ids as $id) {
             $cacheKey = $cacheKeys[$id];
             $cachedObject = $cachedObjects[$cacheKey] ?? null;
-            
+
             if ($cachedObject) {
                 $results[] = $cachedObject;
             } else {
                 $missingIds[] = $id;
             }
         }
-        
+
         // Single bulk query to fill in missing objects (with absoluteLatest=true to avoid recursion)
         if (!empty($missingIds)) {
             $missingObjects = static::readFromIds($missingIds, true);
@@ -113,7 +113,12 @@ trait Cache
         $ids = [];
         foreach ($results as $object) {
             $ids[] = $object->id;
-            static::objectSetCache($object->id, $object);
+
+            // Only cache object if it's not already cached
+            $objectCacheKey = static::getCacheKey('object', $object->id);
+            if (CacheStorage::get($objectCacheKey) === false) {
+                static::objectSetCache($object->id, $object);
+            }
         }
 
         CacheStorage::set($cacheKey, $ids, static::getCacheLifespan());
