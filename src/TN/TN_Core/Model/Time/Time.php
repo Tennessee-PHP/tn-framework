@@ -195,6 +195,23 @@ class Time
     }
 
     /**
+     * Get current DateTime object, respecting test overrides
+     * 
+     * Uses getNow() internally so test time overrides are respected
+     * 
+     * @param string $timezone Timezone for the DateTime object (defaults to UTC)
+     * @return \DateTime Current DateTime object
+     */
+    public static function getCurrentDateTime(string $timezone = 'UTC'): \DateTime
+    {
+        $timestamp = self::getNow();
+        $dateTime = new \DateTime();
+        $dateTime->setTimestamp($timestamp);
+        $dateTime->setTimezone(new \DateTimeZone($timezone));
+        return $dateTime;
+    }
+
+    /**
      * Create a DateTime from API data, assuming UTC if no timezone specified
      * 
      * @param string $dateString Date string from API
