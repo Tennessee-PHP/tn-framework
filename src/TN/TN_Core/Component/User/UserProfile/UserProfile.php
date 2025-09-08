@@ -6,6 +6,7 @@ use TN\TN_Billing\Attribute\Components\HTMLComponent\RequiresBraintree;
 use TN\TN_Core\Attribute\Components\HTMLComponent\Page;
 use TN\TN_Core\Attribute\Components\HTMLComponent\RequiresTinyMCE;
 use TN\TN_Core\Attribute\Components\Route;
+use TN\TN_Core\Attribute\Components\FromPath;
 use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Model\Package\Stack;
@@ -23,6 +24,7 @@ class UserProfile extends HTMLComponent
     public ?User $user;
     public array $tabs = [];
     public ?string $tab = null;
+    #[FromPath] public ?string $site = null;
     public UserProfileTab $tabComponent;
     public bool $canLoginAsUser = false;
 
@@ -82,7 +84,11 @@ class UserProfile extends HTMLComponent
             $selectedTabClass = $this->tabs[0]['class'];
         }
 
-        $this->tabComponent = new $selectedTabClass(['user' =>  $this->user, 'username' => $this->username]);
+        $this->tabComponent = new $selectedTabClass([
+            'user' => $this->user,
+            'username' => $this->username,
+            'site' => $this->site
+        ]);
         $this->tabComponent->prepare();
     }
 }
