@@ -65,8 +65,15 @@ $user = User::getInstance(['username' => 'john']);
 
 ## Creating Models
 
-Every persistent model must implement the `Persistence` interface and use required traits:
+### 🚨 CRITICAL: PersistentModel is a TRAIT, not a CLASS!
 
+**❌ WRONG - This is the #1 most common mistake:**
+```php
+// DON'T DO THIS - PersistentModel is NOT a class!
+class User extends PersistentModel  // ❌ FATAL ERROR
+```
+
+**✅ CORRECT - PersistentModel is a trait:**
 ```php
 <?php
 namespace Package\Module\Model;
@@ -77,14 +84,19 @@ use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Attribute\MySQL\TableName;
 
 #[TableName('users')]
-class User implements Persistence
+class User implements Persistence  // ✅ Implement Persistence interface
 {
-    use MySQL;
-    use PersistentModel;
+    use MySQL;           // ✅ Use MySQL trait for database storage
+    use PersistentModel; // ✅ Use PersistentModel trait for core functionality
     
     // Properties here
 }
 ```
+
+**Remember:** 
+- `PersistentModel` = **TRAIT** (use it with `use`)
+- `Persistence` = **INTERFACE** (implement it with `implements`)
+- `MySQL` = **TRAIT** (use it with `use`)
 
 ## Property Types
 

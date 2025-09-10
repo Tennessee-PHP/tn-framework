@@ -430,7 +430,7 @@ class User implements Persistence
             // we need to add the password hash value
             $changedProperties = $this->setPasswordHash();
             $this->token = $this->generateToken();
-            $changedProperties[] = ['token'];
+            $changedProperties[] = 'token';
             if (!isset($this->createdTs)) {
                 $this->createdTs = Time::getNow();
                 $changedProperties[] = 'createdTs';

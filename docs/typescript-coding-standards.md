@@ -225,6 +225,77 @@ this.$element.find('button').each((i, el) => {
 
 ## Code Style
 
+### Method Complexity and Nesting
+
+**CRITICAL: Never indent more than one layer inside a method** - Deep nesting is disgusting and unreadable:
+
+```typescript
+// ❌ BAD - Disgusting nested code with multiple indentation levels
+private handleClick(): void {
+    if (condition) {
+        axios.post(url, data).then((response) => {
+            if (response.data.success) {
+                setTimeout(() => {
+                    this.reload().then(() => {  // This is vomit-inducing
+                        setTimeout(() => {
+                            this.scrollToTop();  // Nested setTimeout hell
+                        }, 200);
+                    });
+                }, 1000);
+            }
+        });
+    }
+}
+
+// ✅ GOOD - Clean, single-level indentation with proper callbacks
+private handleClick(): void {
+    if (!condition) return;
+    
+    this.shouldScrollAfterReload = true;
+    axios.post(url, data).then(this.handleSuccess.bind(this));
+}
+
+private handleSuccess(response: AxiosResponse): void {
+    if (!response.data.success) return;
+    
+    setTimeout(() => this.reload(), 1000);
+}
+
+protected onReloadSuccess(reloadNumber: number, response: AxiosResponse): void {
+    super.onReloadSuccess(reloadNumber, response);
+    
+    if (this.shouldScrollAfterReload) {
+        this.scrollToTop();
+        this.shouldScrollAfterReload = false;
+    }
+}
+```
+
+**Never use setTimeout instead of genuine callbacks** - Use framework lifecycle methods and proper event handling:
+
+```typescript
+// ❌ BAD - setTimeout guessing when operations complete
+setTimeout(() => {
+    this.reload();
+    setTimeout(() => {
+        this.scrollToTop(); // Guessing when reload finishes
+    }, 200);
+}, 1000);
+
+// ✅ GOOD - Use framework callbacks and lifecycle methods
+this.shouldScrollAfterReload = true;
+setTimeout(() => this.reload(), 1000);
+
+// Override framework method for proper callback timing
+protected onReloadSuccess(reloadNumber: number, response: AxiosResponse): void {
+    super.onReloadSuccess(reloadNumber, response);
+    if (this.shouldScrollAfterReload) {
+        this.scrollToTop();
+        this.shouldScrollAfterReload = false;
+    }
+}
+```
+
 ### HTML in TypeScript
 
 **Never hardcode HTML in TypeScript** - Always put HTML structure in Smarty templates:

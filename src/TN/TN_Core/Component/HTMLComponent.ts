@@ -25,6 +25,7 @@ abstract class HTMLComponent {
     protected $element: Cash;
     protected reloadMethod: ReloadMethod = 'get';
     protected updateUrlQueryOnReload: boolean = false;
+    protected scrollToTopOnReload: boolean = false;
     protected controls: Cash[] = [];
     protected i: number;
     protected reloading: Boolean = false;
@@ -314,6 +315,18 @@ abstract class HTMLComponent {
 
         let page: Page = PageSingleton();
         page.updated();
+
+        // Scroll to top of component if enabled
+        if (this.scrollToTopOnReload) {
+            setTimeout(() => {
+                if ($newElement && $newElement[0]) {
+                    $newElement[0].scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }, 100); // Small delay to ensure DOM is updated
+        }
     }
 
     protected onReloadError(reloadNumber: number, error: AxiosError): void {

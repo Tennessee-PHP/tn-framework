@@ -36,19 +36,19 @@ trait State
     {
         $class = new \ReflectionClass(static::class);
         $noCacheProperties = [];
-        
+
         foreach ($changedProperties as $propertyName) {
             if ($class->hasProperty($propertyName)) {
                 $property = $class->getProperty($propertyName);
                 $noCacheAttributes = $property->getAttributes(NoCacheInvalidation::class);
-                
+
                 // Include property if it has NoCacheInvalidation attribute
                 if (!empty($noCacheAttributes)) {
                     $noCacheProperties[] = $propertyName;
                 }
             }
         }
-        
+
         return $noCacheProperties;
     }
 
@@ -63,10 +63,10 @@ trait State
         // Separate properties that should and shouldn't trigger cache invalidation
         $noCacheProperties = $this->getNoCacheInvalidationProperties($changedProperties);
         $normalProperties = array_diff($changedProperties, $noCacheProperties);
-        
+
         // Store no-cache properties for later processing
         $this->pendingNoCacheUpdates = $noCacheProperties;
-        
+
         // Only return properties that should trigger cache invalidation
         return $normalProperties;
     }
@@ -80,7 +80,7 @@ trait State
         if (!empty($this->pendingNoCacheUpdates) && static::cacheEnabled()) {
             static::objectSetCache($this->id, $this);
         }
-        
+
         // Clear the pending updates
         $this->pendingNoCacheUpdates = [];
     }
@@ -90,19 +90,19 @@ trait State
     {
         try {
             $changedProperties = array_merge($changedProperties, $this->beforeSave($changedProperties));
-            
+
             // Process NoCacheInvalidation properties
             $cacheInvalidatingProperties = $this->processNoCacheInvalidationProperties($changedProperties);
-            
+
             $saveType = $this->saveStorage($changedProperties);
             if ($saveType === SaveType::Update) {
                 $this->afterSaveUpdate($cacheInvalidatingProperties);
-                
+
                 // Only invalidate cache for properties that should trigger cache invalidation
                 if (count($cacheInvalidatingProperties) > 0) {
                     $this->invalidateCache();
                 }
-                
+
                 // Update individual object cache for NoCacheInvalidation properties
                 $this->updateNoCacheProperties();
             } else {
