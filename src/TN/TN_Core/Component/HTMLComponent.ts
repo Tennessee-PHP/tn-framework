@@ -157,21 +157,32 @@ abstract class HTMLComponent {
             data['cloudflareTurnstileToken'] = this.cloudflareTurnstileToken;
         }
 
+        console.log('🔍 getReloadData - QUESTION 1: Did controls get read?');
+        console.log('🔍 this.controls.length:', this.controls.length);
+        this.controls.forEach(($control: Cash, index: number) => {
+            console.log(`🔍 Control ${index}:`, $control.attr('class'));
+        });
+
         // Track values by key, prioritizing controls with most recent timestamp
         const valuesByKey: Map<string, {value: any, timestamp: number, $control: Cash}> = new Map();
 
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
+            console.log('🔍 Processing control:', $control.attr('class'), 'key:', key, 'unpack-json:', $control.data('request-unpack-value-from-json'));
 
             // Skip controls without request-key unless they have request-unpack-value-from-json
             if (!key && $control.data('request-unpack-value-from-json') !== 'yes') {
+                console.log('🔍 Skipping control - no key and no unpack-json');
                 return;
             }
             let val = $control.val();
+            console.log('🔍 Control val():', val);
             if (typeof val === 'undefined' || val === '') {
                 val = $control.data('value');
+                console.log('🔍 Control data-value:', val);
             }
             if (typeof val === 'undefined' || val === '') {
+                console.log('🔍 Skipping control - no value');
                 return;
             }
             if ($control.is('input[type=checkbox]')) {
@@ -179,7 +190,11 @@ abstract class HTMLComponent {
             }
 
             if ($control.data('request-unpack-value-from-json') === 'yes') {
-                _.assign(data, typeof val === 'object' ? val : JSON.parse(val));
+                console.log('🔍 Unpacking JSON value:', val, 'type:', typeof val);
+                const parsedVal = typeof val === 'object' ? val : JSON.parse(val);
+                console.log('🔍 QUESTION 2: Did they contain viewMode?', 'viewMode' in parsedVal ? parsedVal.viewMode : 'NO');
+                console.log('🔍 Parsed value:', parsedVal);
+                _.assign(data, parsedVal);
             } else {
                 // Get timestamp from the control
                 const timestamp = parseInt($control.attr('data-timestamp') || '0', 10);
@@ -198,6 +213,10 @@ abstract class HTMLComponent {
         valuesByKey.forEach(({ value }, key) => {
             data[key] = value;
         });
+
+        console.log('🔍 QUESTION 3: Did they get appended correctly?');
+        console.log('🔍 Final data object:', data);
+        console.log('🔍 viewMode in final data?', 'viewMode' in data ? data.viewMode : 'NO');
 
         return data;
     }
@@ -263,7 +282,8 @@ abstract class HTMLComponent {
         });
 
         for (key in data) {
-            if (key === 'componentIdNum') {
+            // Skip internal parameters that should never appear in URL history
+            if (key === 'componentIdNum' || key === 'reload' || key === 'more' || key === 'fromId') {
                 continue;
             }
             let value: string;
@@ -429,33 +449,31 @@ abstract class HTMLComponent {
     }
 
     /**
-     * Load more items triggered by control change (no fromId)
+     * Reload component triggered by control change (like view mode changes)
      */
     protected loadMoreFromControlChange(): void {
-        if (this.loadingMore) {
+        if (this.reloading) {
             return;
         }
 
-        this.setLoadingMore(true);
+        this.setReloading(true);
 
         // Wait 1 second before firing the request
         setTimeout(() => {
-            const loadMoreData = this.getLoadMoreDataFromControlChange();
+            const reloadData = this.getLoadMoreDataFromControlChange();
             
             if (this.updateUrlQueryOnReload) {
-                // Get data without reload/more/fromId params for URL update
-                const urlData = this.getReloadData();
-                this.updateUrlQuery(urlData);
+                this.updateUrlQuery(reloadData);
             }
             
-            axios.get(this.$element.data('load-more-url'), {
-                params: loadMoreData
+            reloadData['reload'] = 1;
+            this.reloadCount += 1;
+            
+            axios.get(this.$element.data('reload-url'), {
+                params: reloadData
             })
-            .then(this.onLoadMoreSuccess.bind(this))
-            .catch((error) => {
-                this.hasMore = false; // Stop trying on error
-                this.onLoadMoreError(error);
-            });
+            .then(this.onReloadSuccess.bind(this, this.reloadCount))
+            .catch(this.onReloadError.bind(this, this.reloadCount));
         }, 1000);
     }
 
@@ -464,9 +482,11 @@ abstract class HTMLComponent {
      */
     protected getLoadMoreData(): ReloadData {
         const data = this.getReloadData();
+        console.log('🔍 getLoadMoreData - base data from getReloadData():', data);
         data['reload'] = 1;  // This triggers component-only rendering
         data['more'] = 1;
         data['fromId'] = this.lastItemId;
+        console.log('🔍 getLoadMoreData - final data with more=1 and fromId:', data);
         return data;
     }
 
@@ -476,7 +496,8 @@ abstract class HTMLComponent {
     protected getLoadMoreDataFromControlChange(): ReloadData {
         const data = this.getReloadData();
         data['reload'] = 1;  // This triggers component-only rendering
-        data['more'] = 1;
+        // Don't set more = 1 for control changes that need structural updates
+        // (like view mode changes that need table headers or grid setup)
         // Don't include fromId - start fresh
         return data;
     }
