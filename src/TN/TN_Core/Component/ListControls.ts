@@ -51,13 +51,14 @@ export default abstract class ListControls extends HTMLComponent {
         // Filter elements
         this.$filterButton = this.$element.find('.filter-button');
         this.$filterBadge = this.$element.find('.filter-badge');
-        this.$filterCount = this.$element.find('.filter-count');
+        this.$filterCount = this.$filterBadge; // The count goes directly in the badge
         
         // Filter drawer elements (global search since drawer is outside component)
         this.$filterInputs = $('.filter-input');
         this.$resetButton = $('.reset-filters');
         this.$applyButton = $('.apply-filters');
         this.$filterDrawer = $('[id$="-filters"]'); // Find drawer by ID pattern
+        
         
         // Add sort dropdowns to sort buttons for unified handling
         this.$sortButtons = this.$sortButtons.add($sortDropdowns);
@@ -81,6 +82,12 @@ export default abstract class ListControls extends HTMLComponent {
         this.$applyButton.on('click', this.applyFilters.bind(this));
         this.$resetButton.on('click', this.resetFilters.bind(this));
         this.$filterInputs.on('keypress', this.handleFilterKeypress.bind(this));
+        
+        // Auto-apply filters when dialog closes
+        const $filterDialog = $('#object-filters');
+        if ($filterDialog.length > 0) {
+            $filterDialog.on('close', this.applyFilters.bind(this));
+        }
     }
 
     /**
@@ -107,9 +114,12 @@ export default abstract class ListControls extends HTMLComponent {
      * Initialize component value without firing change event
      */
     private initializeComponentValue(): void {
-        const currentValue = this.getCurrentComponentValue();
-        console.log('🔍 ListControls initializeComponentValue:', currentValue);
-        this.$element.attr('data-value', JSON.stringify(currentValue));
+        // Only set data-value if it doesn't already exist (PHP component should set it)
+        const existingValue = this.$element.attr('data-value');
+        if (!existingValue || existingValue === 'null' || existingValue === '') {
+            const currentValue = this.getCurrentComponentValue();
+            this.$element.attr('data-value', JSON.stringify(currentValue));
+        }
     }
 
     /**
@@ -132,25 +142,28 @@ export default abstract class ListControls extends HTMLComponent {
     }
 
     /**
+     * Get default value from template (data-default="true") or first button
+     */
+    private getDefaultValue($buttons: Cash, dataAttribute: string, fallback: string): string {
+        const $defaultButton = $buttons.filter('[data-default="true"]');
+        if ($defaultButton.length > 0) {
+            return $defaultButton.data(dataAttribute.replace('data-', ''));
+        }
+        return $buttons.first().data(dataAttribute.replace('data-', '')) || fallback;
+    }
+
+    /**
      * Get default sort from template (data-default="true") or first button
      */
     private getDefaultSort(): string {
-        const $defaultSort = this.$sortButtons.filter('[data-default="true"]');
-        if ($defaultSort.length > 0) {
-            return $defaultSort.data('sort');
-        }
-        return this.$sortButtons.first().data('sort') || 'popular';
+        return this.getDefaultValue(this.$sortButtons, 'data-sort', 'popular');
     }
 
     /**
      * Get default display from template (data-default="true") or first button
      */
     private getDefaultDisplay(): string {
-        const $defaultDisplay = this.$displayButtons.filter('[data-default="true"]');
-        if ($defaultDisplay.length > 0) {
-            return $defaultDisplay.data('display');
-        }
-        return this.$displayButtons.first().data('display') || 'grid';
+        return this.getDefaultValue(this.$displayButtons, 'data-display', 'grid');
     }
 
     /**
@@ -214,10 +227,11 @@ export default abstract class ListControls extends HTMLComponent {
     }
 
     /**
-     * Update sort button visual states
+     * Update button visual states for any control type
      */
-    private updateSortButtonStates(activeSort: string): void {
-        this.$sortButtons.each((index: number, element: HTMLElement) => {
+    private updateButtonStates($buttons: Cash, activeValue: string, dataAttribute: string): void {
+        // Reset all buttons to inactive state
+        $buttons.each((index: number, element: HTMLElement) => {
             const $button = $(element);
             const activeClasses = $button.data('active-classes') || '';
             const inactiveClasses = $button.data('inactive-classes') || '';
@@ -230,7 +244,8 @@ export default abstract class ListControls extends HTMLComponent {
             }
         });
 
-        const $activeButton = this.$sortButtons.filter(`[data-sort="${activeSort}"]`);
+        // Set active button to active state
+        const $activeButton = $buttons.filter(`[${dataAttribute}="${activeValue}"]`);
         if ($activeButton.length > 0) {
             const activeClasses = $activeButton.data('active-classes') || '';
             const inactiveClasses = $activeButton.data('inactive-classes') || '';
@@ -245,34 +260,17 @@ export default abstract class ListControls extends HTMLComponent {
     }
 
     /**
+     * Update sort button visual states
+     */
+    private updateSortButtonStates(activeSort: string): void {
+        this.updateButtonStates(this.$sortButtons, activeSort, 'data-sort');
+    }
+
+    /**
      * Update display button visual states
      */
     private updateDisplayButtonStates(activeDisplay: string): void {
-        this.$displayButtons.each((index: number, element: HTMLElement) => {
-            const $button = $(element);
-            const activeClasses = $button.data('active-classes') || '';
-            const inactiveClasses = $button.data('inactive-classes') || '';
-            
-            if (activeClasses) {
-                $button.removeClass(activeClasses);
-            }
-            if (inactiveClasses) {
-                $button.addClass(inactiveClasses);
-            }
-        });
-
-        const $activeButton = this.$displayButtons.filter(`[data-display="${activeDisplay}"]`);
-        if ($activeButton.length > 0) {
-            const activeClasses = $activeButton.data('active-classes') || '';
-            const inactiveClasses = $activeButton.data('inactive-classes') || '';
-            
-            if (inactiveClasses) {
-                $activeButton.removeClass(inactiveClasses);
-            }
-            if (activeClasses) {
-                $activeButton.addClass(activeClasses);
-            }
-        }
+        this.updateButtonStates(this.$displayButtons, activeDisplay, 'data-display');
     }
 
     /**
@@ -302,22 +300,71 @@ export default abstract class ListControls extends HTMLComponent {
         
         const currentValue = this.getCurrentComponentValue();
         
-        // Get all filter input names from template
+        // Get unique filter parameter names from template
         const filterParams: string[] = [];
-        this.$filterInputs.each((index: number, element: HTMLInputElement) => {
-            const name = element.name;
-            if (name) {
+        const seenParams = new Set<string>();
+        
+        this.$filterInputs.each((index: number, element: HTMLElement) => {
+            const name = element.getAttribute('name');
+            if (name && !seenParams.has(name)) {
                 filterParams.push(name);
+                seenParams.add(name);
             }
         });
         
         // Update all filter values - only include non-empty values
         filterParams.forEach(param => {
             const inputValue = this.getInputValue(param);
-            if (inputValue && inputValue.trim() !== '') {
-                currentValue[param] = inputValue.trim();
+            
+            // Check if this is an exclusion parameter (data-exclude="true")
+            const $input = this.$filterInputs.filter(`[name="${param}"]`).first();
+            const isExclude = $input.data('exclude') === 'true' || $input.data('exclude') === true;
+            
+            if (isExclude) {
+                // For exclusion inputs, collect unchecked values
+                const allValues: string[] = [];
+                const checkedValues: string[] = [];
+                
+                this.$filterInputs.filter(`[name="${param}"]`).each((index: number, element: HTMLInputElement) => {
+                    allValues.push(element.value);
+                    if (element.checked) {
+                        checkedValues.push(element.value);
+                    }
+                });
+                
+                const uncheckedValues = allValues.filter(value => !checkedValues.includes(value));
+                
+                if (uncheckedValues.length > 0) {
+                    currentValue[param] = uncheckedValues.join(',');
+                } else {
+                    delete currentValue[param];
+                }
             } else {
-                delete currentValue[param];
+                // Normal behavior for non-exclusion inputs
+                const $inputs = this.$filterInputs.filter(`[name="${param}"]`);
+                
+                if ($inputs.first().is('input[type="checkbox"]')) {
+                    // For normal checkboxes, collect checked values
+                    const checkedValues: string[] = [];
+                    $inputs.each((index: number, element: HTMLInputElement) => {
+                        if (element.checked) {
+                            checkedValues.push(element.value);
+                        }
+                    });
+                    
+                    if (checkedValues.length > 0) {
+                        currentValue[param] = checkedValues.join(',');
+                    } else {
+                        delete currentValue[param];
+                    }
+                } else {
+                    // For text inputs, selects, etc.
+                    if (inputValue && inputValue.trim() !== '' && inputValue.trim() !== 'all') {
+                        currentValue[param] = inputValue.trim();
+                    } else {
+                        delete currentValue[param];
+                    }
+                }
             }
         });
 
@@ -366,7 +413,25 @@ export default abstract class ListControls extends HTMLComponent {
      * Get input value by name
      */
     private getInputValue(name: string): string {
-        const element = $(`[name="${name}"]`)[0] as HTMLInputElement | HTMLSelectElement;
+        // Find the element within our discovered filter inputs
+        const $element = this.$filterInputs.filter(`[name="${name}"]`).first();
+        if ($element.length === 0) {
+            return '';
+        }
+        
+        const element = $element[0] as HTMLInputElement | HTMLSelectElement;
+        
+        // For el-select elements, check if value is empty but there's a selected option
+        if (element.tagName === 'EL-SELECT' && (!element.value || element.value === '')) {
+            const selectedOption = element.querySelector('el-option[selected]') as HTMLElement;
+            if (selectedOption) {
+                const value = selectedOption.getAttribute('value');
+                if (value) {
+                    return value;
+                }
+            }
+        }
+        
         return element?.value ?? '';
     }
 
@@ -381,61 +446,48 @@ export default abstract class ListControls extends HTMLComponent {
     }
 
     /**
+     * Get control value from active button or dropdown
+     */
+    private getControlValue($buttons: Cash, dataAttribute: string, dropdownSelector: string): string | undefined {
+        // Check for active button first
+        const $activeButton = $buttons.filter('[class*="active"]');
+        if ($activeButton.length > 0) {
+            return $activeButton.data(dataAttribute.replace('data-', '')) as string;
+        }
+        
+        // Fall back to dropdown value
+        const $dropdown = this.$element.find(dropdownSelector);
+        if ($dropdown.length > 0) {
+            const dropdownValue = $dropdown.val() as string;
+            if (dropdownValue) {
+                return dropdownValue;
+            }
+        }
+        
+        return undefined;
+    }
+
+    /**
      * Get current component value from form state
      */
     private getCurrentComponentValue(): Record<string, any> {
         const value: Record<string, any> = {};
         
-        console.log('🔍 getCurrentComponentValue - Starting detection...');
-        
-        // Get current sort from active button or dropdown
-        const $activeSort = this.$sortButtons.filter('[class*="sort-button-active"]');
-        console.log('🔍 Active sort buttons found:', $activeSort.length);
-        if ($activeSort.length > 0) {
-            value.sort = $activeSort.data('sort') as string;
-        } else {
-            // Check for dropdown value
-            const $sortDropdown = this.$element.find('[data-sort-dropdown]');
-            console.log('🔍 Sort dropdowns found:', $sortDropdown.length);
-            if ($sortDropdown.length > 0) {
-                const dropdownValue = $sortDropdown.val() as string;
-                console.log('🔍 Sort dropdown value:', dropdownValue);
-                if (dropdownValue) {
-                    value.sort = dropdownValue;
-                }
-            }
+        // Get current sort
+        const sort = this.getControlValue(this.$sortButtons, 'data-sort', '[data-sort-dropdown]');
+        if (sort) {
+            value.sort = sort;
         }
         
-        // Get current display from active button or dropdown
-        const $activeDisplay = this.$displayButtons.filter('[class*="sort-button-active"], [class*="active"]');
-        console.log('🔍 Active display buttons found:', $activeDisplay.length);
-        if ($activeDisplay.length > 0) {
-            value.viewMode = $activeDisplay.data('display') as string;
-            console.log('🔍 ViewMode from active button:', value.viewMode);
-        } else {
-            // Check for dropdown value
-            const $displayDropdown = this.$element.find('[data-display-dropdown]');
-            console.log('🔍 Display dropdowns found:', $displayDropdown.length);
-            if ($displayDropdown.length > 0) {
-                const dropdownValue = $displayDropdown.val() as string;
-                console.log('🔍 Display dropdown value:', dropdownValue);
-                if (dropdownValue) {
-                    value.viewMode = dropdownValue;
-                    console.log('🔍 ViewMode set from dropdown:', value.viewMode);
-                }
-            }
+        // Get current display/viewMode
+        const display = this.getControlValue(this.$displayButtons, 'data-display', '[data-display-dropdown]');
+        if (display) {
+            value.viewMode = display;
         }
         
-        // Get current filter values from inputs
-        this.$filterInputs.each((index: number, element: HTMLInputElement) => {
-            const name = element.name;
-            const inputValue = element.value;
-            if (name && inputValue && inputValue.trim() !== '') {
-                value[name] = inputValue.trim();
-            }
-        });
+        // Don't read filter values from DOM during initialization
+        // Filter values come from URL parameters via PHP component
         
-        console.log('🔍 getCurrentComponentValue - Final value:', value);
         return value;
     }
 
@@ -462,22 +514,47 @@ export default abstract class ListControls extends HTMLComponent {
     }
 
     /**
-     * Update filter badge count
+     * Update filter badge count based on component value
      */
     private updateFilterBadge(): void {
-        let activeFilters = 0;
+        const dataValueAttr = this.$element.attr('data-value') || '{}';
+        const currentValue = JSON.parse(dataValueAttr);
         
-        this.$filterInputs.each((index: number, element: HTMLInputElement) => {
-            if (element.value?.trim()) {
+        // Count filter parameters (exclude sort and viewMode which aren't filters)
+        const filterKeys = Object.keys(currentValue).filter(key => 
+            key !== 'sort' && key !== 'viewMode'
+        );
+        console.log('🔍 BADGE: Filter keys found:', filterKeys);
+        
+        // For exclusion parameters, count the number of excluded items
+        let activeFilters = 0;
+        filterKeys.forEach(key => {
+            const value = currentValue[key];
+            console.log(`🔍 BADGE: Processing key "${key}" with value:`, value);
+            
+            if (typeof value === 'string' && value.includes(',')) {
+                // Comma-separated values (like excludeTypes=type1,type2) - count each item
+                const count = value.split(',').length;
+                console.log(`🔍 BADGE: Comma-separated value "${value}" adds ${count} filters`);
+                activeFilters += count;
+            } else if (value && value !== '' && value !== 'all') {
+                // Single filter value
+                console.log(`🔍 BADGE: Single value "${value}" adds 1 filter`);
                 activeFilters++;
+            } else {
+                console.log(`🔍 BADGE: Value "${value}" ignored (empty, blank, or "all")`);
             }
         });
+
+        console.log('🔍 BADGE: Total active filters:', activeFilters);
 
         if (activeFilters > 0) {
             this.$filterCount.text(activeFilters.toString());
             this.$filterBadge.show();
+            console.log('🔍 BADGE: Showing badge with count:', activeFilters);
         } else {
             this.$filterBadge.hide();
+            console.log('🔍 BADGE: Hiding badge (no filters)');
         }
     }
 }

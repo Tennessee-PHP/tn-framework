@@ -157,32 +157,22 @@ abstract class HTMLComponent {
             data['cloudflareTurnstileToken'] = this.cloudflareTurnstileToken;
         }
 
-        console.log('🔍 getReloadData - QUESTION 1: Did controls get read?');
-        console.log('🔍 this.controls.length:', this.controls.length);
-        this.controls.forEach(($control: Cash, index: number) => {
-            console.log(`🔍 Control ${index}:`, $control.attr('class'));
-        });
 
         // Track values by key, prioritizing controls with most recent timestamp
         const valuesByKey: Map<string, {value: any, timestamp: number, $control: Cash}> = new Map();
 
         this.controls.forEach(($control: Cash) => {
             let key = $control.data('request-key');
-            console.log('🔍 Processing control:', $control.attr('class'), 'key:', key, 'unpack-json:', $control.data('request-unpack-value-from-json'));
 
             // Skip controls without request-key unless they have request-unpack-value-from-json
             if (!key && $control.data('request-unpack-value-from-json') !== 'yes') {
-                console.log('🔍 Skipping control - no key and no unpack-json');
                 return;
             }
             let val = $control.val();
-            console.log('🔍 Control val():', val);
             if (typeof val === 'undefined' || val === '') {
                 val = $control.data('value');
-                console.log('🔍 Control data-value:', val);
             }
             if (typeof val === 'undefined' || val === '') {
-                console.log('🔍 Skipping control - no value');
                 return;
             }
             if ($control.is('input[type=checkbox]')) {
@@ -190,10 +180,7 @@ abstract class HTMLComponent {
             }
 
             if ($control.data('request-unpack-value-from-json') === 'yes') {
-                console.log('🔍 Unpacking JSON value:', val, 'type:', typeof val);
                 const parsedVal = typeof val === 'object' ? val : JSON.parse(val);
-                console.log('🔍 QUESTION 2: Did they contain viewMode?', 'viewMode' in parsedVal ? parsedVal.viewMode : 'NO');
-                console.log('🔍 Parsed value:', parsedVal);
                 _.assign(data, parsedVal);
             } else {
                 // Get timestamp from the control
@@ -213,10 +200,6 @@ abstract class HTMLComponent {
         valuesByKey.forEach(({ value }, key) => {
             data[key] = value;
         });
-
-        console.log('🔍 QUESTION 3: Did they get appended correctly?');
-        console.log('🔍 Final data object:', data);
-        console.log('🔍 viewMode in final data?', 'viewMode' in data ? data.viewMode : 'NO');
 
         return data;
     }
@@ -482,11 +465,9 @@ abstract class HTMLComponent {
      */
     protected getLoadMoreData(): ReloadData {
         const data = this.getReloadData();
-        console.log('🔍 getLoadMoreData - base data from getReloadData():', data);
         data['reload'] = 1;  // This triggers component-only rendering
         data['more'] = 1;
         data['fromId'] = this.lastItemId;
-        console.log('🔍 getLoadMoreData - final data with more=1 and fromId:', data);
         return data;
     }
 
