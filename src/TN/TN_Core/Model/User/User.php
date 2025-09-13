@@ -557,6 +557,20 @@ class User implements Persistence
     }
 
     /**
+     * Check if this user can login as another user
+     * @param User $otherUser
+     * @return bool
+     */
+    public function canLoginAsUser(User $otherUser): bool
+    {
+        // Framework default: false if other user is super-user, otherwise return if this user is super-user
+        if ($otherUser->hasRole('super-user')) {
+            return false;
+        }
+        return $this->hasRole('super-user');
+    }
+
+    /**
      * login as a different user
      * @param int $otherUserId
      * @return void
@@ -569,9 +583,18 @@ class User implements Persistence
         if (!$this->hasRole('user-admin')) {
             throw new AccessForbiddenException('You do not have permission to login as another user');
         }
+
         $otherUser = User::readFromId($otherUserId);
+        if (!$otherUser instanceof User) {
+            throw new ValidationException('User not found');
+        }
+
+        if (!$this->canLoginAsUser($otherUser)) {
+            throw new ValidationException('You cannot login as this user');
+        }
+
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id', null);
-        if ($otherUser instanceof User && empty($tnLoginAsUserId)) {
+        if (empty($tnLoginAsUserId)) {
             $request->setSession('TN_LoginAs_User_Id', $otherUserId);
             $otherUser->ensureToken();
             if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {

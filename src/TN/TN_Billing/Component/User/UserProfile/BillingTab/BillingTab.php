@@ -52,7 +52,7 @@ class BillingTab extends UserProfileTab
         }
 
         $subscriptionsReorganized = false;
-        if ($this->observer->hasRole('user-admin') && isset($_GET['reorganizesubscriptions'])) {
+        if ($this->observer->hasRole('sales-admin') && isset($_GET['reorganizesubscriptions'])) {
             $this->user->subscriptionsChanged();
             $subscriptionsReorganized = true;
         }

@@ -14,7 +14,7 @@ use TN\TN_Core\Attribute\Route\Component;
 class RefundController extends Controller
 {
     #[Path('staff/users/user/:userId/plans/refund')]
-    #[RoleOnly('user-admin')]
+    #[RoleOnly('sales-admin')]
     #[Component(\TN\TN_Billing\Component\Refund\RefundPayments::class)]
     public function refundPayments(): void {}
 }
