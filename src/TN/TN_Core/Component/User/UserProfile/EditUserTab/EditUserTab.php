@@ -19,7 +19,7 @@ class EditUserTab extends UserProfileTab
     public function prepare(): void
     {
         $this->observer = User::getActive();
-        $this->observerIsSuperUser = $this->observer->hasRole('super-user');
+        $this->observerIsSuperUser = $this->observer->hasRole('super-user') || $this->observer->hasRole('user-admin');
         $this->userInactiveChanges = UserInactiveChange::getUserChanges($this->user);
     }
 }

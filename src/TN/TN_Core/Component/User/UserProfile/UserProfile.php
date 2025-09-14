@@ -43,7 +43,7 @@ class UserProfile extends HTMLComponent
                 $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`username`', '=', $this->username)), true);
             }
 
-            if (!User::getActive()->hasRole('super-user') && $this->user->id !== User::getActive()->id) {
+            if (!User::getActive()->hasRole('super-user') && !User::getActive()->hasRole('user-admin') && $this->user->id !== User::getActive()->id) {
                 throw new ResourceNotFoundException('user');
             }
         }
@@ -53,7 +53,7 @@ class UserProfile extends HTMLComponent
         }
 
         $this->username = $this->user->username;
-        $this->canLoginAsUser = User::getActive()->hasRole('super-user');
+        $this->canLoginAsUser = User::getActive()->hasRole('super-user') || User::getActive()->hasRole('user-admin');
 
         $selectedTabClass = null;
         $tabSortOrders = [];

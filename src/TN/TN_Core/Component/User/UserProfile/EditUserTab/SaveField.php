@@ -25,7 +25,7 @@ class SaveField extends JSON
         }
 
         $this->observer = User::getActive();
-        $this->observerIsSuperUser = $this->observer->hasRole('super-user');
+        $this->observerIsSuperUser = $this->observer->hasRole('super-user') || $this->observer->hasRole('user-admin');
         if ($this->observerIsSuperUser) {
             $this->user = User::searchOne(new SearchArguments(conditions: new SearchComparison('`id`', '=', $this->userId)));
         } else {
