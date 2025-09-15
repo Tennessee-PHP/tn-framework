@@ -349,7 +349,7 @@ class User implements Persistence
         // do we have a loginAs in play?
         if (
             !empty($tnLoginAsUserId) &&
-            $user->hasRole('super-user')
+            ($user->hasRole('super-user') || $user->hasRole('user-admin'))
         ) {
             $otherUser = User::readFromId((int)$tnLoginAsUserId);
             if ($otherUser instanceof User) {
