@@ -58,7 +58,7 @@ class UserController extends Controller
     public function suggestUsername(): void {}
 
     #[Path('reset-password')]
-    #[AnonymousOnly]
+    #[Anyone]
     #[Component(\TN\TN_Core\Component\User\ResetPasswordForm\ResetPasswordForm::class)]
     public function resetPassword(): void {}
 }
