@@ -285,6 +285,32 @@ abstract class R2Bucket
     }
 
     /**
+     * Download file contents from R2 bucket by key
+     * 
+     * @param string $key File key/path in bucket
+     * @return string File contents as string
+     * @throws ValidationException If file doesn't exist or download fails
+     */
+    public function downloadFileContents(string $key): string
+    {
+        try {
+            $event = self::startPerformanceEvent('R2', "GET {$key}", ['bucket' => $this->bucketName]);
+            
+            $client = $this->getClient();
+            
+            $result = $client->getObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $key
+            ]);
+            
+            $event?->end();
+            return (string) $result['Body'];
+        } catch (\Exception $e) {
+            throw new ValidationException('Failed to download file from R2 storage: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Get MIME type of file
      */
     private function getMimeType(string $filePath): string

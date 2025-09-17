@@ -536,9 +536,10 @@ class MyAPI extends JSON
             throw new ValidationException('User not found');
         }
         
-        // ✅ GOOD: Set success response
+        // ✅ GOOD: Set success response using standard format
         $this->data = [
             'result' => 'success',
+            'message' => 'User found successfully',
             'user' => $user->toApiArray()
         ];
         
@@ -550,6 +551,74 @@ class MyAPI extends JSON
         // }
     }
 }
+```
+
+## JSON Response Standards
+
+### Standard Response Format
+
+**ALWAYS use the standardized `result` field** for consistency with framework error handling:
+
+```php
+// ✅ GOOD - Standard success response format
+$this->data = [
+    'result' => 'success',
+    'message' => 'Operation completed successfully',
+    'data' => $responseData,
+    'additionalField' => $value
+];
+
+// ❌ BAD - Inconsistent response formats
+$this->data = [
+    'success' => true,           // Don't use 'success' field
+    'status' => 'ok',           // Don't use 'status' field
+    'error' => false            // Don't use 'error' field
+];
+```
+
+### Framework Error Consistency
+
+The framework's `JSON::error()` method uses `'result' => 'error'`, so success responses must use `'result' => 'success'`:
+
+```php
+// Framework error format (automatic)
+{
+    "result": "error",
+    "message": "Validation failed"
+}
+
+// Your success format (manual)
+{
+    "result": "success", 
+    "message": "Operation completed",
+    "data": {...}
+}
+```
+
+### Response Field Guidelines
+
+- **`result`** (required): Always `'success'` for successful operations
+- **`message`** (recommended): User-friendly success message
+- **`data`** or specific fields: Your response payload
+- **Never include error-related fields** in success responses
+
+```php
+// ✅ GOOD - Clean success response
+$this->data = [
+    'result' => 'success',
+    'message' => 'User updated successfully',
+    'user' => $user->toApiArray(),
+    'timestamp' => time()
+];
+
+// ❌ BAD - Including unnecessary fields
+$this->data = [
+    'result' => 'success',
+    'success' => true,        // Redundant
+    'error' => null,          // Unnecessary
+    'errors' => [],           // Unnecessary
+    'status' => 'ok'          // Inconsistent
+];
 ```
 
 ## Component Organization Patterns

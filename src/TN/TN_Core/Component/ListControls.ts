@@ -277,7 +277,7 @@ export default abstract class ListControls extends HTMLComponent {
      * Update sort value and trigger change
      */
     private updateSort(sort: string): void {
-        const currentValue = this.getCurrentComponentValue();
+        const currentValue = this.getCurrentComponentValueWithFilters();
         currentValue.sort = sort;
         this.setComponentValue(currentValue);
     }
@@ -286,7 +286,7 @@ export default abstract class ListControls extends HTMLComponent {
      * Update display value and trigger change
      */
     private updateDisplay(display: string): void {
-        const currentValue = this.getCurrentComponentValue();
+        const currentValue = this.getCurrentComponentValueWithFilters();
         // Use 'viewMode' for consistency with existing components
         currentValue.viewMode = display;
         this.setComponentValue(currentValue);
@@ -471,22 +471,108 @@ export default abstract class ListControls extends HTMLComponent {
      * Get current component value from form state
      */
     private getCurrentComponentValue(): Record<string, any> {
-        const value: Record<string, any> = {};
+        // First try to get the current value from the component's data-value attribute
+        // This preserves all existing values including filters
+        const currentValueJson = this.$element.attr('data-value');
+        let value: Record<string, any> = {};
         
-        // Get current sort
+        if (currentValueJson) {
+            try {
+                value = JSON.parse(currentValueJson);
+            } catch (e) {
+                // If parsing fails, start with empty object
+                value = {};
+            }
+        }
+        
+        // Update with current DOM values for sort and display (these can change via UI)
         const sort = this.getControlValue(this.$sortButtons, 'data-sort', '[data-sort-dropdown]');
         if (sort) {
             value.sort = sort;
         }
         
-        // Get current display/viewMode
         const display = this.getControlValue(this.$displayButtons, 'data-display', '[data-display-dropdown]');
         if (display) {
             value.viewMode = display;
         }
         
-        // Don't read filter values from DOM during initialization
-        // Filter values come from URL parameters via PHP component
+        return value;
+    }
+
+    /**
+     * Get current component value including live filter values from DOM
+     * Used when sort/display changes to ensure current filter state is preserved
+     */
+    private getCurrentComponentValueWithFilters(): Record<string, any> {
+        const value = this.getCurrentComponentValue();
+        
+        // Get unique filter parameter names from template
+        const filterParams: string[] = [];
+        const seenParams = new Set<string>();
+        
+        this.$filterInputs.each((index: number, element: HTMLElement) => {
+            const name = element.getAttribute('name');
+            if (name && !seenParams.has(name)) {
+                filterParams.push(name);
+                seenParams.add(name);
+            }
+        });
+        
+        // Update all filter values from current DOM state - only include non-empty values
+        filterParams.forEach(param => {
+            const inputValue = this.getInputValue(param);
+            
+            // Check if this is an exclusion parameter (data-exclude="true")
+            const $input = this.$filterInputs.filter(`[name="${param}"]`).first();
+            const isExclude = $input.data('exclude') === 'true' || $input.data('exclude') === true;
+            
+            if (isExclude) {
+                // For exclusion inputs, collect unchecked values
+                const allValues: string[] = [];
+                const checkedValues: string[] = [];
+                
+                this.$filterInputs.filter(`[name="${param}"]`).each((index: number, element: HTMLInputElement) => {
+                    allValues.push(element.value);
+                    if (element.checked) {
+                        checkedValues.push(element.value);
+                    }
+                });
+                
+                const uncheckedValues = allValues.filter(value => !checkedValues.includes(value));
+                
+                if (uncheckedValues.length > 0) {
+                    value[param] = uncheckedValues.join(',');
+                } else {
+                    delete value[param];
+                }
+            } else {
+                // Normal behavior for non-exclusion inputs
+                const $inputs = this.$filterInputs.filter(`[name="${param}"]`);
+                
+                if ($inputs.first().is('input[type="checkbox"]')) {
+                    // For normal checkboxes, collect checked values
+                    const checkedValues: string[] = [];
+                    $inputs.each((index: number, element: HTMLInputElement) => {
+                        if (element.checked) {
+                            checkedValues.push(element.value);
+                        }
+                    });
+                    
+                    if (checkedValues.length > 0) {
+                        value[param] = checkedValues.join(',');
+                    } else {
+                        delete value[param];
+                    }
+                } else {
+                    // For regular inputs (text, select, etc.)
+                    if (inputValue && inputValue !== '' && inputValue !== 'all') {
+                        value[param] = inputValue;
+                    } else {
+                        delete value[param];
+                    }
+                }
+            }
+        });
         
         return value;
     }
@@ -524,37 +610,27 @@ export default abstract class ListControls extends HTMLComponent {
         const filterKeys = Object.keys(currentValue).filter(key => 
             key !== 'sort' && key !== 'viewMode'
         );
-        console.log('🔍 BADGE: Filter keys found:', filterKeys);
         
         // For exclusion parameters, count the number of excluded items
         let activeFilters = 0;
         filterKeys.forEach(key => {
             const value = currentValue[key];
-            console.log(`🔍 BADGE: Processing key "${key}" with value:`, value);
             
             if (typeof value === 'string' && value.includes(',')) {
                 // Comma-separated values (like excludeTypes=type1,type2) - count each item
                 const count = value.split(',').length;
-                console.log(`🔍 BADGE: Comma-separated value "${value}" adds ${count} filters`);
                 activeFilters += count;
             } else if (value && value !== '' && value !== 'all') {
                 // Single filter value
-                console.log(`🔍 BADGE: Single value "${value}" adds 1 filter`);
                 activeFilters++;
-            } else {
-                console.log(`🔍 BADGE: Value "${value}" ignored (empty, blank, or "all")`);
             }
         });
-
-        console.log('🔍 BADGE: Total active filters:', activeFilters);
 
         if (activeFilters > 0) {
             this.$filterCount.text(activeFilters.toString());
             this.$filterBadge.show();
-            console.log('🔍 BADGE: Showing badge with count:', activeFilters);
         } else {
             this.$filterBadge.hide();
-            console.log('🔍 BADGE: Hiding badge (no filters)');
         }
     }
 }

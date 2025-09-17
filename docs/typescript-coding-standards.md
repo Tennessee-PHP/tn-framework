@@ -363,6 +363,131 @@ private async submitData(): Promise<void> {
 }
 ```
 
+## JSON Response Handling
+
+### Standard Response Format
+
+**ALWAYS check `response.data.result`** to determine success/error status, consistent with framework standards:
+
+```typescript
+// ✅ GOOD - Standard response handling
+axios.post(apiUrl, formData)
+    .then((response) => {
+        if (response.data.result === 'success') {
+            new SuccessToast(response.data.message || 'Operation completed successfully');
+            this.handleSuccess(response.data);
+        } else {
+            throw new Error(response.data.message || 'Operation failed');
+        }
+    })
+    .catch((error) => {
+        console.error('Request failed:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Operation failed. Please try again.';
+        new ErrorToast(errorMessage);
+    });
+
+// ❌ BAD - Inconsistent response checking
+axios.post(apiUrl, formData)
+    .then((response) => {
+        if (response.data.success) {           // Don't check 'success' field
+            // Handle success
+        }
+        if (response.data.status === 'ok') {   // Don't check 'status' field
+            // Handle success  
+        }
+    });
+```
+
+### Error Response Handling
+
+**Handle both HTTP errors and application errors** using the standard `result` field:
+
+```typescript
+// ✅ GOOD - Comprehensive error handling
+private makeApiCall(): void {
+    axios.post(apiUrl, data)
+        .then((response) => {
+            // Check application-level success/error
+            if (response.data.result === 'success') {
+                new SuccessToast(response.data.message);
+                this.processSuccessResponse(response.data);
+            } else if (response.data.result === 'error') {
+                // Application returned error response
+                throw new Error(response.data.message || 'Application error occurred');
+            } else {
+                // Unexpected response format
+                throw new Error('Unexpected response format');
+            }
+        })
+        .catch((error) => {
+            console.error('API call failed:', error);
+            
+            // Extract error message from various sources
+            let errorMessage = 'Request failed. Please try again.';
+            
+            if (error.response?.data?.message) {
+                // Server returned error with message
+                errorMessage = error.response.data.message;
+            } else if (error.message) {
+                // JavaScript error or thrown error
+                errorMessage = error.message;
+            }
+            
+            new ErrorToast(errorMessage);
+        });
+}
+
+// ❌ BAD - Incomplete error handling
+private makeApiCall(): void {
+    axios.post(apiUrl, data)
+        .then((response) => {
+            // Assumes all 200 responses are successful
+            new SuccessToast('Success!');
+        })
+        .catch((error) => {
+            // Generic error handling
+            new ErrorToast('Error occurred');
+        });
+}
+```
+
+### Response Type Patterns
+
+**Use consistent patterns for different response scenarios**:
+
+```typescript
+// ✅ GOOD - Consistent response handling patterns
+private handleApiResponse(response: any): void {
+    switch (response.data.result) {
+        case 'success':
+            new SuccessToast(response.data.message || 'Operation completed');
+            if (response.data.redirect) {
+                window.location.href = response.data.redirect;
+            } else {
+                this.reload(); // Refresh component
+            }
+            break;
+            
+        case 'error':
+            throw new Error(response.data.message || 'Operation failed');
+            
+        default:
+            throw new Error('Unexpected response format');
+    }
+}
+
+// ❌ BAD - Inconsistent response handling
+private handleApiResponse(response: any): void {
+    if (response.data.success === true) {        // Wrong field
+        // Success handling
+    } else if (response.data.error) {            // Wrong field
+        // Error handling  
+    } else if (response.status === 200) {        // Wrong level
+        // Assumes HTTP 200 = success
+    }
+}
+```
+
 ## Error Handling
 
 ### Try-Catch Patterns

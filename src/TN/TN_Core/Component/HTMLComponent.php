@@ -150,10 +150,10 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
             $data['pageDescription'] = $pageAttribute->description;
         }
         if ($this->getFirstAttributeInstance(Reloadable::class)) {
-            $data['reloadRoute'] = $routeAttribute?->route ?? '';
+            $data['reloadRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
         }
         if ($this->getFirstAttributeInstance(\TN\TN_Core\Attribute\Components\HTMLComponent\LoadMore::class)) {
-            $data['loadMoreRoute'] = $routeAttribute?->route ?? '';
+            $data['loadMoreRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
             $data['supportsLoadMore'] = true;
         }
         return array_merge($data, get_object_vars($this));
@@ -176,6 +176,30 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         }
 
         return null;
+    }
+
+    /**
+     * Build a complete URL from a route string, replacing path parameters with actual values
+     */
+    protected function buildRouteUrl(string $route): string
+    {
+        if (empty($route)) {
+            return '';
+        }
+
+        // Parse route string (format: "Package:Controller:method")
+        $parts = explode(':', $route);
+        if (count($parts) !== 3) {
+            return '';
+        }
+
+        [$moduleName, $controllerName, $routeName] = $parts;
+
+        // Get path parameters from FromPath properties
+        $pathArgs = $this->getPropertiesFrom(FromPath::class);
+
+        // Use Controller::path to build the complete URL
+        return Controller::path($moduleName, $controllerName, $routeName, $pathArgs);
     }
 
     public function getPageIndex(): bool
