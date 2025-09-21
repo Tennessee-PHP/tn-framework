@@ -80,6 +80,15 @@ abstract class Component
                                 $tmp = false;
                             }
                             $this->$propertyName = (bool)$tmp;
+                        } elseif ($type === 'array') {
+                            // For array properties, split comma-separated strings
+                            if (is_string($tmp) && !empty($tmp)) {
+                                $this->$propertyName = array_filter(array_map('trim', explode(',', $tmp)), function($value) {
+                                    return !empty($value);
+                                });
+                            } else {
+                                $this->$propertyName = [];
+                            }
                         } else {
                             $this->$propertyName = $tmp;
                         }

@@ -611,13 +611,18 @@ export default abstract class ListControls extends HTMLComponent {
             key !== 'sort' && key !== 'viewMode'
         );
         
-        // For exclusion parameters, count the number of excluded items
+        // Count active filters
         let activeFilters = 0;
         filterKeys.forEach(key => {
             const value = currentValue[key];
             
-            if (typeof value === 'string' && value.includes(',')) {
-                // Comma-separated values (like excludeTypes=type1,type2) - count each item
+            if (key === 'excludeTypes') {
+                // For filter types, count as 1 filter regardless of how many types are excluded
+                if (typeof value === 'string' && value !== '' && value !== 'all') {
+                    activeFilters++;
+                }
+            } else if (typeof value === 'string' && value.includes(',')) {
+                // For other comma-separated values, count each item
                 const count = value.split(',').length;
                 activeFilters += count;
             } else if (value && value !== '' && value !== 'all') {
