@@ -44,6 +44,16 @@ export default class MyComponent extends HTMLComponent {
 }
 ```
 
+**CRITICAL**: Do not use property initializers (default values) for properties that will be set in `observe()` or the constructor. Property initializers execute AFTER the constructor completes, overwriting values set during initialization:
+
+```typescript
+// WRONG - initializer will overwrite value set in observe()
+private lastState: string = '';
+
+// CORRECT - no initializer, set in observe() or constructor
+private lastState: string;
+```
+
 ### 3. Form Handling and File Uploads
 
 For file uploads and form submissions:

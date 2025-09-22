@@ -26,17 +26,12 @@ abstract class HTMLComponent {
     protected reloadMethod: ReloadMethod = 'get';
     protected updateUrlQueryOnReload: boolean = false;
     protected controls: Cash[] = [];
-    protected i: number = 0;
+    protected i: number;
     protected reloading: Boolean = false;
     private reloadTimer: ReturnType<typeof setTimeout> | null = null;
     private keyUpReloadDelay: number = 500;
     private reloadCount: number = 0;
     private cloudflareTurnstileToken: string;
-    
-    // LoadMore properties
-    protected loadingMore: boolean = false;
-    protected hasMore: boolean = true;
-    protected lastItemId: number = 0;
     static componentFactory: IComponentFactory;
 
     constructor($element: Cash) {
@@ -49,11 +44,6 @@ abstract class HTMLComponent {
         }
 
         this.$element.on('reload', this.triggerReload.bind(this));
-        
-        // Setup LoadMore if supported
-        if (this.$element.data('supports-load-more')) {
-            this.setupLoadMore();
-        }
         
         this.observe();
     }
@@ -88,19 +78,10 @@ abstract class HTMLComponent {
 
     protected observeControls(): void {
         this.controls.forEach((control: Cash) => {
-            // For LoadMore components, handle control changes differently
-            if (this.$element.data('supports-load-more')) {
-                control.on('change', this.onLoadMoreControlChange.bind(this, control));
-                if (control.is('input[type=text], input[type=password], input[type=email]')) {
-                    control.on('keyup', this.onLoadMoreControlKeyUp.bind(this));
-                }
-            } else {
-                // Standard behavior for non-LoadMore components
                 control.on('change', this.onControlChange.bind(this, control));
                 if (control.is('input[type=text], input[type=password], input[type=email]')) {
                     control.on('keyup', this.onControlKeyUp.bind(this));
                 }
-            }
         });
     }
 
@@ -108,6 +89,7 @@ abstract class HTMLComponent {
         // Set timestamp when control changes
         const timestamp = Date.now();
         $control.attr('data-timestamp', timestamp.toString());
+        // @ts-ignore
         this.reload();
     }
 
@@ -117,35 +99,6 @@ abstract class HTMLComponent {
             clearTimeout(this.reloadTimer);
         }
         this.reloadTimer = setTimeout(this.reload.bind(this), this.keyUpReloadDelay);
-    }
-
-
-
-    /**
-     * Handle control changes for LoadMore components
-     */
-    protected onLoadMoreControlChange($control: Cash): void {
-        // Set timestamp when control changes
-        const timestamp = Date.now();
-        $control.attr('data-timestamp', timestamp.toString());
-        // Clear existing items and restart from beginning
-        const $itemsContainer = this.$element.find('[data-items-container]');
-        if ($itemsContainer.length > 0) {
-            $itemsContainer.empty();
-        }
-        this.lastItemId = 0; // Reset to start from beginning
-        this.hasMore = true; // Reset hasMore flag
-        this.loadMoreFromControlChange(); // Use special method for control changes
-    }
-
-    /**
-     * Handle keyup events for LoadMore components 
-     */
-    protected onLoadMoreControlKeyUp(e: any): void {
-        if (this.reloadTimer) {
-            clearTimeout(this.reloadTimer);
-        }
-        this.reloadTimer = setTimeout(this.onLoadMoreControlChange.bind(this), this.keyUpReloadDelay);
     }
 
     protected getReloadData(): ReloadData {
@@ -323,245 +276,6 @@ abstract class HTMLComponent {
         this.setReloading(false);
         // @ts-ignore
         new ErrorToast(error.response.data);
-    }
-
-    /**
-     * Setup infinite scroll functionality
-     */
-    protected setupLoadMore(): void {
-        // Get the last item ID and hasMore status from existing items
-        this.updateLastItemId();
-        this.updateHasMoreFromLastItem();
-
-        // Setup scroll listener with throttling
-        let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-        const scrollHandler = () => {
-            if (scrollTimer) return;
-            scrollTimer = setTimeout(() => {
-                this.checkScrollPosition();
-                scrollTimer = null;
-            }, 100);
-        };
-
-        $(window).on('scroll', scrollHandler);
-        
-        // Initial check in case content is short
-        setTimeout(() => this.checkScrollPosition(), 100);
-    }
-
-    /**
-     * Update the last item ID from the DOM
-     */
-    protected updateLastItemId(): void {
-        const $items = this.$element.find('[data-items-container] [data-item-id]');
-        if ($items.length > 0) {
-            const lastItem = $items.last();
-            this.lastItemId = parseInt(lastItem.data('item-id') || '0');
-        }
-    }
-
-    /**
-     * Update hasMore status from the last item's data-has-more attribute
-     */
-    protected updateHasMoreFromLastItem(): void {
-        const $items = this.$element.find('[data-items-container] [data-item-id]');
-        if ($items.length > 0) {
-            const lastItem = $items.last();
-            const hasMoreData = lastItem.data('has-more');
-            this.hasMore = hasMoreData === 'true' || hasMoreData === true;
-        } else {
-            // Check for hidden div with data-has-more when no items
-            const $hasMoreDiv = this.$element.find('[data-has-more]');
-            if ($hasMoreDiv.length > 0) {
-                const hasMoreData = $hasMoreDiv.data('has-more');
-                this.hasMore = hasMoreData === 'true' || hasMoreData === true;
-            } else {
-                // Fallback: set to true to allow filters to trigger loading
-                this.hasMore = true;
-            }
-        }
-    }
-
-    /**
-     * Check if we need to load more content
-     */
-    protected checkScrollPosition(): void {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
-        const windowHeight = window.innerHeight || 0;
-        const docHeight = document.documentElement.scrollHeight || 0;
-
-        if (this.loadingMore || !this.hasMore) {
-            return;
-        }
-        
-        // Trigger load more when user is 500px from bottom
-        if (scrollTop + windowHeight >= docHeight - 500) {
-            this.loadMore();
-        }
-    }
-
-    /**
-     * Load more items
-     */
-    protected loadMore(): void {
-        if (this.loadingMore || !this.hasMore) {
-            return;
-        }
-
-        this.setLoadingMore(true);
-
-        // Wait 1 second before firing the request
-        setTimeout(() => {
-            const loadMoreData = this.getLoadMoreData();
-            
-            if (this.updateUrlQueryOnReload) {
-                // Get data without reload/more/fromId params for URL update
-                const urlData = this.getReloadData();
-                this.updateUrlQuery(urlData);
-            }
-            
-            axios.get(this.$element.data('load-more-url'), {
-                params: loadMoreData
-            })
-            .then(this.onLoadMoreSuccess.bind(this))
-            .catch((error) => {
-                this.hasMore = false; // Stop trying on error
-                this.onLoadMoreError(error);
-            });
-        }, 1000);
-    }
-
-    /**
-     * Reload component triggered by control change (like view mode changes)
-     */
-    protected loadMoreFromControlChange(): void {
-        if (this.reloading) {
-            return;
-        }
-
-        this.setReloading(true);
-
-        // Wait 1 second before firing the request
-        setTimeout(() => {
-            const reloadData = this.getLoadMoreDataFromControlChange();
-            
-            if (this.updateUrlQueryOnReload) {
-                this.updateUrlQuery(reloadData);
-            }
-            
-            reloadData['reload'] = 1;
-            this.reloadCount += 1;
-            
-            axios.get(this.$element.data('reload-url'), {
-                params: reloadData
-            })
-            .then(this.onReloadSuccess.bind(this, this.reloadCount))
-            .catch(this.onReloadError.bind(this, this.reloadCount));
-        }, 1000);
-    }
-
-    /**
-     * Get data for load more request
-     */
-    protected getLoadMoreData(): ReloadData {
-        const data = this.getReloadData();
-        data['reload'] = 1;  // This triggers component-only rendering
-        data['more'] = 1;
-        data['fromId'] = this.lastItemId;
-        return data;
-    }
-
-    /**
-     * Get data for load more request from control change (no fromId)
-     */
-    protected getLoadMoreDataFromControlChange(): ReloadData {
-        const data = this.getReloadData();
-        data['reload'] = 1;  // This triggers component-only rendering
-        // Don't set more = 1 for control changes that need structural updates
-        // (like view mode changes that need table headers or grid setup)
-        // Don't include fromId - start fresh
-        return data;
-    }
-
-    /**
-     * Handle successful load more response
-     */
-    protected onLoadMoreSuccess(response: AxiosResponse): void {
-        this.setLoadingMore(false);
-
-        // Parse the response to extract new items (they're the direct children now)
-        const $response = $(response.data);
-        const $newItems = $response.filter('[data-item-id]');
-        
-        if ($newItems.length === 0) {
-            this.hasMore = false;
-            this.updateStatusContainer();
-            return;
-        }
-
-        // Append new items to the container
-        const $container = this.$element.find('[data-items-container]');
-        $container.append($newItems);
-
-        // Update last item ID and hasMore status from the newly appended items
-        this.updateLastItemId();
-        this.updateHasMoreFromLastItem();
-
-        // Update the status container based on hasMore
-        this.updateStatusContainer();
-
-        // Observe new items
-        this.observeItems($newItems);
-
-        // Continue checking scroll position
-        setTimeout(() => this.checkScrollPosition(), 100);
-    }
-
-    /**
-     * Handle load more error
-     */
-    protected onLoadMoreError(error: AxiosError): void {
-        this.setLoadingMore(false);
-        // @ts-ignore
-        new ErrorToast(error.response?.data || 'Failed to load more items');
-    }
-
-    /**
-     * Set loading more state
-     */
-    protected setLoadingMore(loading: boolean): void {
-        this.loadingMore = loading;
-        
-        if (loading) {
-            // Show loading state, hide no-more state
-            this.$element.find('[data-load-more-state="loading"]').removeClass('hidden');
-            this.$element.find('[data-load-more-state="no-more"]').addClass('hidden');
-        }
-    }
-
-    /**
-     * Update the status container based on hasMore state
-     */
-    protected updateStatusContainer(): void {
-        if (this.hasMore) {
-            // Show loading state, hide no-more state
-            this.$element.find('[data-load-more-state="loading"]').removeClass('hidden');
-            this.$element.find('[data-load-more-state="no-more"]').addClass('hidden');
-        } else {
-            // Hide loading state, show no-more state
-            this.$element.find('[data-load-more-state="loading"]').addClass('hidden');
-            this.$element.find('[data-load-more-state="no-more"]').removeClass('hidden');
-        }
-    }
-
-    /**
-     * Observe new items - override in subclasses
-     */
-    protected observeItems($items: Cash): void {
-        // Default implementation - instantiate any components in new items
-        $items.find('.tnc-component').each((i: number, element: Element) => {
-            HTMLComponent.componentFactory.createComponent($(element));
-        });
     }
 }
 
