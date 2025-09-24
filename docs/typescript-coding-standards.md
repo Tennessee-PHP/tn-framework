@@ -149,6 +149,48 @@ private handleClick($button: Cash): void {
 }
 ```
 
+### Custom Event Handling
+
+**NEVER use vanilla JavaScript event methods** - Always use cash-dom for ALL event operations:
+
+```typescript
+// ✅ GOOD - Cash-dom event listening and triggering
+private observeCustomEvents(): void {
+    // Listen for custom events using cash-dom
+    this.$element.on('customEvent', (e: Event, data: any) => {
+        console.log('Received custom event:', data);
+        this.handleCustomEvent(data);
+    });
+}
+
+private triggerCustomEvent(): void {
+    // Trigger custom events using cash-dom
+    const $targetElement = $('.target-component');
+    $targetElement.trigger('customEvent', {
+        someData: 'value',
+        count: 42
+    });
+}
+
+// ❌ BAD - Using vanilla JavaScript addEventListener
+private observeCustomEvents(): void {
+    this.$element[0].addEventListener('customEvent', (e: CustomEvent) => {
+        // NEVER use addEventListener - violates cash-dom standards
+    });
+}
+
+// ❌ BAD - Using vanilla JavaScript dispatchEvent
+private triggerCustomEvent(): void {
+    const event = new CustomEvent('customEvent', { detail: { data: 'value' } });
+    this.$element[0].dispatchEvent(event); // NEVER use dispatchEvent
+}
+```
+
+**Custom Event Data Format:**
+- Use cash-dom's `.trigger(eventName, data)` format
+- Event handlers receive `(e: Event, data: any)` parameters
+- Data is passed as the second parameter, not in `e.detail`
+
 ### Context and Binding Best Practices
 
 **Never lose `this` context through lazy coding** - Always be explicit about binding:

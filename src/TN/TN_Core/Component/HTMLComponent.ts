@@ -28,6 +28,7 @@ abstract class HTMLComponent {
     protected controls: Cash[] = [];
     protected i: number;
     protected reloading: Boolean = false;
+    private triggeringControl: Cash | null = null;
     private reloadTimer: ReturnType<typeof setTimeout> | null = null;
     private keyUpReloadDelay: number = 500;
     private reloadCount: number = 0;
@@ -86,9 +87,17 @@ abstract class HTMLComponent {
     }
 
     private onControlChange($control: Cash): void {
-        // Set timestamp when control changes
+        // Set timestamp when control changes and store reference to triggering control
         const timestamp = Date.now();
         $control.attr('data-timestamp', timestamp.toString());
+        this.triggeringControl = $control;
+        
+        // Read the current value from the control
+        let currentValue = $control.val();
+        if (typeof currentValue === 'undefined' || currentValue === '') {
+            currentValue = $control.data('value');
+        }
+        
         // @ts-ignore
         this.reload();
     }
@@ -114,7 +123,11 @@ abstract class HTMLComponent {
         // Track values by key, prioritizing controls with most recent timestamp
         const valuesByKey: Map<string, {value: any, timestamp: number, $control: Cash}> = new Map();
 
-        this.controls.forEach(($control: Cash) => {
+        // Process triggering control last so it takes priority
+        const otherControls = this.controls.filter(c => !this.triggeringControl || c[0] !== this.triggeringControl[0]);
+        const controlsToProcess = this.triggeringControl ? [...otherControls, this.triggeringControl] : this.controls;
+        
+        controlsToProcess.forEach(($control: Cash) => {
             let key = $control.data('request-key');
 
             // Skip controls without request-key unless they have request-unpack-value-from-json
@@ -122,8 +135,15 @@ abstract class HTMLComponent {
                 return;
             }
             let val = $control.val();
+            
             if (typeof val === 'undefined' || val === '') {
                 val = $control.data('value');
+            }
+            
+            // For the triggering control, always use the most recent data value
+            if (this.triggeringControl && $control[0] === this.triggeringControl[0]) {
+                const dataVal = $control.data('value');
+                val = dataVal;
             }
             if (typeof val === 'undefined' || val === '') {
                 return;
@@ -141,6 +161,7 @@ abstract class HTMLComponent {
 
                 // Check if we already have a value for this key
                 const existing = valuesByKey.get(key);
+
 
                 // If no existing value, or this control has a newer timestamp, use this value
                 if (!existing || timestamp > existing.timestamp) {

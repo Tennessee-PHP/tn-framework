@@ -21,13 +21,65 @@ export default class ListUsers extends HTMLComponent {
         
         // Set up control observation - framework will handle automatic reload
         this.observeControls();
+        
+        // Set up event listeners - NEVER use anonymous functions, always bind class methods
+        this.$element.on('click', '.delete-user-btn', this.onDeleteUserClick.bind(this));
+        this.$element.on('change', '.user-status-checkbox', this.onUserStatusChange.bind(this));
+    }
+    
+    /**
+     * Handle delete user button clicks
+     */
+    private onDeleteUserClick(e: Event): void {
+        const userId = $(e.currentTarget).data('user-id');
+        this.deleteUser(userId);
+    }
+    
+    /**
+     * Handle user status checkbox changes
+     */
+    private onUserStatusChange(e: Event): void {
+        const $checkbox = $(e.currentTarget as HTMLElement);
+        const userId = parseInt($checkbox.data('user-id'));
+        const isActive = ($checkbox[0] as HTMLInputElement).checked;
+        this.updateUserStatus(userId, isActive);
     }
 }
 ```
 
 ## Key Patterns
 
-### 1. Controls and Reload Data
+### 1. Event Listeners
+
+**CRITICAL**: All event listeners must be set up in `observe()` and must NEVER use anonymous functions. Always bind to class methods:
+
+```typescript
+// CORRECT - Set up in observe(), bind to class method
+protected observe(): void {
+    this.$element.on('click', '.my-button', this.onButtonClick.bind(this));
+    this.$element.on('change', '.my-checkbox', this.onCheckboxChange.bind(this));
+}
+
+private onButtonClick(e: Event): void {
+    // Handle button click
+}
+
+private onCheckboxChange(e: Event): void {
+    // Handle checkbox change
+}
+
+// WRONG - Anonymous function
+this.$element.on('click', '.my-button', (e) => {
+    // This violates the architecture
+});
+
+// WRONG - Set up outside observe()
+private setupEventListeners(): void {
+    this.$element.on('click', '.my-button', this.onButtonClick.bind(this));
+}
+```
+
+### 2. Controls and Reload Data
 
 - **Controls**: Initialize `this.controls` as an array of cash-dom elements in `observe()`
 - **observeControls()**: Call this to set up automatic reloading when controls change
