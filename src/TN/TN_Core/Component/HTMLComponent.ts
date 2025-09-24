@@ -33,6 +33,7 @@ abstract class HTMLComponent {
     private keyUpReloadDelay: number = 500;
     private reloadCount: number = 0;
     private cloudflareTurnstileToken: string;
+    private initialControlsState: string;
     static componentFactory: IComponentFactory;
 
     constructor($element: Cash) {
@@ -47,6 +48,9 @@ abstract class HTMLComponent {
         this.$element.on('reload', this.triggerReload.bind(this));
         
         this.observe();
+        
+        // Capture initial controls state AFTER observe() sets up controls
+        this.initialControlsState = this.getControlsStateHash();
     }
 
     protected triggerReload(e: Event): void {
@@ -111,6 +115,21 @@ abstract class HTMLComponent {
     }
 
     protected getReloadData(): ReloadData {
+        // Collect all control values first
+        const data = this.collectControlValues();
+        
+        // Reset page if other controls changed
+        if (data.page && data.page !== '1') {
+            const currentControlsState = this.getControlsStateHash();
+            if (currentControlsState !== this.initialControlsState) {
+                data.page = '1';
+            }
+        }
+        
+        return data;
+    }
+
+    private collectControlValues(): ReloadData {
         const data: ReloadData = {
             componentIdNum: this.$element.attr('id').substring(4),
         };
@@ -118,7 +137,6 @@ abstract class HTMLComponent {
         if (this.cloudflareTurnstileToken) {
             data['cloudflareTurnstileToken'] = this.cloudflareTurnstileToken;
         }
-
 
         // Track values by key, prioritizing controls with most recent timestamp
         const valuesByKey: Map<string, {value: any, timestamp: number, $control: Cash}> = new Map();
@@ -162,7 +180,6 @@ abstract class HTMLComponent {
                 // Check if we already have a value for this key
                 const existing = valuesByKey.get(key);
 
-
                 // If no existing value, or this control has a newer timestamp, use this value
                 if (!existing || timestamp > existing.timestamp) {
                     valuesByKey.set(key, { value: val, timestamp, $control });
@@ -176,6 +193,12 @@ abstract class HTMLComponent {
         });
 
         return data;
+    }
+
+    private getControlsStateHash(): string {
+        const data = this.collectControlValues();
+        const { componentIdNum, page, ...controlsData } = data;
+        return JSON.stringify(controlsData, Object.keys(controlsData).sort());
     }
 
     protected setReloading(reloading: Boolean): void {
