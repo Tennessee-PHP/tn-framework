@@ -136,7 +136,7 @@ TYPESCRIPT;
         // Common package prefixes and their TypeScript aliases
         $aliasMap = [
             'TN' => '@tn',
-            'OP' => '@op',
+            'MP' => '@mp',
             'FBG' => '@fbg',
         ];
 
