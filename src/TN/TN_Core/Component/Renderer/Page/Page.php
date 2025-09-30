@@ -217,7 +217,7 @@ class Page extends Renderer
         $this->addResources();
         $this->user = User::getActive();
 
-        if (!$this->user->loggedIn) {
+        if (!$this->user->loggedIn && !($this->component instanceof \TN\TN_Core\Component\User\LoginForm\LoginForm)) {
             $this->loginForm = new LoginForm();
             $this->loginForm->prepare();
         }

@@ -165,12 +165,15 @@ class ControllerName extends Controller
 
 ## 7. Update Component Map
 
-After adding TypeScript files:
+After adding TypeScript files, you must update the component map and rebuild:
 
 ```bash
-docker exec container-name php src/run.php components/map
+# IMPORTANT: Always run CLI commands through Docker, not directly
+docker exec nedesigns-site-php php src/run.php components/map
 npm run build
 ```
+
+**Note:** CLI commands must be run through Docker to ensure proper environment variable loading. Running `php src/run.php` directly will cause ENV errors.
 
 That's it! For detailed patterns, see:
 - **[PHP Components](php-components.md)**
