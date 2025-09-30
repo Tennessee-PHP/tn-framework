@@ -85,6 +85,41 @@ private setupEventListeners(): void {
 - **observeControls()**: Call this to set up automatic reloading when controls change
 - **updateUrlQueryOnReload**: Set to `true` to update URL parameters on reload
 
+#### Control Change Handlers
+
+For controls that need to update their `data-value` attribute, set up change handlers BEFORE calling `observeControls()`:
+
+```typescript
+protected observe(): void {
+    // Set up controls array
+    this.controls = [];
+    
+    const $yearDropdown = this.$element.find('[data-year-dropdown]');
+    if ($yearDropdown.length > 0) {
+        this.controls.push($yearDropdown);
+    }
+    
+    // Set up change handler BEFORE observeControls
+    $yearDropdown.on('change', this.onYearChange.bind(this));
+    
+    // Set up control observation - framework handles reloads
+    this.observeControls();
+}
+
+/**
+ * Handle control change - update data-value before framework listener
+ */
+private onYearChange(e: Event): void {
+    const $select = $(e.currentTarget as HTMLElement);
+    const newYear = $select.val() as string;
+    
+    // Update the data-value attribute (simple value, not JSON)
+    $select.attr('data-value', newYear);
+}
+```
+
+**CRITICAL**: Control change handlers must update the `data-value` attribute with the new value (as a simple string, not JSON) so the framework's controls system can properly include the parameter in reload requests.
+
 ### 2. Property Initialization
 
 Set component properties as class properties, not in the constructor:

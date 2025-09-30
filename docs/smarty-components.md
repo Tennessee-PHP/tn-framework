@@ -16,7 +16,7 @@ Every component template requires these framework attributes:
 
 ## Controls
 
-Interactive elements use `data-request-key` for framework integration:
+Interactive elements require both `data-request-key` and `data-value` attributes for framework integration:
 
 ```smarty
 {* Input controls *}
@@ -24,11 +24,12 @@ Interactive elements use `data-request-key` for framework integration:
   type="text" 
   name="username"
   data-request-key="username"
+  data-value="{$username|escape}"
   value="{$username|escape}"
 />
 
 {* Select controls *}
-<select name="category" data-request-key="category">
+<select name="category" data-request-key="category" data-value="{$selectedCategory}">
   <option value="">All</option>
   {foreach $categories as $category}
     <option value="{$category.id|escape}" {if $selectedCategory == $category.id}selected{/if}>
@@ -36,7 +37,22 @@ Interactive elements use `data-request-key` for framework integration:
     </option>
   {/foreach}
 </select>
+
+{* el-select controls *}
+<el-select name="year" 
+           value="{$selectedYear}"
+           data-request-key="year"
+           data-value="{$selectedYear}">
+  {* select content *}
+</el-select>
 ```
+
+### Required Attributes
+
+- **`data-request-key`** - Parameter name for the control (matches `name` attribute)
+- **`data-value`** - Current value of the control (must be updated by TypeScript on change)
+- **`name`** - Standard form element name
+- **`value`** - Current selected/input value
 
 ## Sub-Components
 
