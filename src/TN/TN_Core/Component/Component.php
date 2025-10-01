@@ -67,9 +67,11 @@ abstract class Component
                     $tmp = $request->getRequest($propertyName);
                 }
                 if ($attribute instanceof FromJSONBody) {
-                    $tmp = $request->getJSONRequestBody();
-                    if (isset($tmp[$propertyName])) {
-                        $tmp = $tmp[$propertyName];
+                    $jsonBody = $request->getJSONRequestBody();
+                    if ($jsonBody !== null && isset($jsonBody[$propertyName])) {
+                        $tmp = $jsonBody[$propertyName];
+                    } else {
+                        $tmp = null;
                     }
                 }
 
@@ -81,9 +83,13 @@ abstract class Component
                             }
                             $this->$propertyName = (bool)$tmp;
                         } elseif ($type === 'array') {
-                            // For array properties, split comma-separated strings
-                            if (is_string($tmp) && !empty($tmp)) {
-                                $this->$propertyName = array_filter(array_map('trim', explode(',', $tmp)), function($value) {
+                            // Handle both JSON arrays and comma-separated strings
+                            if (is_array($tmp)) {
+                                // Already an array from JSON
+                                $this->$propertyName = $tmp;
+                            } elseif (is_string($tmp) && !empty($tmp)) {
+                                // Split comma-separated strings
+                                $this->$propertyName = array_filter(array_map('trim', explode(',', $tmp)), function ($value) {
                                     return !empty($value);
                                 });
                             } else {
