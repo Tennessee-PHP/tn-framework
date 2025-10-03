@@ -28,6 +28,11 @@ class Strlen extends Constraint
             $value = $value->value;
         }
 
+        // Handle null values
+        if ($value === null) {
+            $value = '';
+        }
+
         $length = strlen($value);
         $this->valid = true;
         $minFail = $length < $this->min;
