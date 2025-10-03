@@ -38,6 +38,6 @@ class Image
         $filename = $_ENV['TN_FILES_ROOT'] . "images/tmp";
         file_put_contents($filename, $this->data);
         $exif = exif_read_data($filename);
-        var_dump($exif);
+        return '';
     }
 }

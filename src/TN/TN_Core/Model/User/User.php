@@ -81,7 +81,7 @@ class User implements Persistence
     const int IP_TIMEFRAME = 3600;
 
     protected static string $defaultHashMethodKey = 'tn';
-    protected static User $activeUser;
+    protected static ?User $activeUser = null;
 
     #[Impersistent] public bool $loggedIn = false;
     #[Timestamp] public int $createdTs;
@@ -253,6 +253,14 @@ class User implements Persistence
     {
         self::$activeUser = self::getInstance();
         self::$activeUser->loggedIn = false;
+    }
+
+    /**
+     * Clear active user state for testing
+     */
+    public static function clearActiveUser(): void
+    {
+        self::$activeUser = null;
     }
 
     public static function getUsersWithRole(string $roleKey): array

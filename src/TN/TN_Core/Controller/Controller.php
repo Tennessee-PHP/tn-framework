@@ -269,7 +269,7 @@ abstract class Controller
             } catch (AccessLoginRequiredException $e) {
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 401);
             } catch (AccessUncontrolledException $e) {
                 $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
@@ -288,6 +288,10 @@ abstract class Controller
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 404);
+            } catch (\TN\TN_Core\Error\Access\AccessException $e) {
+                $renderer = $rendererClass::error($e->getMessage(), 403);
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 403);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
@@ -356,6 +360,8 @@ abstract class Controller
             $renderer->prepare();
             return new HTTPResponse($renderer);
         } catch (ResourceNotFoundException $e) {
+            throw $e;
+        } catch (\TN\TN_Core\Error\Access\AccessException $e) {
             throw $e;
         } catch (\Error | \Exception $e) {
             if (!($e instanceof TNException)) {
@@ -458,14 +464,14 @@ abstract class Controller
             if (!class_exists($controllerClass)) {
                 continue;
             }
-            
+
             try {
                 $reflection = new \ReflectionClass($controllerClass);
-                
+
                 // Check all public methods for Component attributes
                 foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
                     $componentAttributes = $method->getAttributes(\TN\TN_Core\Attribute\Route\Component::class);
-                    
+
                     foreach ($componentAttributes as $attribute) {
                         $componentInstance = $attribute->newInstance();
                         if ($componentInstance->componentClassName === $componentClassName) {
@@ -478,7 +484,7 @@ abstract class Controller
                 continue;
             }
         }
-        
+
         // If no controlling route found, assume no access
         return false;
     }
@@ -498,30 +504,30 @@ abstract class Controller
             foreach ($method->getAttributes(Restriction::class, ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
                 $restrictions[] = $attribute->newInstance();
             }
-            
+
             // If no restrictions, assume public access
             if (empty($restrictions)) {
                 return true;
             }
-            
+
             // Check each restriction (mimics HTTPRequest::setAccess logic)
             foreach ($restrictions as $restriction) {
                 $access = $restriction->getAccess($user);
-                
+
                 // If any restriction denies access, return false
-                if ($access === Restriction::FORBIDDEN || 
+                if (
+                    $access === Restriction::FORBIDDEN ||
                     $access === Restriction::LOGIN_REQUIRED ||
-                    $access === Restriction::UNMATCHED) {
+                    $access === Restriction::UNMATCHED
+                ) {
                     return false;
                 }
             }
-            
+
             return true;
-            
         } catch (\Exception) {
             // If any error occurs during access checking, deny access
             return false;
         }
     }
-
 }

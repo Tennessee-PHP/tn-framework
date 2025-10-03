@@ -37,7 +37,7 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SET {$key}", ['lifetime' => $lifetime]);
-        
+
         $client = Redis::getInstance();
 
         // Check if key exists with wrong type
@@ -51,7 +51,7 @@ class Cache
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
-        
+
         $event?->end();
     }
 
@@ -71,15 +71,22 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "GET {$key}");
-        
+
         $client = Redis::getInstance();
-        $result = unserialize($client->get($key));
-        
+        $data = $client->get($key);
+
+        // Handle null/false values from Redis to avoid unserialize deprecation warning
+        if ($data === null || $data === false) {
+            $result = false;
+        } else {
+            $result = unserialize($data);
+        }
+
         // Add hit/miss information to performance tracking
         $isHit = $result !== false && $result !== null;
         $event?->setMetadata(['hit' => $isHit, 'miss' => !$isHit]);
         $event?->end();
-        
+
         return $result;
     }
 
@@ -94,7 +101,7 @@ class Cache
         if (empty($keys)) {
             return [];
         }
-        
+
         // Convert keys to storage keys
         $storageKeys = [];
         $keyMapping = [];
@@ -103,21 +110,21 @@ class Cache
             $storageKeys[] = $storageKey;
             $keyMapping[$storageKey] = $key;
         }
-        
+
         $event = (new self())->startPerformanceEvent('Redis', "MGET " . implode(' ', $storageKeys));
-        
+
         $client = Redis::getInstance();
         $results = $client->mget($storageKeys);
-        
+
         // Process results and map back to original keys
         $output = [];
         $hits = 0;
         $misses = 0;
-        
+
         foreach ($results as $index => $result) {
             $storageKey = $storageKeys[$index];
             $originalKey = $keyMapping[$storageKey];
-            
+
             if ($result !== false && $result !== null) {
                 $output[$originalKey] = unserialize($result);
                 $hits++;
@@ -126,11 +133,11 @@ class Cache
                 $misses++;
             }
         }
-        
+
         // Add hit/miss metadata and end the event
         $event?->setMetadata(['hits' => $hits, 'misses' => $misses, 'keys' => count($keys)]);
         $event?->end();
-        
+
         return $output;
     }
 
@@ -138,13 +145,13 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
-        
+
         $client = Redis::getInstance();
         $client->sadd($key, [$value]);
         $client->sadd(self::$keysKey, [$key]);
         $client->persist($key);
         $client->expire($key, $lifespan);
-        
+
         $event?->end();
     }
 
@@ -152,10 +159,10 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SREM {$key} {$value}");
-        
+
         $client = Redis::getInstance();
         $client->srem($key, [$value]);
-        
+
         $event?->end();
     }
 
@@ -163,10 +170,10 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SMEMBERS {$key}");
-        
+
         $client = Redis::getInstance();
         $result = $client->smembers($key);
-        
+
         $event?->end();
         return $result;
     }
@@ -182,14 +189,14 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "HSET {$key} {$field}", ['lifetime' => $lifetime]);
-        
+
         $client = Redis::getInstance();
         $client->hset($key, $field, serialize($value));
         $client->sadd(self::$keysKey, [$key]);
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
-        
+
         $event?->end();
     }
 
@@ -197,15 +204,15 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "HGET {$key} {$field}");
-        
+
         $client = Redis::getInstance();
         $result = unserialize($client->hget($key, $field));
-        
+
         // Add hit/miss information to performance tracking
         $isHit = $result !== false && $result !== null;
         $event?->setMetadata(['hit' => $isHit, 'miss' => !$isHit]);
         $event?->end();
-        
+
         return $result;
     }
 
@@ -220,12 +227,12 @@ class Cache
     {
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "DEL {$key}");
-        
+
         $client = Redis::getInstance();
         $client->set($key, false);
         $client->del($key);
         $client->srem(self::$keysKey, [$key]);
-        
+
         $event?->end();
     }
 
@@ -250,10 +257,10 @@ class Cache
     public static function getCacheKeysSize(): int
     {
         $event = (new self())->startPerformanceEvent('Redis', "SCARD " . self::$keysKey);
-        
+
         $client = Redis::getInstance();
         $result = $client->scard(self::$keysKey);
-        
+
         $event?->end();
         return $result;
     }
@@ -262,14 +269,14 @@ class Cache
     public static function deleteAll()
     {
         $event = (new self())->startPerformanceEvent('Redis', "FLUSHALL (deleteAll)");
-        
+
         $client = Redis::getInstance();
         $keys = $client->smembers(self::$keysKey);
         foreach ($keys as $key) {
             $client->del($key);
         }
         $client->del(self::$keysKey);
-        
+
         $event?->end();
     }
 }

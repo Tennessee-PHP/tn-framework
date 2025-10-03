@@ -129,12 +129,29 @@ class DB extends \PDO
     }
 
     /**
+     * Reset database to clean state for testing
+     * 
+     * This method provides a hook for test environments to reset the database
+     * to a clean state. The default implementation does nothing - subclasses
+     * or projects should override this method to implement their specific
+     * reset logic (e.g., truncating tables, deleting test data, etc.).
+     * 
+     * @param string $database Database name to reset
+     * @return void
+     */
+    public static function resetDatabase(string $database): void
+    {
+        // Default implementation does nothing
+        // Projects should override this method or use a subclass
+        // to implement their specific database reset logic
+    }
+
+    /**
      * get the database credentials from the TN ENV variable
      * @param bool $write if write permissions are required. Use **only** for UPDATE, INSERT and DELETE queries.
      * @param string $db
      * @return array
      */
-    #[ArrayShape(['host' => 'string', 'user' => 'string', 'pass' => 'string'])]
     private static function getCredentials(bool $write = false, string $db = ''): array
     {
         if ($write) {
@@ -151,9 +168,7 @@ class DB extends \PDO
             ];
         }
     }
-
 }
 
 /** register close connections method on PHP shutdown, however that occurs */
 register_shutdown_function([DB::class, 'closeConnections']);
-
