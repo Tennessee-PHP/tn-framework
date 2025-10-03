@@ -98,6 +98,15 @@ class DB extends \PDO
      */
     public static function getInstance(string $db, bool $write = false): DB
     {
+        // During tests, always use the TransactionManager's connection if available
+        // This ensures all database operations participate in the same transaction
+        if (isset($_ENV['TEST_DISABLE_AUTOCOMMIT']) && $_ENV['TEST_DISABLE_AUTOCOMMIT'] === '1') {
+            $activeConnection = \TN\TN_Core\Test\TransactionManager::getActiveConnection();
+            if ($activeConnection !== null) {
+                return $activeConnection;
+            }
+        }
+
         $type = $write ? 'write' : 'read';
 
         if (!isset(self::$instances[$type][$db])) {
@@ -108,6 +117,11 @@ class DB extends \PDO
             // I know no-one including me understands PHP try/catch. But this one seems to be important!
             try {
                 self::$instances[$type][$db] = new self($dsn, $credentials['user'], $credentials['pass'], self::$connectionOptions);
+
+                // Disable autocommit for all database connections during tests
+                if (isset($_ENV['TEST_DISABLE_AUTOCOMMIT']) && $_ENV['TEST_DISABLE_AUTOCOMMIT'] === '1') {
+                    self::$instances[$type][$db]->exec("SET autocommit = 0");
+                }
             } catch (\PDOException $e) {
                 throw new \PDOException($e->getMessage(), (int)$e->getCode());
             }

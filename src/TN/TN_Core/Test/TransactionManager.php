@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Test;
 
 use TN\TN_Core\Model\Storage\DB;
+use TN\TN_Core\Model\Storage\Cache;
 
 /**
  * Transaction Manager
@@ -18,10 +19,20 @@ class TransactionManager
     private bool $inTransaction = false;
     private array $savepoints = [];
     private int $savepointCounter = 0;
+    private bool $flushCacheOnRollback = true;
+    private static ?TransactionManager $activeInstance = null;
 
     public function __construct(DB $db)
     {
         $this->db = $db;
+
+        // Disable autocommit for test isolation
+        // This ensures that individual SQL statements don't auto-commit
+        // and can be properly rolled back with the transaction
+        $this->db->exec("SET autocommit = 0");
+
+        // Set this as the active instance for DB class to use
+        self::$activeInstance = $this;
     }
 
     /**
@@ -37,6 +48,8 @@ class TransactionManager
             $this->db->exec("SAVEPOINT {$savepointName}");
             $this->savepoints[] = $savepointName;
         } else {
+            // Ensure autocommit is disabled before starting transaction
+            $this->db->exec("SET autocommit = 0");
             // Start new transaction
             $this->db->beginTransaction();
             $this->inTransaction = true;
@@ -58,6 +71,11 @@ class TransactionManager
             // Rollback main transaction
             $this->db->rollback();
             $this->inTransaction = false;
+
+            // Flush cache after transaction rollback to ensure clean state
+            if ($this->flushCacheOnRollback) {
+                Cache::deleteAll();
+            }
         }
     }
 
@@ -90,8 +108,8 @@ class TransactionManager
     }
 
     /**
-     * Clean up any open transactions
-     * 
+     * Clean up any open transactions and restore autocommit
+     *
      * @return void
      */
     public function cleanup(): void
@@ -104,6 +122,14 @@ class TransactionManager
         // Rollback main transaction if open
         if ($this->inTransaction) {
             $this->rollback();
+        }
+
+        // Restore autocommit to default state
+        $this->db->exec("SET autocommit = 1");
+
+        // Clear active instance
+        if (self::$activeInstance === $this) {
+            self::$activeInstance = null;
         }
     }
 
@@ -124,5 +150,39 @@ class TransactionManager
         } finally {
             $this->rollback();
         }
+    }
+
+    /**
+     * Enable or disable cache flushing on rollback
+     * 
+     * @param bool $flush Whether to flush cache on rollback
+     * @return void
+     */
+    public function setFlushCacheOnRollback(bool $flush): void
+    {
+        $this->flushCacheOnRollback = $flush;
+    }
+
+    /**
+     * Get the database connection from the active TransactionManager
+     * 
+     * This allows the DB class to use the same connection that's in a transaction
+     * during tests, ensuring all operations participate in the same transaction.
+     * 
+     * @return DB|null The active transaction's database connection, or null if no active transaction
+     */
+    public static function getActiveConnection(): ?DB
+    {
+        return self::$activeInstance?->db;
+    }
+
+    /**
+     * Check if there's an active TransactionManager
+     * 
+     * @return bool True if there's an active TransactionManager with a database connection
+     */
+    public static function hasActiveConnection(): bool
+    {
+        return self::$activeInstance !== null;
     }
 }

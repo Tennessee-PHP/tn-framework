@@ -155,9 +155,13 @@ class StateManager
         // Also set MYSQL_DB for immediate use
         $_ENV['MYSQL_DB'] = $testDatabase;
 
+        // Set flag to disable autocommit for all database connections during tests
+        $_ENV['TEST_DISABLE_AUTOCOMMIT'] = '1';
+
         // CRITICAL: Override REDIS_PREFIX to include database name for cache isolation
         // This creates completely separate cache namespaces for different databases
         $_ENV['REDIS_PREFIX'] = ($_ENV['ORIGINAL_REDIS_PREFIX'] ?? 'mp') . ':' . $testDatabase . ':';
+
 
         // Clear any existing database connections so they reconnect to test DB
         \TN\TN_Core\Model\Storage\DB::closeConnections();
@@ -176,6 +180,8 @@ class StateManager
             $_ENV['REDIS_PREFIX'] = $_ENV['ORIGINAL_REDIS_PREFIX'];
             unset($_ENV['ORIGINAL_MYSQL_DB']);
             unset($_ENV['ORIGINAL_REDIS_PREFIX']);
+            unset($_ENV['TEST_DISABLE_AUTOCOMMIT']);
+
 
             // Clear connections to force reconnection to original DB
             \TN\TN_Core\Model\Storage\DB::closeConnections();
