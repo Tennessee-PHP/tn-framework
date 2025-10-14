@@ -6,6 +6,7 @@ use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Command\Schedule;
 use TN\TN_Core\Attribute\Command\TimeLimit;
 use TN\TN_Core\Controller\Controller;
+use TN\TN_Core\Model\Storage\Cache;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Reporting\Model\Analytics\Expenses\ExpensesFeesEntry;
 use TN\TN_Reporting\Model\Analytics\Expenses\ExpensesRefundsEntry;
@@ -32,6 +33,32 @@ class AnalyticsController extends Controller
     #[CommandName('reporting/analytics/update')]
     public function updateAnalytics(): ?string
     {
+        // One-time recalculation since July 4th, 2025 (uses Redis to ensure it only runs once)
+        $redisKey = 'analytics_recalc_july_2025_done';
+        if (!Cache::get($redisKey)) {
+            echo "Starting one-time recalculation from July 4, 2025...\n";
+
+            $startDate = strtotime('2025-07-04');
+            $endDate = Time::getTodayTs();
+
+            $currentTs = $startDate;
+            while ($currentTs <= $endDate) {
+                echo "Recalculating for " . date('Y-m-d', $currentTs) . "\n";
+
+                // Only recalculate the three specific report types
+                RevenueRecurringEntry::updateDayReports($currentTs);
+                RevenuePerSubscriptionEntry::updateDayReports($currentTs);
+                SubscriptionsLifetimeValueEntry::updateDayReports($currentTs);
+
+                $currentTs = strtotime('+1 day', $currentTs);
+            }
+
+            // Mark as completed in Redis (expires in 30 days)
+            Cache::set($redisKey, true, 86400 * 30);
+            echo "One-time recalculation completed!\n";
+        }
+
+        // Regular daily analytics update
         $tses = [Time::getTodayTs()];
 
         // if it's between 00:00:00 and 01:00:00, let's do yesterday too

@@ -5,13 +5,17 @@ namespace TN\TN_Reporting\Model\Analytics\Revenue;
 use TN\TN_Billing\Model\Gateway\Gateway;
 use TN\TN_Billing\Model\Subscription\BillingCycle\BillingCycle;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
+use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
+use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Reporting\Model\Analytics\AnalyticsEntry;
 use TN\TN_Reporting\Model\Analytics\DataSeries\AnalyticsDataSeriesColumn;
+use PDO;
 
 #[TableName('analytics_revenue_recurring_entries')]
 class RevenueRecurringEntry extends AnalyticsEntry
@@ -74,24 +78,124 @@ class RevenueRecurringEntry extends AnalyticsEntry
             new SearchComparison('`subscriptionId`', '>', 0) // recurring transactions
         ];
 
-        // Note: Plan and billing cycle filtering should be handled at subscription level, not transaction level
-        // Transaction tables don't have planKey/billingCycleKey columns
+        // Add subscription table joins and filters if plan or billing cycle is specified
+        if (!empty($this->planKey) || !empty($this->billingCycleKey)) {
+            // We need to use a custom approach that properly handles subscription filtering
+            // Build custom conditions that include subscription joins
+            $monthlyConditionsWithSub = $monthlyConditions;
+            $annualConditionsWithSub = $annualConditions;
 
-        if (empty($this->gatewayKey)) {
-            // Use getAllCounts for all transaction types
-            $monthlyResult = Transaction::getAllCounts(new SearchArguments(conditions: $monthlyConditions));
-            $annualResult = Transaction::getAllCounts(new SearchArguments(conditions: $annualConditions));
-            $data['monthlyRecurringRevenue'] = $monthlyResult->total;
-            $data['annualRecurringRevenue'] = $annualResult->total;
+            if (!empty($this->planKey)) {
+                $monthlyConditionsWithSub[] = new SearchComparison('s.`planKey`', '=', $this->planKey);
+                $annualConditionsWithSub[] = new SearchComparison('s.`planKey`', '=', $this->planKey);
+            }
+            if (!empty($this->billingCycleKey)) {
+                $monthlyConditionsWithSub[] = new SearchComparison('s.`billingCycleKey`', '=', $this->billingCycleKey);
+                $annualConditionsWithSub[] = new SearchComparison('s.`billingCycleKey`', '=', $this->billingCycleKey);
+            }
+
+            if (empty($this->gatewayKey)) {
+                // Use custom query for all transaction types with subscription filtering
+                $monthlyResult = $this->countTransactionsWithSubscriptionFilter($monthlyStartTs, $endTs, $this->planKey, $this->billingCycleKey);
+                $annualResult = $this->countTransactionsWithSubscriptionFilter($annualStartTs, $endTs, $this->planKey, $this->billingCycleKey);
+                $data['monthlyRecurringRevenue'] = $monthlyResult['total'];
+                $data['annualRecurringRevenue'] = $annualResult['total'];
+            } else {
+                // Use specific gateway transaction class with custom filtering
+                $transactionClass = Gateway::getInstanceByKey($this->gatewayKey)->transactionClass;
+                $monthlyResult = $this->countGatewayTransactionsWithSubscriptionFilter($transactionClass, $monthlyStartTs, $endTs, $this->planKey, $this->billingCycleKey);
+                $annualResult = $this->countGatewayTransactionsWithSubscriptionFilter($transactionClass, $annualStartTs, $endTs, $this->planKey, $this->billingCycleKey);
+                $data['monthlyRecurringRevenue'] = $monthlyResult['total'];
+                $data['annualRecurringRevenue'] = $annualResult['total'];
+            }
         } else {
-            // Use specific gateway transaction class
-            $transactionClass = Gateway::getInstanceByKey($this->gatewayKey)->transactionClass;
-            $monthlyResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $monthlyConditions), 'amount');
-            $annualResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $annualConditions), 'amount');
-            $data['monthlyRecurringRevenue'] = $monthlyResult->total;
-            $data['annualRecurringRevenue'] = $annualResult->total;
+            // No plan/billing cycle filtering needed, use existing SearchArguments approach
+            if (empty($this->gatewayKey)) {
+                // Use getAllCounts for all transaction types
+                $monthlyResult = Transaction::getAllCounts(new SearchArguments(conditions: $monthlyConditions));
+                $annualResult = Transaction::getAllCounts(new SearchArguments(conditions: $annualConditions));
+                $data['monthlyRecurringRevenue'] = $monthlyResult->total;
+                $data['annualRecurringRevenue'] = $annualResult->total;
+            } else {
+                // Use specific gateway transaction class
+                $transactionClass = Gateway::getInstanceByKey($this->gatewayKey)->transactionClass;
+                $monthlyResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $monthlyConditions), 'amount');
+                $annualResult = $transactionClass::countAndTotal(new SearchArguments(conditions: $annualConditions), 'amount');
+                $data['monthlyRecurringRevenue'] = $monthlyResult->total;
+                $data['annualRecurringRevenue'] = $annualResult->total;
+            }
         }
         $this->update($data);
+    }
+
+    /**
+     * Count transactions across all gateways with subscription filtering
+     */
+    private function countTransactionsWithSubscriptionFilter(int $startTs, int $endTs, ?string $planKey, ?string $billingCycleKey): array
+    {
+        $db = DB::getInstance($_ENV['MYSQL_DB']);
+        $totalCount = 0;
+        $totalAmount = 0.0;
+
+        // Get all transaction classes and sum their results
+        foreach (Stack::getClassesInPackageNamespaces('TN_Billing\Model\Transaction') as $transactionClass) {
+            $result = $this->countGatewayTransactionsWithSubscriptionFilter($transactionClass, $startTs, $endTs, $planKey, $billingCycleKey);
+            $totalCount += $result['count'];
+            $totalAmount += $result['total'];
+        }
+
+        return ['count' => $totalCount, 'total' => $totalAmount];
+    }
+
+    /**
+     * Count transactions for a specific gateway with subscription filtering
+     */
+    private function countGatewayTransactionsWithSubscriptionFilter(string $transactionClass, int $startTs, int $endTs, ?string $planKey, ?string $billingCycleKey): array
+    {
+        try {
+            $db = DB::getInstance($_ENV['MYSQL_DB']);
+            $transactionTable = $transactionClass::getTableName();
+            $subscriptionTable = Subscription::getTableName();
+
+            $params = [$startTs, $endTs];
+            $conditions = [
+                "t.`ts` >= ?",
+                "t.`ts` <= ?",
+                "t.`success` = 1",
+                "t.`subscriptionId` > 0",
+                "t.`subscriptionId` = s.`id`"
+            ];
+
+            if (!empty($planKey)) {
+                $conditions[] = "s.`planKey` = ?";
+                $params[] = $planKey;
+            }
+
+            if (!empty($billingCycleKey)) {
+                $conditions[] = "s.`billingCycleKey` = ?";
+                $params[] = $billingCycleKey;
+            }
+
+            $query = "
+                SELECT COUNT(*) as count, SUM(t.`amount`) as total
+                FROM {$transactionTable} as t, {$subscriptionTable} as s
+                WHERE " . implode(" AND ", $conditions);
+
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            return [
+                'count' => (int)($result['count'] ?? 0),
+                'total' => (float)($result['total'] ?? 0)
+            ];
+        } catch (\PDOException $e) {
+            // Handle case where table doesn't exist (e.g., amember_transactions)
+            if (str_contains($e->getMessage(), "doesn't exist")) {
+                return ['count' => 0, 'total' => 0.0];
+            }
+            throw $e;
+        }
     }
 
     /**
