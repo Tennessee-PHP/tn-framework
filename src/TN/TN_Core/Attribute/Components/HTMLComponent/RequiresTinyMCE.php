@@ -29,10 +29,6 @@ class RequiresTinyMCE extends RequiresResource
             'https://fonts.googleapis.com/css2?family=Anton&family=Fira+Sans+Condensed:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'
         ]);
 
-        // Temporary fix for AWS outage - using Cloudflare CDN instead of Tiny Cloud
-        // Note: This disables premium features (tinycomments, powerpaste)
-        // Restore original line below when AWS is back up
-        $page->addJsUrl('https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.0.0/tinymce.min.js');
-        // Original: $page->addJsUrl('https://cdn.tiny.cloud/1/' . $_ENV['TINYMCE_KEY'] . '/tinymce/6/tinymce.min.js');
+        $page->addJsUrl('https://cdn.tiny.cloud/1/' . $_ENV['TINYMCE_KEY'] . '/tinymce/6/tinymce.min.js');
     }
 }
