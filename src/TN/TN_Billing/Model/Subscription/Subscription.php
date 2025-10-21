@@ -244,7 +244,8 @@ class Subscription implements Persistence
         return static::search(new SearchArguments([
             new SearchComparison('`active`', '=', 1),
             new SearchComparison('`endTs`', '=', 0),
-            new SearchComparison('`nextTransactionTs`', '<', Time::getNow()),
+            new SearchComparison('`nextTransactionTs`', '>', Time::getNow()),
+            new SearchComparison('`nextTransactionTs`', '<', Time::getNow() + self::NOTIFY_UPCOMING_TRANSACTION_WITHIN_MAX),
             new SearchComparison('`upcomingTransactionLastNotified`', '<', Time::getNow() - self::NOTIFY_UPCOMING_TRANSACTION_WITHIN_MAX),
             new SearchComparison('`gatewayKey`', '=', 'braintree')
         ]));
