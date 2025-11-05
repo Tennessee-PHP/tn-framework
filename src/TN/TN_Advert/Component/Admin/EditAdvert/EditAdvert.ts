@@ -85,7 +85,10 @@ export default class EditAdvert extends HTMLComponent {
             menubar: false,
             valid_elements: '*[*]',
             extended_valid_elements: 'script[src|async|defer|type|charset|crossorigin],ins[class|style|data-ad-client|data-ad-slot|data-ad-format|data-full-width-responsive|data-adsbygoogle-status]',
-            valid_children: '+body[style|script],+div[script],+p[script]'
+            valid_children: '+body[style|script],+div[script],+p[script]',
+            forced_root_block: '',
+            force_p_newlines: false,
+            remove_linebreaks: false
         });
     }
 
