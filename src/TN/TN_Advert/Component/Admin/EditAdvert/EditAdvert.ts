@@ -82,7 +82,10 @@ export default class EditAdvert extends HTMLComponent {
                 'bold italic underline | removeformat | h1 h2 h3 h4 h5 | bullist numlist | alignleft aligncenter alignright',
                 'hero banner | formatgroup paragraphgroup link image media emoticons | code help'
             ],
-            menubar: false
+            menubar: false,
+            valid_elements: '*[*]',
+            extended_valid_elements: 'script[src|async|defer|type|charset|crossorigin],ins[class|style|data-ad-client|data-ad-slot|data-ad-format|data-full-width-responsive|data-adsbygoogle-status]',
+            valid_children: '+body[style|script],+div[script],+p[script]'
         });
     }
 

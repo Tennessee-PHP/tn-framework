@@ -40,7 +40,7 @@ class SaveAdvert extends JSON
 
         $this->advert = preg_replace('/&amp;#([A-Za-z0-9]+);/i', '&#$1;', $this->advert);
         $this->advert = LitEmoji::encodeHtml($this->advert);
-        $this->advert = strip_tags($this->advert, '<div><br><a><img><b><p><h1><h2><h3><h4><h5><h6><i><em><hr><span>');
+        $this->advert = strip_tags($this->advert, '<div><br><a><img><b><p><h1><h2><h3><h4><h5><h6><i><em><hr><span><script><ins>');
 
         $update = [
             'title' => $this->title,
