@@ -265,19 +265,19 @@ abstract class Controller
             } catch (AccessForbiddenException $e) {
                 $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (AccessLoginRequiredException $e) {
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 401);
+                return new HTTPResponse($renderer, 401, $method);
             } catch (AccessUncontrolledException $e) {
                 $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (FullPageRoadblockException $e) {
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (UnmatchedException) {
                 continue;
             }
@@ -287,17 +287,17 @@ abstract class Controller
             } catch (ResourceNotFoundException $e) {
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 404);
+                return new HTTPResponse($renderer, 404, $method);
             } catch (\TN\TN_Core\Error\Access\AccessException $e) {
                 $renderer = $rendererClass::error($e->getMessage(), 403);
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             }
 
             return $response;
@@ -358,7 +358,7 @@ abstract class Controller
                 $renderer = $method->invoke($this, ...$argValues);
             }
             $renderer->prepare();
-            return new HTTPResponse($renderer);
+            return new HTTPResponse($renderer, 200, $method);
         } catch (ResourceNotFoundException $e) {
             throw $e;
         } catch (\TN\TN_Core\Error\Access\AccessException $e) {
@@ -377,7 +377,7 @@ abstract class Controller
             $rendererClass = $this->getRendererClassFromMethod($method);
             $renderer = $rendererClass::error($e->getDisplayMessage());
             $renderer->prepare();
-            return new HTTPResponse($renderer, $e->httpResponseCode);
+            return new HTTPResponse($renderer, $e->httpResponseCode, $method);
         }
     }
 
