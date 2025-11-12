@@ -85,10 +85,15 @@ export default class EditAdvert extends HTMLComponent {
             menubar: false,
             valid_elements: '*[*]',
             extended_valid_elements: 'script[src|async|defer|type|charset|crossorigin],ins[class|style|data-ad-client|data-ad-slot|data-ad-format|data-full-width-responsive|data-adsbygoogle-status]',
-            valid_children: '+body[style|script],+div[script],+p[script]',
-            forced_root_block: '',
+            valid_children: '+body[style|script|ins],+div[script|ins]',
+            forced_root_block: false,
             force_p_newlines: false,
-            remove_linebreaks: false
+            force_br_newlines: true,
+            convert_newlines_to_brs: false,
+            remove_linebreaks: false,
+            apply_source_formatting: false,
+            paste_block_drop: false,
+            paste_merge_formats: false
         });
     }
 

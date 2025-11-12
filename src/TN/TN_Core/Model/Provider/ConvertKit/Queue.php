@@ -4,6 +4,7 @@ namespace TN\TN_Core\Model\Provider\ConvertKit;
 
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Time\Time;
+use TN\TN_Core\Model\Storage\Cache;
 
 /**
  * queue up a convertkit request
@@ -22,7 +23,8 @@ class Queue
         'subscribed' => 1031997
     ];
     private static $tags = [
-        'onboarding' => 2591556
+        'onboarding' => 2591556,
+        'showdown-optimizer' => 12471963
     ];
 
     /**
@@ -105,6 +107,13 @@ class Queue
      */
     public static function addTag(string $email, string $tagStr): void
     {
+        // use cache to prevent multiple tags from being added for the same user
+        $cacheKey = 'ck-tag-' . $email . '-' . $tagStr;
+        if (Cache::get($cacheKey)) {
+            return;
+        }
+        Cache::set($cacheKey, true, Time::ONE_WEEK);
+
         if (isset(self::$tags[$tagStr])) {
             trigger_error('ConvertKit tag not found', E_USER_ERROR);
         }
