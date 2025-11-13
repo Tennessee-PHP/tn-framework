@@ -9,12 +9,23 @@ export default class EditAdvert extends HTMLComponent {
     private tinyMceEditor: any;
     private $form: Cash;
     private $saveButton: Cash;
+    private $tabButtons: Cash;
+    private $tabPanels: Cash;
+    private $scriptTextarea: Cash;
+    private activeEditorType: 'tinymce' | 'script' = 'tinymce';
     
     protected observe(): void {
         this.$form = this.$element.find('#edit_advert');
         this.$form.on('submit', this.onFormSubmit.bind(this));
         this.$saveButton = this.$element.find('#save_advert_button');
         this.$saveButton.on('click', this.onFormSubmit.bind(this));
+        this.$tabButtons = this.$element.find('[data-editor-tab]');
+        this.$tabPanels = this.$element.find('[data-editor-panel]');
+        this.$scriptTextarea = this.$element.find('#script_editor');
+
+        const initialEditorType = (this.$element.data('editor-type') as string) ?? 'tinymce';
+        this.setActiveEditorType(initialEditorType);
+        this.$tabButtons.on('click', this.onTabClick.bind(this));
 
         const $description = this.$form.find('[name="description"]');
 
@@ -107,7 +118,15 @@ export default class EditAdvert extends HTMLComponent {
         this.$saveButton.find('.spinner-border').removeClass('d-none');
 
         let data: ReloadData = this.$form.getFormData();
-        data.advert = this.tinyMceEditor.getContent({format: 'html'});
+        if (this.activeEditorType === 'script') {
+            const scriptValue = this.$scriptTextarea.val();
+            data.advert = typeof scriptValue === 'string' ? scriptValue : '';
+            data.editorType = 'script';
+        } else {
+            const editorContent = this.tinyMceEditor ? this.tinyMceEditor.getContent({format: 'html'}) : '';
+            data.advert = editorContent;
+            data.editorType = 'tinymce';
+        }
         axios.post(this.$form.attr('action'), data, {
             headers: {
                 'Content-Type': 'multipart/form-data'
@@ -129,4 +148,29 @@ export default class EditAdvert extends HTMLComponent {
             });
     }
     
+    private onTabClick(event: Event): void {
+        event.preventDefault();
+        const target = event.currentTarget as HTMLElement;
+        const editorType = target.getAttribute('data-editor-tab');
+        this.setActiveEditorType(editorType ?? 'tinymce');
+    }
+
+    private setActiveEditorType(editorType: string): void {
+        const normalisedEditorType: 'tinymce' | 'script' = editorType === 'script' ? 'script' : 'tinymce';
+        this.activeEditorType = normalisedEditorType;
+
+        this.$tabButtons.each((index: number, element: HTMLElement) => {
+            const $button = $(element);
+            const isActive = $button.data('editor-tab') === normalisedEditorType;
+            $button.toggleClass('active', isActive);
+            $button.attr('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        this.$tabPanels.each((index: number, element: HTMLElement) => {
+            const $panel = $(element);
+            const isActive = $panel.data('editor-panel') === normalisedEditorType;
+            $panel.toggleClass('active', isActive);
+            $panel.toggleClass('show', isActive);
+        });
+    }
 }

@@ -13,6 +13,10 @@ use TN\TN_Core\Model\Request\Request;
 
 class SaveAdvert extends JSON
 {
+    public const EDITOR_TYPE_TINYMCE = 'tinymce';
+    public const EDITOR_TYPE_SCRIPT = 'script';
+    public const SCRIPT_COMMENT = '<!-- RAW SCRIPT ADVERT -->';
+
     public string|int $id;
     public ?Advert $advertModel;
     #[FromPost] public string $advert;
@@ -23,6 +27,7 @@ class SaveAdvert extends JSON
     #[FromPost] public string $endTs;
     #[FromPost] public string $audience;
     #[FromPost] public bool $enabled;
+    #[FromPost] public string $editorType = self::EDITOR_TYPE_TINYMCE;
 
     /**
      * @throws \TN\TN_Core\Error\ValidationException
@@ -38,9 +43,14 @@ class SaveAdvert extends JSON
             }
         }
 
-        $this->advert = preg_replace('/&amp;#([A-Za-z0-9]+);/i', '&#$1;', $this->advert);
-        $this->advert = LitEmoji::encodeHtml($this->advert);
-        $this->advert = strip_tags($this->advert, '<div><br><a><img><b><p><h1><h2><h3><h4><h5><h6><i><em><hr><span><script><ins>');
+        $editorType = strtolower(trim($this->editorType));
+        if ($editorType === self::EDITOR_TYPE_SCRIPT) {
+            $this->advert = $this->prepareScriptAdvert($this->advert);
+        } else {
+            $this->advert = preg_replace('/&amp;#([A-Za-z0-9]+);/i', '&#$1;', $this->advert);
+            $this->advert = LitEmoji::encodeHtml($this->advert);
+            $this->advert = strip_tags($this->advert, '<div><br><a><img><b><p><h1><h2><h3><h4><h5><h6><i><em><hr><span><script><ins>');
+        }
 
         $update = [
             'title' => $this->title,
@@ -77,5 +87,20 @@ class SaveAdvert extends JSON
             'advertId' => $this->advertModel->id,
             'message' => 'The advert was saved successfully'
         ];
+    }
+
+    private function prepareScriptAdvert(string $advert): string
+    {
+        $trimmedAdvert = ltrim($advert);
+
+        if ($trimmedAdvert === '') {
+            return self::SCRIPT_COMMENT;
+        }
+
+        if (!str_starts_with($trimmedAdvert, self::SCRIPT_COMMENT)) {
+            return self::SCRIPT_COMMENT . PHP_EOL . $trimmedAdvert;
+        }
+
+        return $trimmedAdvert;
     }
 }

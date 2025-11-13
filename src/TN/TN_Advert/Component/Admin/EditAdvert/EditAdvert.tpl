@@ -1,4 +1,4 @@
-<div class="{$classAttribute}" id="{$idAttribute}" data-reload-url="{$reloadRoute}">
+<div class="{$classAttribute}" id="{$idAttribute}" data-reload-url="{$reloadRoute}" data-editor-type="{$editorType}">
     <form id="edit_advert" action="{path route='TN_Advert:Admin:saveAdvert' id=$advert->id ?? 'new'}" method="post">
         <input type="hidden" name="id" id="advert_id_field"
                value="{if $advert->id}{$advert->id}{else}new{/if}"/>
@@ -25,10 +25,23 @@
             course are the button elements right next to the B.</p>
 
         <div class="row d-flex justify-content-center">
-            <div class="col-12 form-group">
-                            <textarea
-                                    id="editor"
-                                    name="advert">
+            <div class="col-12">
+                <ul class="nav nav-tabs nav-underline" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {if $editorType === 'tinymce'}active{/if}" type="button" data-editor-tab="tinymce" role="tab" aria-controls="advert-editor-tinymce" aria-selected="{if $editorType === 'tinymce'}true{else}false{/if}">
+                            TinyMCE
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {if $editorType === 'script'}active{/if}" type="button" data-editor-tab="script" role="tab" aria-controls="advert-editor-script" aria-selected="{if $editorType === 'script'}true{else}false{/if}">
+                            Script
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3">
+                    <div class="tab-pane fade {if $editorType === 'tinymce'}show active{/if}" id="advert-editor-tinymce" role="tabpanel" data-editor-panel="tinymce">
+                        <div class="form-group">
+                            <textarea id="editor" name="advert">
                               {if $advert->id}
                                   {$advert->advert}
                               {else}
@@ -39,6 +52,15 @@
                                   <p>This might be the secondary call to action.</p>
                                   <a class="btn btn-primary btn-lg" href="#">Edit this CTA from the button menu</a></div>
                               {/if}                            </textarea>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade {if $editorType === 'script'}show active{/if}" id="advert-editor-script" role="tabpanel" data-editor-panel="script">
+                        <div class="form-group">
+                            <textarea id="script_editor" class="form-control font-monospace" rows="15" data-editor-textarea="script">{$scriptContent|escape:'htmlall'}</textarea>
+                            <small class="form-text text-muted mt-2">To insert raw HTML as an advert, please use the textarea below. Content is stored exactly as provided.</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
