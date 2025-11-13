@@ -940,7 +940,8 @@ class Subscription implements Persistence
             [
                 'planName' => $this->getPlan()->name,
                 'username' => $user->username,
-                'endTs' => $this->endTs
+                'endTs' => $this->endTs,
+                'activeSubscription' => $this
             ]
         );
     }
