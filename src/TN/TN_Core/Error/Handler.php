@@ -94,7 +94,7 @@ class Handler
 
     protected static function logError(string $file, string $line, string $type, string $msg): LoggedError
     {
-        $loggedError = LoggedError::getNew();
+        $loggedError = LoggedError::create();
         try {
             $user = User::getActive();
             if ($user->loggedIn) {

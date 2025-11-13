@@ -13,6 +13,9 @@ class LoggedError
 {
     /* PROPERTIES */
 
+    /** @var string unique identifier for the logged error */
+    public string $id = '';
+
     /** @var int unix timestamp for when this happened */
     public int $timestamp = 0;
 
@@ -40,6 +43,22 @@ class LoggedError
     private function __construct()
     {
 
+    }
+
+    public static function create(): LoggedError
+    {
+        $error = new static();
+        $error->id = static::generateId();
+        return $error;
+    }
+
+    protected static function generateId(): string
+    {
+        try {
+            return bin2hex(random_bytes(6));
+        } catch (\Throwable $exception) {
+            return (string)time();
+        }
     }
 
     protected static function getFilename(): string
@@ -76,7 +95,7 @@ class LoggedError
             $e = $e->getPrevious();
         }
 
-        $loggedError = new static();
+        $loggedError = static::create();
         $loggedError->timestamp = time();
         $loggedError->userId = User::getActive()?->id ?? 0;
         $loggedError->username = User::getActive()?->username ?? '';

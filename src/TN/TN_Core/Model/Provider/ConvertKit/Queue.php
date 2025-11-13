@@ -107,16 +107,16 @@ class Queue
      */
     public static function addTag(string $email, string $tagStr): void
     {
+        if (!isset(self::$tags[$tagStr])) {
+            trigger_error('ConvertKit tag not found', E_USER_ERROR);
+        }
+
         // use cache to prevent multiple tags from being added for the same user
         $cacheKey = 'ck-tag-' . $email . '-' . $tagStr;
         if (Cache::get($cacheKey)) {
             return;
         }
         Cache::set($cacheKey, true, Time::ONE_WEEK);
-
-        if (isset(self::$tags[$tagStr])) {
-            trigger_error('ConvertKit tag not found', E_USER_ERROR);
-        }
 
         self::addTagFromId($email, self::$tags[$tagStr]);
     }
