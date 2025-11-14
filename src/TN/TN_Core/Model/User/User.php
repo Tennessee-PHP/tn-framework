@@ -330,13 +330,13 @@ class User implements Persistence
         }
 
         $tnTokenCookie = false;
-        
+
         // First priority: Check Authorization header for Bearer token
         $authHeader = $request->getServer('HTTP_AUTHORIZATION');
         if ($authHeader && preg_match('/^Bearer\s+(\S+)$/i', $authHeader, $matches)) {
             $tnTokenCookie = $matches[1];
         }
-        
+
         // Second priority: Check JSON request body for access_token
         if (!$tnTokenCookie) {
             $jsonRequestBody = $request->getJSONRequestBody();
@@ -344,7 +344,7 @@ class User implements Persistence
                 $tnTokenCookie = $jsonRequestBody['access_token'];
             }
         }
-        
+
         // Third priority: Check query parameter or cookie
         if (!$tnTokenCookie) {
             $tnTokenCookie = $request->getQuery('access_token') ?? $request->getCookie('TN_token');

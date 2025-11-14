@@ -114,11 +114,10 @@ trait Cache
         foreach ($results as $object) {
             $ids[] = $object->id;
 
-            // Only cache object if it's not already cached
-            $objectCacheKey = static::getCacheKey('object', $object->id);
-            if (CacheStorage::get($objectCacheKey) === false) {
-                static::objectSetCache($object->id, $object);
-            }
+            // Always re-cache objects to ensure they're current
+            // This ensures that if an object was updated and cache was invalidated,
+            // the fresh object from the database will be cached
+            static::objectSetCache($object->id, $object);
         }
 
         CacheStorage::set($cacheKey, $ids, static::getCacheLifespan());
