@@ -59,7 +59,7 @@ abstract class R2Bucket
     {
         try {
             $event = self::startPerformanceEvent('R2', "PUT {$key}", ['bucket' => $this->bucketName, 'contentType' => $contentType]);
-            
+
             $client = $this->getClient();
 
             $client->putObject([
@@ -75,6 +75,16 @@ abstract class R2Bucket
         } catch (\Exception $e) {
             throw new ValidationException('Failed to upload file to R2 storage: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Get public base URL for this bucket
+     * 
+     * @return string Public base URL (includes trailing slash)
+     */
+    public function getPublicBaseUrl(): string
+    {
+        return $this->publicBaseUrl;
     }
 
     /**
@@ -215,7 +225,7 @@ abstract class R2Bucket
     {
         try {
             $event = self::startPerformanceEvent('R2', "DELETE {$key}", ['bucket' => $this->bucketName]);
-            
+
             $client = $this->getClient();
 
             $client->deleteObject([
@@ -242,14 +252,14 @@ abstract class R2Bucket
     {
         try {
             $event = self::startPerformanceEvent('R2', "HEAD {$key}", ['bucket' => $this->bucketName]);
-            
+
             $client = $this->getClient();
-            
+
             $client->headObject([
                 'Bucket' => $this->bucketName,
                 'Key' => $key
             ]);
-            
+
             $event?->end();
             return true;
         } catch (\Exception $e) {
@@ -268,14 +278,14 @@ abstract class R2Bucket
     {
         try {
             $event = self::startPerformanceEvent('R2', "HEAD {$key} (size)", ['bucket' => $this->bucketName]);
-            
+
             $client = $this->getClient();
-            
+
             $result = $client->headObject([
                 'Bucket' => $this->bucketName,
                 'Key' => $key
             ]);
-            
+
             $event?->end();
             return (int) $result['ContentLength'];
         } catch (\Exception $e) {
@@ -295,14 +305,14 @@ abstract class R2Bucket
     {
         try {
             $event = self::startPerformanceEvent('R2', "GET {$key}", ['bucket' => $this->bucketName]);
-            
+
             $client = $this->getClient();
-            
+
             $result = $client->getObject([
                 'Bucket' => $this->bucketName,
                 'Key' => $key
             ]);
-            
+
             $event?->end();
             return (string) $result['Body'];
         } catch (\Exception $e) {
