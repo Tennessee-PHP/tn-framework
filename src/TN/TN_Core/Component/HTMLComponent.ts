@@ -97,10 +97,34 @@ abstract class HTMLComponent {
         $control.attr('data-timestamp', timestamp.toString());
         this.triggeringControl = $control;
         
-        // Read the current value from the control
-        let currentValue = $control.val();
-        if (typeof currentValue === 'undefined' || currentValue === '') {
-            currentValue = $control.data('value');
+        // For el-select, try to read value directly from selected option first
+        const element = $control[0];
+        let currentValue: any = undefined;
+        
+        if (element && element.tagName === 'EL-SELECT') {
+            // Try to get value from element's value property first
+            const elSelectElement = element as any; // Custom web component, cast to any to access value property
+            if (elSelectElement.value !== undefined && elSelectElement.value !== null) {
+                currentValue = elSelectElement.value;
+            } else {
+                // Fallback: look for newly selected option
+                const selectedOption = element.querySelector('el-option[selected], el-option[aria-selected="true"]') as HTMLElement;
+                if (selectedOption) {
+                    const value = selectedOption.getAttribute('value');
+                    if (value !== null) {
+                        currentValue = value;
+                    }
+                }
+            }
+        } else {
+            // Standard controls
+            currentValue = this.getControlValueFromElement($control);
+        }
+        
+        // Store the value in data-value attribute so it persists through reloads
+        // Note: empty string is a valid value (e.g., "All Sports" filter)
+        if (typeof currentValue !== 'undefined' && currentValue !== null) {
+            $control.data('value', currentValue);
         }
         
         // @ts-ignore
@@ -130,6 +154,58 @@ abstract class HTMLComponent {
         return data;
     }
 
+    /**
+     * Get the current value from a control, handling custom web components like el-select
+     */
+    private getControlValueFromElement($control: Cash): any {
+        const element = $control[0];
+        
+        // Handle el-select custom web components
+        if (element && element.tagName === 'EL-SELECT') {
+            // First check data-value attribute (most reliable, set when change event fires)
+            const dataValue = $control.data('value');
+            if (dataValue !== undefined && dataValue !== null) {
+                return dataValue;
+            }
+            
+            // Try to get value from the element's value property (custom web component)
+            // Note: This might be undefined if change event fired before value was updated
+            const elSelectElement = element as any; // Custom web component, cast to any to access value property
+            if (elSelectElement.value !== undefined && elSelectElement.value !== null && elSelectElement.value !== '') {
+                return elSelectElement.value;
+            }
+            
+            // Fallback: look for selected option in the DOM
+            // Try different possible selectors for selected state
+            let selectedOption = element.querySelector('el-option[selected]') as HTMLElement;
+            if (!selectedOption) {
+                selectedOption = element.querySelector('el-option[aria-selected="true"]') as HTMLElement;
+            }
+            if (!selectedOption) {
+                // Look for option that has selected class or is marked as active
+                selectedOption = element.querySelector('el-option.selected, el-option[class*="selected"]') as HTMLElement;
+            }
+            
+            if (selectedOption) {
+                const value = selectedOption.getAttribute('value');
+                if (value !== null) {
+                    return value;
+                }
+            }
+            
+            // If no selected option found, return empty string (valid for "All" filters)
+            return '';
+        }
+        
+        // Standard controls: try .val() first
+        let val = $control.val();
+        if (typeof val === 'undefined' || val === null || val === '') {
+            val = $control.data('value');
+        }
+        
+        return val;
+    }
+
     private collectControlValues(): ReloadData {
         const data: ReloadData = {
             componentIdNum: this.$element.attr('id').substring(4),
@@ -153,20 +229,23 @@ abstract class HTMLComponent {
             if (!key && $control.data('request-unpack-value-from-json') !== 'yes') {
                 return;
             }
-            let val = $control.val();
             
-            if (typeof val === 'undefined' || val === '') {
-                val = $control.data('value');
-            }
+            // Get the value using our helper method that handles el-select
+            let val = this.getControlValueFromElement($control);
             
-            // For the triggering control, always use the most recent data value
+            // For the triggering control, always prioritize the most recent data value
             if (this.triggeringControl && $control[0] === this.triggeringControl[0]) {
                 const dataVal = $control.data('value');
-                val = dataVal;
+                if (dataVal !== undefined && dataVal !== null) {
+                    val = dataVal;
+                }
             }
-            if (typeof val === 'undefined' || val === '') {
+            
+            // Skip only if value is truly undefined or null (empty string is valid for filters like "All Sports")
+            if (typeof val === 'undefined' || val === null) {
                 return;
             }
+            
             if ($control.is('input[type=checkbox]')) {
                 val = $control.prop('checked');
             }
