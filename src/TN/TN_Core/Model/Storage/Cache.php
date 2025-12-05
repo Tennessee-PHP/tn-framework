@@ -159,6 +159,31 @@ class Cache
     }
 
     /**
+     * deletes all cache keys matching a pattern
+     * @param string $pattern the pattern to match (e.g., 'ComputedIndividualRankings-*')
+     * <code>
+     * Cache::deleteKeysByPattern('ComputedIndividualRankings-*');
+     * </code>
+     */
+    public static function deleteKeysByPattern(string $pattern): void
+    {
+        $client = Redis::getInstance();
+        $storagePattern = self::getStorageKey($pattern);
+        $matchingKeys = $client->keys($storagePattern);
+
+        if (empty($matchingKeys)) {
+            return;
+        }
+
+        $client->del($matchingKeys);
+
+        // Remove from request cache
+        foreach ($matchingKeys as $key) {
+            unset(self::$requestCache[$key]);
+        }
+    }
+
+    /**
      * treat the key to avoid clashes
      * @param string $key
      * @return string

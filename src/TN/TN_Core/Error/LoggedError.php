@@ -40,10 +40,7 @@ class LoggedError
     /** @var string type of error, e.g. "FATAL ERROR" or "WARNING" */
     public string $type;
 
-    private function __construct()
-    {
-
-    }
+    private function __construct() {}
 
     public static function create(): LoggedError
     {
@@ -113,6 +110,4 @@ class LoggedError
         $log[] = json_encode($loggedError) . PHP_EOL;
         file_put_contents(static::getFilename(), implode(PHP_EOL, array_slice($log, -1000)));
     }
-
-
 }

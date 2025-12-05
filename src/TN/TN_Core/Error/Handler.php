@@ -89,7 +89,6 @@ class Handler
 
         /* Don't execute PHP internal error handler */
         return true;
-
     }
 
     protected static function logError(string $file, string $line, string $type, string $msg): LoggedError
@@ -129,5 +128,4 @@ class Handler
             }
         }
     }
-
 }
