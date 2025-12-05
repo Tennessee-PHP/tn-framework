@@ -188,6 +188,18 @@ class TrackedVisitor implements Persistence
         }
     }
 
+    /**
+     * Set campaign by key. Fails silently if campaign not found.
+     * @param string $campaignKey The campaign key to look up
+     */
+    public function setCampaignByKey(string $campaignKey): void
+    {
+        $campaign = Campaign::readFromKey($campaignKey);
+        if ($campaign instanceof Campaign) {
+            $this->setCampaign($campaign->id);
+        }
+    }
+
     /** @param string $tag change this prospect's convert kit tag
      * @throws ValidationException
      */

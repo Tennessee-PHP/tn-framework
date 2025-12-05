@@ -160,6 +160,7 @@ class Cache
 
     /**
      * deletes all cache keys matching a pattern
+     * Uses SCAN for compatibility with Redis clusters and efficient iteration on large instances
      * @param string $pattern the pattern to match (e.g., 'ComputedIndividualRankings-*')
      * <code>
      * Cache::deleteKeysByPattern('ComputedIndividualRankings-*');
@@ -169,7 +170,21 @@ class Cache
     {
         $client = Redis::getInstance();
         $storagePattern = self::getStorageKey($pattern);
-        $matchingKeys = $client->keys($storagePattern);
+
+        $matchingKeys = [];
+        $cursor = 0;
+
+        // Use SCAN to iterate through keys in batches (required for Redis clusters, efficient for large instances)
+        // SCAN returns [cursor, [keys...]] where cursor is 0 when done
+        do {
+            $result = $client->scan($cursor, ['MATCH' => $storagePattern, 'COUNT' => 100]);
+            $cursor = is_array($result) ? $result[0] : 0;
+            $keys = is_array($result) && isset($result[1]) ? $result[1] : [];
+
+            foreach ($keys as $key) {
+                $matchingKeys[] = $key;
+            }
+        } while ($cursor !== 0 && $cursor !== '0');
 
         if (empty($matchingKeys)) {
             return;
