@@ -16,15 +16,15 @@ class Queue
         'schedulemaker' => 2521008,
         'users' => 2893687,
         'ratemyteam' => 3552612,
-        'ratemyteam-roadblock' => 8408341
+        'ratemyteam-roadblock' => 8408341,
+        'showdown-optimizer' => 8853662
     ];
     private static $sequences = [
         'signup' => 1031995,
         'subscribed' => 1031997
     ];
     private static $tags = [
-        'onboarding' => 2591556,
-        'showdown-optimizer' => 12471963
+        'onboarding' => 2591556
     ];
 
     /**
