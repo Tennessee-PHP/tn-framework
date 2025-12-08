@@ -12,16 +12,38 @@ use TN\TN_Core\Model\Time\Time;
  */
 trait Cache
 {
+    /**
+     * Get the class in the inheritance hierarchy that has the Cache attribute
+     * Walks up parent classes to find where caching is defined
+     * 
+     * @return string|null The class name with the Cache attribute, or null if none found
+     */
+    protected static function getCacheClass(): ?string
+    {
+        $class = static::class;
+        while ($class) {
+            $reflection = new \ReflectionClass($class);
+            if (!empty($reflection->getAttributes(CacheAttribute::class))) {
+                return $class;
+            }
+            $class = get_parent_class($class);
+        }
+        return null;
+    }
+
     /** @return bool enable the mysql cache? */
     protected static function cacheEnabled(): bool
     {
-        $class = new \ReflectionClass(static::class);
-        return !empty($class->getAttributes(CacheAttribute::class));
+        return static::getCacheClass() !== null;
     }
 
     protected static function getCacheLifespan(): int
     {
-        $class = new \ReflectionClass(static::class);
+        $cacheClass = static::getCacheClass();
+        if (!$cacheClass) {
+            return Time::ONE_DAY;
+        }
+        $class = new \ReflectionClass($cacheClass);
         $cacheAttributes = $class->getAttributes(CacheAttribute::class);
         if (empty($cacheAttributes)) {
             return Time::ONE_DAY;
@@ -31,7 +53,11 @@ trait Cache
 
     protected static function getCacheVersion(): string
     {
-        $class = new \ReflectionClass(static::class);
+        $cacheClass = static::getCacheClass();
+        if (!$cacheClass) {
+            return '1.0';
+        }
+        $class = new \ReflectionClass($cacheClass);
         $cacheAttributes = $class->getAttributes(CacheAttribute::class);
         if (empty($cacheAttributes)) {
             return '1.0';
@@ -41,7 +67,12 @@ trait Cache
 
     protected static function getCacheKey(string $type, string $identifier): string
     {
-        return implode(':', [static::class, static::getCacheVersion(), $type, $identifier]);
+        $cacheClass = static::getCacheClass();
+        if (!$cacheClass) {
+            // If no cache class found, use static::class as fallback (shouldn't happen if cacheEnabled is checked)
+            $cacheClass = static::class;
+        }
+        return implode(':', [$cacheClass, static::getCacheVersion(), $type, $identifier]);
     }
 
     protected static function objectSetCache(string|int $id, mixed $object): void
@@ -171,27 +202,179 @@ trait Cache
             return;
         }
 
-        // Invalidate object cache for the current class
+        // Use getCacheKey() which now uses getCacheClass() to ensure consistent cache keys
+        // This ensures that child classes (e.g., AmericanFootballGame) invalidate
+        // using the same cache keys as the parent class (e.g., Matchup) that has the Cache attribute
         CacheStorage::delete(static::getCacheKey('object', $this->id));
         CacheStorage::setRemove(static::getCacheKey('set', 'objects'), static::getCacheKey('object', $this->id));
 
-        // Invalidate search/count caches for the current class
+        // Invalidate search/count caches using the cache class
         static::invalidateCacheSet('searches');
         static::invalidateCacheSet('counts');
+    }
 
-        // CRITICAL FIX: Also invalidate caches for all parent classes in the inheritance hierarchy
-        $parentClass = get_parent_class(static::class);
-        while ($parentClass && method_exists($parentClass, 'cacheEnabled')) {
-            // Invalidate object cache for parent class
-            $parentCacheKey = implode(':', [$parentClass, static::getCacheVersion(), 'object', $this->id]);
-            CacheStorage::delete($parentCacheKey);
-            CacheStorage::setRemove(implode(':', [$parentClass, static::getCacheVersion(), 'set', 'objects']), $parentCacheKey);
+    /**
+     * Get cache status for this model instance comparing MySQL, Redis, and PHP memory
+     * 
+     * This method checks what's stored in MySQL database, Redis cache, and PHP memory
+     * for the specified properties and returns a detailed comparison with checksums.
+     * 
+     * @param array $properties Array of property names to check (must be persistent properties)
+     * @param bool $returnStrings If true, returns array of strings instead of outputting them
+     * @return array Array of output strings
+     */
+    public function getCacheStatus(array $properties, bool $returnStrings = false): array
+    {
+        $output = [];
 
-            // Invalidate search/count caches for parent class
-            $parentClass::invalidateCacheSet('searches');
-            $parentClass::invalidateCacheSet('counts');
-
-            $parentClass = get_parent_class($parentClass);
+        if (empty($this->id)) {
+            $msg = "ERROR: Cannot check cache status - object has no ID";
+            if ($returnStrings) {
+                return [$msg];
+            }
+            echo $msg . PHP_EOL;
+            return [];
         }
+
+        // Filter to only persistent properties
+        $persistentProperties = static::getPersistentProperties();
+        $validProperties = array_intersect($properties, $persistentProperties);
+
+        if (empty($validProperties)) {
+            $msg = "WARNING: No valid persistent properties specified";
+            if ($returnStrings) {
+                return [$msg];
+            }
+            echo $msg . PHP_EOL;
+            return [];
+        }
+
+        $output[] = "=== Cache Status Check for " . static::class . " (ID: {$this->id}) ===";
+        $output[] = "Properties checked: " . implode(', ', $validProperties);
+        $output[] = "";
+
+        // Get data from PHP memory (current object state)
+        $memoryData = [];
+        foreach ($validProperties as $prop) {
+            $value = $this->$prop ?? null;
+            // Process through savePropertyValue to normalize (same as before saving)
+            $memoryData[$prop] = $this->savePropertyValue($prop, $value);
+        }
+        ksort($memoryData);
+        $memoryChecksum = md5(json_encode($memoryData));
+
+        // Get data from MySQL database
+        $mysqlData = [];
+        try {
+            $db = \TN\TN_Core\Model\Storage\DB::getInstance($_ENV['MYSQL_DB']);
+            $table = static::getTableName();
+            $idProp = static::getAutoIncrementProperty();
+
+            $columns = array_map(fn($p) => "`{$p}`", $validProperties);
+            $columnsStr = implode(', ', $columns);
+
+            $query = "SELECT {$columnsStr} FROM {$table} WHERE `{$idProp}` = ? LIMIT 1";
+            $stmt = $db->prepare($query);
+            $stmt->execute([$this->id]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($row) {
+                foreach ($validProperties as $prop) {
+                    // Load through loadPropertyValue to normalize (same as when reading from DB)
+                    $mysqlData[$prop] = $this->loadPropertyValue($prop, $row[$prop] ?? null);
+                    // Then process through savePropertyValue for comparison
+                    $mysqlData[$prop] = $this->savePropertyValue($prop, $mysqlData[$prop]);
+                }
+            } else {
+                $mysqlData = null; // Row doesn't exist
+            }
+        } catch (\Exception $e) {
+            $mysqlData = ['ERROR' => $e->getMessage()];
+        }
+        if ($mysqlData !== null && !isset($mysqlData['ERROR'])) {
+            ksort($mysqlData);
+        }
+        $mysqlChecksum = $mysqlData === null ? 'ROW_NOT_FOUND' : (isset($mysqlData['ERROR']) ? 'ERROR' : md5(json_encode($mysqlData)));
+
+        // Get data from Redis cache
+        $redisData = [];
+        $redisChecksum = 'NOT_CACHED';
+        if (static::cacheEnabled()) {
+            $cachedObject = static::objectCache($this->id);
+            if ($cachedObject) {
+                foreach ($validProperties as $prop) {
+                    $value = $cachedObject->$prop ?? null;
+                    // Process through savePropertyValue to normalize
+                    $redisData[$prop] = $cachedObject->savePropertyValue($prop, $value);
+                }
+                ksort($redisData);
+                $redisChecksum = md5(json_encode($redisData));
+            }
+        }
+
+        // Output comparison
+        $output[] = "PHP Memory:";
+        $output[] = "  Data: " . json_encode($memoryData, JSON_PRETTY_PRINT);
+        $output[] = "  Checksum: {$memoryChecksum}";
+        $output[] = "";
+
+        $output[] = "MySQL Database:";
+        if ($mysqlData === null) {
+            $output[] = "  Status: ROW NOT FOUND";
+        } elseif (isset($mysqlData['ERROR'])) {
+            $output[] = "  Status: ERROR - " . $mysqlData['ERROR'];
+        } else {
+            $output[] = "  Data: " . json_encode($mysqlData, JSON_PRETTY_PRINT);
+            $output[] = "  Checksum: {$mysqlChecksum}";
+        }
+        $output[] = "";
+
+        $output[] = "Redis Cache:";
+        if (!static::cacheEnabled()) {
+            $output[] = "  Status: CACHING DISABLED";
+        } elseif (empty($redisData)) {
+            $output[] = "  Status: NOT CACHED";
+        } else {
+            $output[] = "  Data: " . json_encode($redisData, JSON_PRETTY_PRINT);
+            $output[] = "  Checksum: {$redisChecksum}";
+        }
+        $output[] = "";
+
+        // Compare checksums
+        $warnings = [];
+        if ($mysqlData !== null && !isset($mysqlData['ERROR'])) {
+            if ($memoryChecksum !== $mysqlChecksum) {
+                $warnings[] = "WARNING: PHP Memory and MySQL Database are OUT OF SYNC!";
+            }
+            if ($redisChecksum !== 'NOT_CACHED' && $redisChecksum !== 'CACHING_DISABLED' && $redisChecksum !== $mysqlChecksum) {
+                $warnings[] = "WARNING: Redis Cache and MySQL Database are OUT OF SYNC!";
+            }
+            if ($redisChecksum !== 'NOT_CACHED' && $redisChecksum !== 'CACHING_DISABLED' && $memoryChecksum !== $redisChecksum) {
+                $warnings[] = "WARNING: PHP Memory and Redis Cache are OUT OF SYNC!";
+            }
+        }
+
+        if (!empty($warnings)) {
+            $output[] = "=== WARNINGS ===";
+            foreach ($warnings as $warning) {
+                $output[] = $warning;
+            }
+            $output[] = "";
+        } else {
+            $output[] = "✓ All sources are in sync";
+            $output[] = "";
+        }
+
+        $output[] = "=== End Cache Status Check ===";
+
+        if ($returnStrings) {
+            return $output;
+        }
+
+        foreach ($output as $line) {
+            echo $line . PHP_EOL;
+        }
+
+        return $output;
     }
 }
