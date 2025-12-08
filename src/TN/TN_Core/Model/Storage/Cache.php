@@ -118,6 +118,18 @@ class Cache
     }
 
     /**
+     * check if a value exists in a cache set
+     * @param string $key the set key (should contain :set: for proper prefixing)
+     * @param string $value the value to check
+     * @return bool true if value exists in set
+     */
+    public static function setMembersContains(string $key, string $value): bool
+    {
+        $members = self::setMembers($key);
+        return in_array($value, $members, true);
+    }
+
+    /**
      * @param string $key
      * @param string $field
      * @param mixed $value

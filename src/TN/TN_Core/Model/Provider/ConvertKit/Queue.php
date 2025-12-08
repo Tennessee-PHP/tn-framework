@@ -32,6 +32,31 @@ class Queue
      */
     protected static function queueRequest(string $action, array $arguments)
     {
+        // Check for duplicate requests for form subscriptions and tag additions
+        if ($action === 'form_subscribe' && isset($arguments[0], $arguments[1]['email'])) {
+            $formId = (string)$arguments[0];
+            $email = $arguments[1]['email'];
+            $setKey = ':set:ck-form-' . $email;
+
+            $alreadyExists = Cache::setMembersContains($setKey, $formId);
+            Cache::setAdd($setKey, $formId, Time::ONE_MONTH);
+
+            if ($alreadyExists) {
+                return;
+            }
+        } elseif ($action === 'add_tag' && isset($arguments[0], $arguments[1]['email'])) {
+            $tagId = (string)$arguments[0];
+            $email = $arguments[1]['email'];
+            $setKey = ':set:ck-tag-' . $email;
+
+            $alreadyExists = Cache::setMembersContains($setKey, $tagId);
+            Cache::setAdd($setKey, $tagId, Time::ONE_MONTH);
+
+            if ($alreadyExists) {
+                return;
+            }
+        }
+
         $request = Request::getInstance();
         $request->update([
             'action' => $action,
@@ -110,13 +135,6 @@ class Queue
         if (!isset(self::$tags[$tagStr])) {
             trigger_error('ConvertKit tag not found', E_USER_ERROR);
         }
-
-        // use cache to prevent multiple tags from being added for the same user
-        $cacheKey = 'ck-tag-' . $email . '-' . $tagStr;
-        if (Cache::get($cacheKey)) {
-            return;
-        }
-        Cache::set($cacheKey, true, Time::ONE_WEEK);
 
         self::addTagFromId($email, self::$tags[$tagStr]);
     }
