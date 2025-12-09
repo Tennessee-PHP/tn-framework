@@ -210,7 +210,7 @@ trait MySQL
 
         try {
             $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params]);
-            
+
             $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
             $stmt = $db->prepare($select->query);
 
@@ -224,7 +224,7 @@ trait MySQL
 
             $result = $stmt->fetch(PDO::FETCH_NUM);
             $result = (int)$result[0];
-            
+
             $event?->end();
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
@@ -249,7 +249,7 @@ trait MySQL
 
         try {
             $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params, 'sumProperty' => $propertyToTotal]);
-            
+
             $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
             $stmt = $db->prepare($select->query);
 
@@ -263,7 +263,7 @@ trait MySQL
 
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
             $result = new CountAndTotalResult($result['count'], (float)($result['sum'] ?? 0));
-            
+
             $event?->end();
         } catch (\PDOException $e) {
             throw new DBException($e->getMessage());
@@ -289,7 +289,7 @@ trait MySQL
 
         try {
             $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params]);
-            
+
             if (MYSQL_DEBUG_MODE) {
                 echo $select->query . PHP_EOL;
             }
@@ -336,7 +336,7 @@ trait MySQL
         if (!$res) {
             throw new DBException('Failed to execute erase query');
         }
-        
+
         $event?->end();
     }
 
@@ -512,7 +512,9 @@ trait MySQL
             $foreignKeyAttributes = $property->getAttributes(ForeignKey::class);
             if (count($foreignKeyAttributes) > 0) {
                 $foreignKeyInstance = $foreignKeyAttributes[0]->newInstance();
-                $keyStrings[] = "FOREIGN KEY (`{$property->getName()}`) REFERENCES `{$foreignKeyInstance->table}`(`{$foreignKeyInstance->column}`)  ON DELETE CASCADE";
+                if ($foreignKeyInstance->column !== null) {
+                    $keyStrings[] = "FOREIGN KEY (`{$property->getName()}`) REFERENCES `{$foreignKeyInstance->table}`(`{$foreignKeyInstance->column}`)  ON DELETE CASCADE";
+                }
             }
 
             $indexAttributes = $property->getAttributes(Index::class);
@@ -649,7 +651,7 @@ trait MySQL
         $visiting = [];
 
         // Helper function for depth-first topological sort
-        $visit = function($tableName) use (&$visit, &$sorted, &$visited, &$visiting, $tableInfo) {
+        $visit = function ($tableName) use (&$visit, &$sorted, &$visited, &$visiting, $tableInfo) {
             // Check for circular dependency
             if (isset($visiting[$tableName])) {
                 throw new \Exception("Circular dependency detected involving table: $tableName");
@@ -736,7 +738,7 @@ trait MySQL
         try {
             $schemas = self::getAllSchemas();
             $db = DB::getInstance($_ENV['MYSQL_DB'], true);
-            
+
             foreach ($schemas as $schema) {
                 $db->query($schema);
             }

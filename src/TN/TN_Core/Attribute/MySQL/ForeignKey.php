@@ -12,7 +12,7 @@ use TN\TN_Core\Model\Package\Stack;
 class ForeignKey
 {
     public string $table;
-    public string $column;
+    public ?string $column = null;
 
     /**
      * @throws \ReflectionException
@@ -25,12 +25,10 @@ class ForeignKey
         $reflection = new \ReflectionClass($this->foreignClassName);
         $properties = $reflection->getProperties();
         foreach ($properties as $property) {
-            $attributes = $property->getAttributes();
-            foreach ($attributes as $attribute) {
-                if ($attribute->getName() == PrimaryKey::class) {
-                    $this->column = $property->getName();
-                    break;
-                }
+            $attributes = $property->getAttributes(PrimaryKey::class);
+            if (count($attributes) > 0) {
+                $this->column = $property->getName();
+                break;
             }
         }
     }
