@@ -25,7 +25,10 @@ class Redis
         ];
 
         if (self::$client === null) {
-            if (($_ENV['REDIS_CLUSTER'] ?? 0) == 1) {
+            // Use REDIS_URL if available (for Render and other cloud providers)
+            if (!empty($_ENV['REDIS_URL'])) {
+                self::$client = new Client($_ENV['REDIS_URL'], $options);
+            } elseif (($_ENV['REDIS_CLUSTER'] ?? 0) == 1) {
                 // Check if we have multiple cluster nodes (direct cluster access)
                 // or a single seed node (AWS ElastiCache style)
                 if (!empty($_ENV['REDIS_CLUSTER_NODES'])) {

@@ -25,6 +25,15 @@ class Command extends Request
     protected static ?Request $instance = null;
 
     /**
+     * Check if a Command is currently running without throwing an exception
+     * @return bool
+     */
+    public static function isRunning(): bool
+    {
+        return static::$instance !== null;
+    }
+
+    /**
      * @param array $options
      * @throws Exception
      */

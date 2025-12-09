@@ -40,10 +40,12 @@ class Component extends RouteType
 
             // If component is reloadable and request has reload=1, use HTML renderer
             if ($isReloadable && $request->getRequest('reload', false)) {
+                $request->isFullPageRender = false;
                 return HTML::class;
             }
 
             // Otherwise use Page renderer for HTML components
+            $request->isFullPageRender = true;
             return Page::class;
         }
 

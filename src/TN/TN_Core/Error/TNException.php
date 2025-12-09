@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Error;
 
 use TN\TN_Core\Model\User\User;
+use TN\TN_Core\Model\Request\Command;
 
 class TNException extends \Exception
 {
@@ -13,7 +14,7 @@ class TNException extends \Exception
     protected function getUserIsAdmin(): bool
     {
         if (!isset($this->userIsAdmin)) {
-            $this->userIsAdmin = User::getActive()->hasRole('super-user') || User::getActive()->isLoggedInAsOther();
+            $this->userIsAdmin = Command::isRunning() || User::getActive()->hasRole('super-user') || User::getActive()->isLoggedInAsOther();
         }
         return $this->userIsAdmin;
     }

@@ -30,6 +30,7 @@ use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
 use TN\TN_Core\Attribute\Route\RouteType;
 use TN\TN_Core\Component\Renderer\Page\Page;
+use TN\TN_Core\Model\User\User;
 
 /**
  * Base controller class handling routing and request processing in the TN Framework.
@@ -202,14 +203,25 @@ abstract class Controller
                         ]);
                     }
                 } catch (\Error | \Exception $e) {
+
+                    if (!($e instanceof TNException)) {
+                        $e = new TNException($e->getMessage(), (int)$e->getCode(), $e);
+                    }
+
                     if ($command->isCron) {
                         $commandLog?->update([
-                            'result' => $e->getMessage(),
+                            'result' => $e->getDisplayMessage(),
                             'completed' => true,
                             'success' => false,
                             'endTs' => Time::getNow(),
                             'duration' => Time::getNow() - $commandLog->startTs
                         ]);
+                    } else {
+                        if ($cliClass) {
+                            $cli->red($e->getDisplayMessage());
+                        } else {
+                            echo $e->getDisplayMessage() . PHP_EOL;
+                        }
                     }
                     throw $e;
                 }
@@ -253,19 +265,19 @@ abstract class Controller
             } catch (AccessForbiddenException $e) {
                 $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (AccessLoginRequiredException $e) {
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 401, $method);
             } catch (AccessUncontrolledException $e) {
                 $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (FullPageRoadblockException $e) {
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             } catch (UnmatchedException) {
                 continue;
             }
@@ -275,13 +287,17 @@ abstract class Controller
             } catch (ResourceNotFoundException $e) {
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 404);
+                return new HTTPResponse($renderer, 404, $method);
+            } catch (\TN\TN_Core\Error\Access\AccessException $e) {
+                $renderer = $rendererClass::error($e->getMessage(), 403);
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 403, $method);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
-                return new HTTPResponse($renderer, 403);
+                return new HTTPResponse($renderer, 403, $method);
             }
 
             return $response;
@@ -354,8 +370,10 @@ abstract class Controller
             $renderer->prepare();
             $request->recordTiming('component_prepare_complete', 'Component preparation completed');
 
-            return new HTTPResponse($renderer);
+            return new HTTPResponse($renderer, 200, $method);
         } catch (ResourceNotFoundException $e) {
+            throw $e;
+        } catch (\TN\TN_Core\Error\Access\AccessException $e) {
             throw $e;
         } catch (\Error | \Exception $e) {
             if (!($e instanceof TNException)) {
@@ -371,7 +389,7 @@ abstract class Controller
             $rendererClass = $this->getRendererClassFromMethod($method);
             $renderer = $rendererClass::error($e->getDisplayMessage());
             $renderer->prepare();
-            return new HTTPResponse($renderer, $e->httpResponseCode);
+            return new HTTPResponse($renderer, $e->httpResponseCode, $method);
         }
     }
 
@@ -437,6 +455,91 @@ abstract class Controller
             return $routeType->getRendererClass();
         } catch (\Throwable) {
             return Text::class;
+        }
+    }
+
+    /**
+     * Check if a user can access a component by finding its controlling route and checking restrictions
+     * 
+     * @param string $componentClassName Full component class name
+     * @param User|null $user User to check (defaults to current active user)
+     * @return bool True if user has access, false otherwise
+     */
+    public static function canUserAccessComponent(string $componentClassName, ?User $user = null): bool
+    {
+        if (!$user) {
+            $user = User::getActive();
+        }
+
+        // Use existing Stack method to get all controller classes
+        foreach (Stack::getChildClasses(Controller::class) as $controllerClass) {
+            if (!class_exists($controllerClass)) {
+                continue;
+            }
+
+            try {
+                $reflection = new \ReflectionClass($controllerClass);
+
+                // Check all public methods for Component attributes
+                foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+                    $componentAttributes = $method->getAttributes(\TN\TN_Core\Attribute\Route\Component::class);
+
+                    foreach ($componentAttributes as $attribute) {
+                        $componentInstance = $attribute->newInstance();
+                        if ($componentInstance->componentClassName === $componentClassName) {
+                            // Found the controlling method - check access
+                            return self::checkMethodAccess($method, $user);
+                        }
+                    }
+                }
+            } catch (\ReflectionException) {
+                continue;
+            }
+        }
+
+        // If no controlling route found, assume no access
+        return false;
+    }
+
+    /**
+     * Check if a user can access a specific method by evaluating its restrictions
+     * 
+     * @param ReflectionMethod $method Method to check
+     * @param User $user User to check
+     * @return bool True if user has access, false otherwise
+     */
+    private static function checkMethodAccess(ReflectionMethod $method, User $user): bool
+    {
+        try {
+            // Get all restriction attributes (same logic as setAccess method)
+            $restrictions = [];
+            foreach ($method->getAttributes(Restriction::class, ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                $restrictions[] = $attribute->newInstance();
+            }
+
+            // If no restrictions, assume public access
+            if (empty($restrictions)) {
+                return true;
+            }
+
+            // Check each restriction (mimics HTTPRequest::setAccess logic)
+            foreach ($restrictions as $restriction) {
+                $access = $restriction->getAccess($user);
+
+                // If any restriction denies access, return false
+                if (
+                    $access === Restriction::FORBIDDEN ||
+                    $access === Restriction::LOGIN_REQUIRED ||
+                    $access === Restriction::UNMATCHED
+                ) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (\Exception) {
+            // If any error occurs during access checking, deny access
+            return false;
         }
     }
 }

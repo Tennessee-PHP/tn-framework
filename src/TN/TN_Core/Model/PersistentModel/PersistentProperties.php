@@ -40,11 +40,12 @@ trait PersistentProperties
         // Then handle all type conversions
         if (in_array($type, ['int', 'string', 'float', 'bool'])) {
             // No conversion needed for basic types
-        } else if ($type === 'datetime') {
+        } else if ($type === 'DateTime') {
             try {
-                $value = new \DateTime($value);
+                // Always load DateTime values from database as UTC since we store them without timezone info
+                $value = new \DateTime($value, new \DateTimeZone('UTC'));
             } catch (\Exception) {
-                $value = new \DateTime();
+                $value = new \DateTime('now', new \DateTimeZone('UTC'));
             }
         } else if ($type === 'array') {
             // If it's already an array, keep it as is

@@ -17,6 +17,7 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Attribute\Cache as CacheAttribute;
+use TN\TN_Core\Trait\PerformanceRecorder;
 use TN\TN_Core\Model\Storage\Cache;
 use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Time\Time;
@@ -37,6 +38,7 @@ class Article extends Content implements Persistence
 {
     use MySQL;
     use PersistentModel;
+    use PerformanceRecorder;
 
     const int STATE_DRAFT = 1;
     const int STATE_READY_FOR_EDITING = 2;
@@ -187,8 +189,10 @@ class Article extends Content implements Persistence
         }
 
         if ($count) {
+            $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values]);
             $stmt = $db->prepare($query);
             $stmt->execute($values);
+            $event?->end();
             $result = $stmt->fetch(PDO::FETCH_NUM);
             return (int)$result[0];
         }
@@ -199,8 +203,10 @@ class Article extends Content implements Persistence
             $query .= " LIMIT {$start}, {$num}";
         }
 
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values]);
         $stmt = $db->prepare($query);
         $stmt->execute($values);
+        $event?->end();
         $articles = [];
         $sortFactors = [];
         $timestamps = [];
@@ -727,6 +733,21 @@ class Article extends Content implements Persistence
     static public function getImpersistentPageEntryFields(): array
     {
         return ['sitemap', 'alwaysCurrent', 'vThumbnailSrc', 'subtitle'];
+    }
+
+    /** @inheritDoc */
+    protected function getPageEntryRelevantProperties(): array
+    {
+        return [
+            'title',        // getTitle()
+            'description',  // getDescription()
+            'thumbnailSrc', // getThumbnailSrc()
+            'urlStub',      // getUrl()
+            'publishedTs',  // getTs()
+            'weight',       // getWeight()
+            'authorId',     // getCreatorId()
+            'state',        // isPublished()
+        ];
     }
 
     /** @inheritDoc */

@@ -14,6 +14,8 @@ enum SearchComparisonOperator: string
     case LessThanOrEquals = '<=';
     case In = 'IN';
     case NotIn = 'NOT IN';
+    case Is = 'IS';
+    case IsNot = 'IS NOT';
     case IsNull = 'IS NULL';
     case IsNotNull = 'IS NOT NULL';
 }

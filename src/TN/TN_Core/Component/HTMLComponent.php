@@ -97,6 +97,9 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     protected ?string $title = null;
     protected ?string $subtitle = null;
     protected ?string $description = null;
+    
+    /** @var bool Whether this component is being rendered as part of a full page or standalone */
+    public bool $isFullPageRender;
 
     /**
      * @return string
@@ -112,6 +115,10 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     public function __construct(array $options = [], array $pathArguments = [])
     {
         parent::__construct($options, $pathArguments);
+
+        // Get the render mode from the request (already determined by framework routing)
+        $request = \TN\TN_Core\Model\Request\HTTPRequest::get();
+        $this->isFullPageRender = $request->isFullPageRender;
 
         // get a reflection class of the static class
         $reflection = new \ReflectionClass(static::class);
@@ -131,17 +138,23 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     {
         $data = [
             'id' => $this->getHtmlId(),
-            'theme' => Theme::getTheme()
+            'theme' => Theme::getTheme(),
+            'pageTitle' => $this->getPageTitle(),
+            'title' => $this->getPageTitle(),
+            'breadcrumbEntries' => $this->getBreadcrumbEntries()
         ];
         $pageAttribute = $this->getFirstAttributeInstance(Page::class);
         $routeAttribute = $this->getFirstAttributeInstance(Route::class);
         if ($pageAttribute) {
-            $data['pageTitle'] = $pageAttribute->title;
             $data['pageRoute'] = $routeAttribute?->route ?? '';
             $data['pageDescription'] = $pageAttribute->description;
         }
         if ($this->getFirstAttributeInstance(Reloadable::class)) {
-            $data['reloadRoute'] = $routeAttribute?->route ?? '';
+            $data['reloadRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
+        }
+        if ($this->getFirstAttributeInstance(\TN\TN_Core\Attribute\Components\HTMLComponent\LoadMore::class)) {
+            $data['loadMoreRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
+            $data['supportsLoadMore'] = true;
         }
         return array_merge($data, get_object_vars($this));
     }
@@ -163,6 +176,30 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         }
 
         return null;
+    }
+
+    /**
+     * Build a complete URL from a route string, replacing path parameters with actual values
+     */
+    protected function buildRouteUrl(string $route): string
+    {
+        if (empty($route)) {
+            return '';
+        }
+
+        // Parse route string (format: "Package:Controller:method")
+        $parts = explode(':', $route);
+        if (count($parts) !== 3) {
+            return '';
+        }
+
+        [$moduleName, $controllerName, $routeName] = $parts;
+
+        // Get path parameters from FromPath properties
+        $pathArgs = $this->getPropertiesFrom(FromPath::class);
+
+        // Use Controller::path to build the complete URL
+        return Controller::path($moduleName, $controllerName, $routeName, $pathArgs);
     }
 
     public function getPageIndex(): bool
@@ -243,7 +280,9 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
         $reflection = new \ReflectionClass($this);
         $breadcrumbEntries = [];
         foreach ($reflection->getAttributes(Breadcrumb::class) as $breadcrumbAttribute) {
-            $breadcrumbEntries[] = $breadcrumbAttribute->newInstance()->getBreadcrumbEntry();
+            $breadcrumbEntry = $breadcrumbAttribute->newInstance()->getBreadcrumbEntry();
+            $breadcrumbEntry->prepare();
+            $breadcrumbEntries[] = $breadcrumbEntry;
         }
         return $breadcrumbEntries;
     }
@@ -291,4 +330,6 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
     {
         return [];
     }
+
+
 }

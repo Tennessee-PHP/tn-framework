@@ -7,6 +7,7 @@ use Smarty\Smarty;
 use TN\TN_Core\Model\Package\Package;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\Package\Stack;
+use TN\TN_Core\Model\User\User;
 
 /**
  * A wrapper for a template engine - just needs to assign data to the template engine and render templates!
@@ -49,6 +50,18 @@ class TemplateEngine extends Smarty
         $this->registerPlugin('modifier', 'strpos', static::class . '::strpos');
         $this->registerPlugin('modifier', 'array_search', static::class . '::arraySearch');
         $this->registerPlugin('modifier', 'strtoupper', static::class . '::strtoupper');
+        $this->registerPlugin('modifier', 'timezone', static::class . '::timezone');
+        $this->registerPlugin('function', 'icon', static::class . '::icon');
+        
+        // Tailwind class generation system
+        $this->registerPlugin('function', 'tw', \TN\TN_Core\Component\TailwindClassGenerator::class . '::generateClasses');
+        $this->registerPlugin('modifier', 'tw_color', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getColor');
+        $this->registerPlugin('modifier', 'tw_component', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getComponent');
+        $this->registerPlugin('modifier', 'tw_text_color', \TN\TN_Core\Component\TailwindClassGenerator::class . '::getTextColor');
+        
+        // Icon generation system
+        $this->registerPlugin('function', 'icon_material', \TN\TN_Core\Component\MaterialIconGenerator::class . '::generateIcon');
+        $this->registerPlugin('function', 'icon_flag', \TN\TN_Core\Component\FlagIconGenerator::class . '::generateFlag');
     }
 
     public static function reset(array $array): string
@@ -117,6 +130,33 @@ class TemplateEngine extends Smarty
     }
 
     /**
+     * Convert a DateTime to a specific timezone and format it
+     * Usage: {$event->start|timezone:'America/New_York':'M j, Y g:i A T'}
+     * Usage: {$event->start|timezone:null:'M j, Y g:i A T'} (uses auto-detected timezone)
+     * 
+     * @param \DateTime|null $dateTime The datetime to convert
+     * @param string|null $timezone Target timezone (if null, uses session timezone from JS detection or UTC)
+     * @param string $format PHP date format string (default: 'M j, Y g:i A T')
+     * @return string|null Formatted datetime string, or null if input is null
+     */
+    public static function timezone(?\DateTime $dateTime, ?string $timezone = null, string $format = 'M j, Y g:i A T'): ?string
+    {
+        if ($dateTime === null) {
+            return null;
+        }
+
+        // If no timezone specified, get from session (set by JavaScript auto-detection)
+        if ($timezone === null) {
+            $timezone = $_SESSION['user_timezone'] ?? 'UTC';
+        }
+
+        $converted = clone $dateTime;
+        $converted->setTimezone(new \DateTimeZone($timezone));
+
+        return $converted->format($format);
+    }
+
+    /**
      * get data that should exist for every template
      * @return array[]
      */
@@ -150,5 +190,34 @@ class TemplateEngine extends Smarty
     {
         $this->clearAllAssign();
         $this->assign(array_merge($this->getBaseData(), $data));
+    }
+
+    /**
+     * Generate a Font Awesome icon
+     * @param array $params Parameters from Smarty template
+     * @return string HTML for the icon
+     */
+    public static function icon(array $params): string
+    {
+        $name = $params['name'] ?? '';
+        $style = $params['style'] ?? 'fas'; // fas, far, fab, fal, fat, fad
+        $class = $params['class'] ?? '';
+        $title = $params['title'] ?? '';
+
+        if (empty($name)) {
+            return '';
+        }
+
+        $iconClass = $style . ' fa-' . $name;
+        if (!empty($class)) {
+            $iconClass .= ' ' . $class;
+        }
+
+        $attributes = '';
+        if (!empty($title)) {
+            $attributes .= ' title="' . htmlspecialchars($title) . '"';
+        }
+
+        return '<i class="' . htmlspecialchars($iconClass) . '"' . $attributes . '></i>';
     }
 }

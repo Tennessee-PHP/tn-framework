@@ -6,15 +6,15 @@ use PDO;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
-use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLimit;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
-use TN\TN_Core\Model\Storage\DB;
+use TN\TN_Core\Attribute\Cache;
 
 #[TableName('cms_tags')]
+#[Cache(version: '1.0', lifespan: 3600)] // Cache for 1 hour
 class Tag implements Persistence
 {
     use MySQL;

@@ -153,4 +153,75 @@ class Time
             return $ts;
         }
     }
+
+    /**
+     * Convert a DateTime to a specific timezone and format it
+     * 
+     * @param \DateTime $dateTime The datetime to format
+     * @param string $timezone Target timezone (e.g., 'America/New_York')
+     * @param string $format PHP date format string
+     * @return string Formatted datetime string
+     */
+    public static function formatInTimezone(\DateTime $dateTime, string $timezone, string $format): string
+    {
+        $cloned = clone $dateTime;
+        $cloned->setTimezone(new \DateTimeZone($timezone));
+        return $cloned->format($format);
+    }
+
+    /**
+     * Get a list of common global timezones with display names
+     * 
+     * @return array Array of timezone => display name
+     */
+    public static function getCommonTimezones(): array
+    {
+        return [
+            'UTC' => 'UTC',
+            'America/New_York' => 'Eastern Time (US)',
+            'America/Chicago' => 'Central Time (US)',
+            'America/Denver' => 'Mountain Time (US)',
+            'America/Los_Angeles' => 'Pacific Time (US)',
+            'Europe/London' => 'London',
+            'Europe/Paris' => 'Paris/Berlin/Rome',
+            'Europe/Moscow' => 'Moscow',
+            'Asia/Tokyo' => 'Tokyo',
+            'Asia/Shanghai' => 'Beijing/Shanghai',
+            'Asia/Kolkata' => 'Mumbai/Delhi',
+            'Australia/Sydney' => 'Sydney',
+            'Australia/Melbourne' => 'Melbourne',
+            'Pacific/Auckland' => 'Auckland'
+        ];
+    }
+
+    /**
+     * Get current DateTime object, respecting test overrides
+     * 
+     * Uses getNow() internally so test time overrides are respected
+     * 
+     * @param string $timezone Timezone for the DateTime object (defaults to UTC)
+     * @return \DateTime Current DateTime object
+     */
+    public static function getCurrentDateTime(string $timezone = 'UTC'): \DateTime
+    {
+        $timestamp = self::getNow();
+        $dateTime = new \DateTime();
+        $dateTime->setTimestamp($timestamp);
+        $dateTime->setTimezone(new \DateTimeZone($timezone));
+        return $dateTime;
+    }
+
+    /**
+     * Create a DateTime from API data, assuming UTC if no timezone specified
+     * 
+     * @param string $dateString Date string from API
+     * @param string $timeString Time string from API  
+     * @param string $assumedTimezone Timezone to assume if none specified
+     * @return \DateTime
+     */
+    public static function createFromApiData(string $dateString, string $timeString, string $assumedTimezone = 'UTC'): \DateTime
+    {
+        $combined = $dateString . ' ' . $timeString;
+        return new \DateTime($combined, new \DateTimeZone($assumedTimezone));
+    }
 }

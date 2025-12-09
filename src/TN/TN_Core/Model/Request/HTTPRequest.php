@@ -54,6 +54,9 @@ class HTTPRequest extends Request
     /** @var array Performance counters */
     public array $performanceCounters = [];
 
+    /** @var bool Whether this request will render a full page or just a component */
+    public bool $isFullPageRender = true;
+
     protected array $query;
     protected array $post;
     protected array $cookie;
@@ -61,6 +64,11 @@ class HTTPRequest extends Request
     protected array $files;
     protected array $server;
     protected array $session;
+
+    /**
+     * @var string|null Test request body for functional testing
+     */
+    private ?string $testRequestBody = null;
 
     /**
      * @var HTTPRequest|null static instance
@@ -93,6 +101,7 @@ class HTTPRequest extends Request
             'server' => $_SERVER,
             'session' => $_SESSION
         ], $options);
+
         parent::__construct($options);
 
         // Set this as the active instance for global access
@@ -124,6 +133,11 @@ class HTTPRequest extends Request
 
     public function getRequestBody(): string
     {
+        // Use test request body if available (for functional testing)
+        if ($this->testRequestBody !== null) {
+            return $this->testRequestBody;
+        }
+
         return file_get_contents('php://input');
     }
 
@@ -134,6 +148,17 @@ class HTTPRequest extends Request
             return null;
         }
         return $body;
+    }
+
+    /**
+     * Set test request body for functional testing
+     * 
+     * @param string $body Request body content
+     * @return void
+     */
+    public function setTestRequestBody(string $body): void
+    {
+        $this->testRequestBody = $body;
     }
 
     /**
@@ -255,6 +280,9 @@ class HTTPRequest extends Request
     public function respond(): void
     {
         $this->recordTiming('respond_start', 'Starting response processing');
+        // Start performance logging for super-users
+        \TN\TN_Core\Model\Performance\PerformanceLog::startRequest();
+
         $response = null;
 
         // todo: refactor options handling

@@ -12,6 +12,7 @@ class BreadcrumbEntry
     public string $componentClassName;
     public string $text;
     public ?string $path;
+    public array $pathParameters = [];
 
     public function __construct(array $options)
     {
@@ -44,7 +45,13 @@ class BreadcrumbEntry
 
     protected function setPath(): void
     {
+        // If path is already set, check if it's in module:controller:function format
         if (!empty($this->path)) {
+            // Check if path is in module:controller:function format (e.g., "OP_Main:Admin:home")
+            if (preg_match('/^[A-Za-z_]+:[A-Za-z_]+:[A-Za-z_]+$/', $this->path)) {
+                $parts = explode(':', $this->path);
+                $this->path = Controller::path($parts[0], $parts[1], $parts[2], $this->pathParameters);
+            }
             return;
         }
 

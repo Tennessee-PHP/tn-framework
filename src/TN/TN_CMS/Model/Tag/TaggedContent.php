@@ -4,6 +4,7 @@ namespace TN\TN_CMS\Model\Tag;
 
 use PDO;
 use TN\TN_CMS\Model\PageEntry;
+use TN\TN_Core\Attribute\Cache;
 use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Relationships\ParentId;
@@ -13,12 +14,17 @@ use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Storage\DB;
+use TN\TN_Core\Trait\PerformanceRecorder;
+use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 
 #[TableName('cms_tagged_content')]
+#[Cache(version: '1.0', lifespan: 3600)] // Cache for 1 hour
 class TaggedContent implements Persistence
 {
     use MySQL;
     use PersistentModel;
+    use PerformanceRecorder;
 
     public string $contentClass = '';
     public string $contentId = '';
@@ -82,7 +88,7 @@ class TaggedContent implements Persistence
     {
         $db = DB::getInstance($_ENV['MYSQL_DB']);
         $table = self::getTableName();
-        $stmt = $db->prepare("
+        $query = "
             SELECT *
             FROM
                 {$table} as c
@@ -90,8 +96,11 @@ class TaggedContent implements Persistence
                 c.contentClass = ?
                 AND c.contentId = ?
                 AND c.tagId = ?
-                ");
+                ";
+        $event = self::startPerformanceEvent('MySQL', $query, ['params' => [$contentClass, $contentId, $tag->id]]);
+        $stmt = $db->prepare($query);
         $stmt->execute([$contentClass, $contentId, $tag->id]);
+        $event?->end();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return count($results) > 0;
     }
@@ -103,36 +112,27 @@ class TaggedContent implements Persistence
      */
     public static function getFromContentItem(string $contentClass, string $contentId): array
     {
-        // lookup TaggedContent instances and return the tag of each for the specified content
-        $db = DB::getInstance($_ENV['MYSQL_DB']);
-        $table = self::getTableName();
-        $tagsTable = Tag::getTableName();
-        $stmt = $db->prepare("
-            SELECT
-                c.*,
-                t.id as tag_id, t.itemType as tag_itemType, t.itemId as tag_itemId, t.text as tag_text
-            FROM
-                {$table} as c, {$tagsTable} as t
-            WHERE
-                c.contentClass = ?
-                AND c.contentId = ?
-                AND c.tagId = t.id
-                ");
-        $stmt->execute([$contentClass, $contentId]);
-        $taggedContents = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $taggedContent = TaggedContent::getInstance();
-            foreach (['id', 'contentClass', 'contentId', 'tagId', 'primary'] as $property) {
-                if (!empty($row[$property])) {
-                    $taggedContent->$property = $row[$property];
-                }
+        // Use framework's cached search system
+        $searchArgs = new SearchArguments([
+            new SearchComparison('`contentClass`', '=', $contentClass),
+            new SearchComparison('`contentId`', '=', $contentId)
+        ]);
+        
+        $taggedContents = self::search($searchArgs);
+        
+        // Bulk load all tags at once instead of N+1 queries
+        $tagIds = [];
+        foreach ($taggedContents as $taggedContent) {
+            $tagIds[] = $taggedContent->tagId;
+        }
+        
+        if (!empty($tagIds)) {
+            $tagsById = Tag::readFromIds($tagIds);
+            
+            // Assign the loaded tags to each TaggedContent
+            foreach ($taggedContents as $taggedContent) {
+                $taggedContent->tag = $tagsById[$taggedContent->tagId] ?? null;
             }
-            $tag = Tag::getInstance();
-            foreach (['id', 'itemType', 'itemId', 'text'] as $property) {
-                $tag->$property = $row['tag_' . $property];
-            }
-            $taggedContent->tag = $tag;
-            $taggedContents[] = $taggedContent;
         }
 
         // let's erase any duplicates
@@ -165,6 +165,69 @@ class TaggedContent implements Persistence
         }
 
         return $taggedContents;
+    }
+
+    /**
+     * Add a single tag to content item
+     * 
+     * @param string $contentClass
+     * @param string $contentId
+     * @param Tag $tag
+     * @param bool $primary
+     * @return TaggedContent
+     * @throws ValidationException
+     */
+    public static function addTag(string $contentClass, string $contentId, Tag $tag, bool $primary = false): TaggedContent
+    {
+        // Check if tag is already associated
+        if (self::contentItemHasTag($contentClass, $contentId, $tag)) {
+            throw new \InvalidArgumentException("Tag '{$tag->text}' is already associated with this content item");
+        }
+
+        $taggedContent = self::getInstance();
+        $taggedContent->update([
+            'contentClass' => $contentClass,
+            'contentId' => $contentId,
+            'tagId' => $tag->id,
+            'primary' => $primary
+        ]);
+
+        // Update numTags on the page entry
+        $pageEntry = PageEntry::getPageEntryForContentItem($contentClass, $contentId);
+        if ($pageEntry) {
+            $pageEntry->updateNumTags();
+        }
+
+        return $taggedContent;
+    }
+
+    /**
+     * Remove a tag from content item
+     * 
+     * @param string $contentClass
+     * @param string $contentId
+     * @param Tag $tag
+     * @return bool True if tag was removed, false if not found
+     */
+    public static function removeTag(string $contentClass, string $contentId, Tag $tag): bool
+    {
+        $existingTags = self::getFromContentItem($contentClass, $contentId);
+        
+        foreach ($existingTags as $taggedContent) {
+            if ($taggedContent->tagId === $tag->id) {
+                $taggedContent->erase();
+                
+                // Update numTags on the page entry
+                $pageEntry = PageEntry::getPageEntryForContentItem($contentClass, $contentId);
+                if ($pageEntry) {
+                    $pageEntry->updateNumTags();
+                }
+                
+                return true;
+            }
+        }
+        
+        return false;
     }
 
 }

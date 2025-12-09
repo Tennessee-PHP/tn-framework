@@ -21,10 +21,9 @@ class FileNotFound extends RequestMatcher
 {
     /**
      * constructor
+     * @param string|null $pathPattern Optional regex pattern to match against request path
      */
-    public function __construct()
-    {
-    }
+    public function __construct(public ?string $pathPattern = null) {}
 
     /**
      * attempts to match this path against the current request address
@@ -36,6 +35,18 @@ class FileNotFound extends RequestMatcher
         if (!($origin instanceof HTTPRequest)) {
             return false;
         }
-        return $origin->notFound;
+
+        if (!$origin->notFound) {
+            return false;
+        }
+
+        // If no pattern specified, match any 404
+        if ($this->pathPattern === null) {
+            return true;
+        }
+
+        // Check if the request path matches the specified pattern
+        $path = ltrim($origin->path ?? '', '/');
+        return preg_match($this->pathPattern, $path) === 1;
     }
 }

@@ -44,6 +44,7 @@ use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Storage\Redis;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Cache;
+use TN\TN_Core\Error\CodeException;
 
 /**
  * a user of the website
@@ -55,7 +56,6 @@ use TN\TN_Core\Attribute\Cache;
  * other site, allows for quick disabling of account at users request
  */
 #[TableName('users')]
-#[Cache(version: '1.1', lifespan: 3600)]
 class User implements Persistence
 {
     use MySQL;
@@ -81,7 +81,7 @@ class User implements Persistence
     const int IP_TIMEFRAME = 3600;
 
     protected static string $defaultHashMethodKey = 'tn';
-    protected static User $activeUser;
+    protected static ?User $activeUser = null;
 
     #[Impersistent] public bool $loggedIn = false;
     #[Timestamp] public int $createdTs;
@@ -255,6 +255,14 @@ class User implements Persistence
         self::$activeUser->loggedIn = false;
     }
 
+    /**
+     * Clear active user state for testing
+     */
+    public static function clearActiveUser(): void
+    {
+        self::$activeUser = null;
+    }
+
     public static function getUsersWithRole(string $roleKey): array
     {
         $role = Role::getInstanceByKey($roleKey);
@@ -305,10 +313,16 @@ class User implements Persistence
     /** set the active user */
     private static function setActiveUser(): void
     {
-        $request = HTTPRequest::get();
+        try {
+            $request = HTTPRequest::get();
+        } catch (CodeException $e) {
+            static::setNoActiveUser();
+            return;
+        }
 
         if ($request->getSession('TN_LoggedIn_User_Id', null) !== null) {
-            $user = self::readFromId($request->getSession('TN_LoggedIn_User_Id'));
+            $sessionUserId = $request->getSession('TN_LoggedIn_User_Id');
+            $user = static::readFromId($sessionUserId);
             if ($user instanceof User) {
                 self::setUserAsActive($user);
                 return;
@@ -316,10 +330,23 @@ class User implements Persistence
         }
 
         $tnTokenCookie = false;
-        $jsonRequestBody = $request->getJSONRequestBody();
-        if ($jsonRequestBody && isset($jsonRequestBody['access_token'])) {
-            $tnTokenCookie = $jsonRequestBody['access_token'];
-        } else {
+
+        // First priority: Check Authorization header for Bearer token
+        $authHeader = $request->getServer('HTTP_AUTHORIZATION');
+        if ($authHeader && preg_match('/^Bearer\s+(\S+)$/i', $authHeader, $matches)) {
+            $tnTokenCookie = $matches[1];
+        }
+
+        // Second priority: Check JSON request body for access_token
+        if (!$tnTokenCookie) {
+            $jsonRequestBody = $request->getJSONRequestBody();
+            if ($jsonRequestBody && isset($jsonRequestBody['access_token'])) {
+                $tnTokenCookie = $jsonRequestBody['access_token'];
+            }
+        }
+
+        // Third priority: Check query parameter or cookie
+        if (!$tnTokenCookie) {
             $tnTokenCookie = $request->getQuery('access_token') ?? $request->getCookie('TN_token');
         }
 
@@ -351,7 +378,7 @@ class User implements Persistence
             !empty($tnLoginAsUserId) &&
             ($user->hasRole('super-user') || $user->hasRole('user-admin'))
         ) {
-            $otherUser = User::readFromId((int)$tnLoginAsUserId);
+            $otherUser = static::readFromId((int)$tnLoginAsUserId);
             if ($otherUser instanceof User) {
                 $user = $otherUser;
             }
@@ -424,7 +451,7 @@ class User implements Persistence
             // we need to add the password hash value
             $changedProperties = $this->setPasswordHash();
             $this->token = $this->generateToken();
-            $changedProperties[] = ['token'];
+            $changedProperties[] = 'token';
             if (!isset($this->createdTs)) {
                 $this->createdTs = Time::getNow();
                 $changedProperties[] = 'createdTs';
@@ -584,7 +611,7 @@ class User implements Persistence
             throw new AccessForbiddenException('You do not have permission to login as another user');
         }
 
-        $otherUser = User::readFromId($otherUserId);
+        $otherUser = static::readFromId($otherUserId);
         if (!$otherUser instanceof User) {
             throw new ValidationException('User not found');
         }
