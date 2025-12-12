@@ -552,6 +552,15 @@ trait MySQL
         $typeOptions = '';
         $type = '';
 
+        // Check for nullable FIRST, before checking enum type
+        if (str_starts_with($typeName, '?')) {
+            $typeName = substr($typeName, 1);
+            $nullable = true;
+        } else {
+            $nullable = false;
+        }
+
+        // Now check if it's an enum (after stripping ? if nullable)
         if (enum_exists($typeName)) {
             $enum = $typeName;
             $type = 'enum';
@@ -561,13 +570,6 @@ trait MySQL
             }
 
             $typeOptions = implode(', ', $enumOptions);
-        }
-
-        if (str_starts_with($typeName, '?')) {
-            $typeName = substr($typeName, 1);
-            $nullable = true;
-        } else {
-            $nullable = false;
         }
 
         if ($typeName === 'int') {
