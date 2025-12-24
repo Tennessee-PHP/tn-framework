@@ -72,7 +72,7 @@ class User implements Persistence
     const int IP_LIMIT = 8;
 
     /** @var int how many login attempts are allowed before lock-out */
-    const int LOGIN_ATTEMPTS_ALLOWED = 5;
+    const int LOGIN_ATTEMPTS_ALLOWED = 50;
 
     /** @var int how long to wait when locked out */
     const int LOGIN_ATTEMPT_TIMEOUT = 600;
