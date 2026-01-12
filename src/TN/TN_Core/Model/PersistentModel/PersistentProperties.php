@@ -101,6 +101,8 @@ trait PersistentProperties
             }
         } catch (\ReflectionException) {
             // If we can't reflect the property, just return the converted value
+        } catch (\Throwable $e) {
+            throw $e;
         }
 
         return $value;

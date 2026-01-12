@@ -436,6 +436,19 @@ trait MySQL
             $values[] = $value;
             $props[] = '`' . $prop . '`';
         }
+        // #region agent log
+        $className = static::class;
+        $isFFLeague = strpos($className, 'FFLeague') !== false;
+        if ($isFFLeague) {
+            $scoringIndex = array_search('scoring', $properties);
+            if ($scoringIndex !== false && isset($values[$scoringIndex])) {
+                $scoringValue = $values[$scoringIndex];
+                $scoringSize = strlen($scoringValue);
+                $scoringDecoded = json_decode($scoringValue, true);
+                file_put_contents('/var/www/html/.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'E', 'location' => 'MySQL.php:saveInsert', 'message' => 'Scoring value before INSERT', 'data' => ['className' => $className, 'scoringIndex' => $scoringIndex, 'scoringSizeBytes' => $scoringSize, 'scoringSizeKB' => round($scoringSize / 1024, 2), 'textLimitBytes' => 65535, 'exceedsLimit' => $scoringSize > 65535, 'scoringPreview' => substr($scoringValue, 0, 500), 'fullScoring' => $scoringDecoded], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
+            }
+        }
+        // #endregion
         $properties = implode(', ', $props);
         $query = "INSERT INTO {$table} ({$properties}) VALUES ({$placeHolders})";
         $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values]);
