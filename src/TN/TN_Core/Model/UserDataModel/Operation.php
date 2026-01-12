@@ -88,9 +88,10 @@ class Operation implements Persistence
     /**
      * operation represented in format that ExtJS clients require
      * @param string $class
+     * @param bool $forClient
      * @return array
      */
-    public function getSyncDataForClient(string $class): array
+    public function getSyncDataForClient(string $class, bool $forClient = true): array
     {
         $baseData = [
             'type' => $this->methodString(),
@@ -109,7 +110,7 @@ class Operation implements Persistence
 
         // for create return that
         if ($this->method === self::CREATE) {
-            return [array_merge($baseData, ['fields' => $record->getData(true)])];
+            return [array_merge($baseData, ['fields' => $record->getData($forClient)])];
         }
 
         // for update, return one operation per field
@@ -119,7 +120,8 @@ class Operation implements Persistence
             if (in_array($prop, $ignoreProperties)) {
                 continue;
             }
-            $data[] = array_merge($baseData, ['field' => $class::mapPropertyNameToClient($prop), 'value' => $record->$prop]);
+            $fieldName = $forClient ? $class::mapPropertyNameToClient($prop) : $prop;
+            $data[] = array_merge($baseData, ['field' => $fieldName, 'value' => $record->$prop]);
         }
         return $data;
     }

@@ -505,13 +505,14 @@ class OperationSet
     }
 
     /**
+     * @param bool $forClient
      * @return array
      */
-    public function getReturnSyncData(): array
+    public function getReturnSyncData(bool $forClient = true): array
     {
         if ($this->sendFullSync()) {
             return [
-                'data' => $this->getFullSyncData(),
+                'data' => $this->getFullSyncData($forClient),
                 'ts' => $this->recTs
             ];
         } else {
@@ -565,32 +566,35 @@ class OperationSet
 
     /**
      * gets the operations that the client isn't aware of yet
+     * @param bool $forClient
      * @return array
      */
-    public function setUserOperationsSinceLastSync(): array
+    public function setUserOperationsSinceLastSync(bool $forClient = true): array
     {
         // make sure to split out updates one per field
         $operations = Operation::getForUserSinceTs($this->getUser()->id, $this->lastSyncTs, $this->getModels());
         $data = [];
         $map = $this->getModelMap();
         foreach ($operations as $operation) {
-            $data = array_merge($data, $operation->getSyncDataForClient($map[$operation->model]));
+            $data = array_merge($data, $operation->getSyncDataForClient($map[$operation->model], $forClient));
         }
 
+        $this->userOperationsSinceLastSync = $data;
         return $data;
     }
 
     /**
+     * @param bool $forClient
      * @return array
      */
-    protected function getFullSyncData(): array
+    protected function getFullSyncData(bool $forClient = true): array
     {
         $data = [];
         foreach ($this->classes as $class) {
             $data = array_merge($data, $class::readMultipleForUser($this->getUser()->id));
         }
         foreach ($data as &$item) {
-            $item = $item->getData(true);
+            $item = $item->getData($forClient);
         }
         return $data;
     }
