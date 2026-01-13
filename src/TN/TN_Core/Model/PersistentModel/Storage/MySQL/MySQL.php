@@ -395,6 +395,12 @@ trait MySQL
         $event?->end();
 
         if ($stmt->rowCount() === 0) {
+            // #region agent log
+            if (strpos(get_class($this), 'Slate') !== false) {
+                $logData = ['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'UPDATE_ZERO_ROWS','location'=>'MySQL.php:saveUpdate','message'=>'UPDATE found 0 rows','data'=>['class'=>get_class($this),'id'=>$this->$idProp??null,'table'=>$table],'timestamp'=>time()*1000];
+                file_put_contents('/var/www/html/.cursor/debug.log', json_encode($logData)."\n", FILE_APPEND | LOCK_EX);
+            }
+            // #endregion
             $stmt = $db->prepare("SELECT * FROM {$table} WHERE `{$idProp}`=?");
             $res = $stmt->execute([$this->$idProp]);
 
@@ -403,6 +409,12 @@ trait MySQL
             }
 
             if (!$stmt->fetch(DB::FETCH_ASSOC)) {
+                // #region agent log
+                if (strpos(get_class($this), 'Slate') !== false) {
+                    $logData = ['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'UPDATE_TO_INSERT','location'=>'MySQL.php:saveUpdate','message'=>'UPDATE found 0 rows, row does not exist, falling back to INSERT','data'=>['class'=>get_class($this),'staleId'=>$this->$idProp??null,'table'=>$table],'timestamp'=>time()*1000];
+                    file_put_contents('/var/www/html/.cursor/debug.log', json_encode($logData)."\n", FILE_APPEND | LOCK_EX);
+                }
+                // #endregion
                 return $this->saveInsert(true);
             }
         }
@@ -453,9 +465,16 @@ trait MySQL
 
         $event?->end();
 
+        $idBefore = $this->$idProp ?? null;
         if (!$useSetId || !isset($this->$idProp)) {
             $this->$idProp = (int)$db->lastInsertId();
         }
+        // #region agent log
+        if (strpos(get_class($this), 'Slate') !== false) {
+            $logData = ['sessionId'=>'debug-session','runId'=>'run1','hypothesisId'=>'INSERT_COMPLETE','location'=>'MySQL.php:saveInsert','message'=>'INSERT completed','data'=>['class'=>get_class($this),'idBefore'=>$idBefore,'idAfter'=>$this->$idProp,'useSetId'=>$useSetId,'lastInsertId'=>(int)$db->lastInsertId()],'timestamp'=>time()*1000];
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode($logData)."\n", FILE_APPEND | LOCK_EX);
+        }
+        // #endregion
 
         return SaveType::Insert;
     }
