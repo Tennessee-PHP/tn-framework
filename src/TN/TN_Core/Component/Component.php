@@ -68,8 +68,17 @@ abstract class Component
                 }
                 if ($attribute instanceof FromJSONBody) {
                     $jsonBody = $request->getJSONRequestBody();
-                    if ($jsonBody !== null && isset($jsonBody[$propertyName])) {
-                        $tmp = $jsonBody[$propertyName];
+                    if ($jsonBody !== null) {
+                        // If property name matches a key in JSON body, use that key (current behavior)
+                        if (isset($jsonBody[$propertyName])) {
+                            $tmp = $jsonBody[$propertyName];
+                        } elseif ($propertyName === 'request' && !isset($jsonBody['request'])) {
+                            // Special case: if property is "request" and there's no "request" key,
+                            // use the entire JSON body (for backward compatibility with unwrapped requests)
+                            $tmp = $jsonBody;
+                        } else {
+                            $tmp = null;
+                        }
                     } else {
                         $tmp = null;
                     }

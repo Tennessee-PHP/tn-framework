@@ -52,8 +52,6 @@ export default class ListGiftSubscriptions extends HTMLComponent {
     }
 
     onSubmitSuccess(response: any): void {
-        console.log(response.data.result);
-        console.log(response.data.message);
         if (response.data.result === 'success') {
             new SuccessToast(response.data.message);
         }

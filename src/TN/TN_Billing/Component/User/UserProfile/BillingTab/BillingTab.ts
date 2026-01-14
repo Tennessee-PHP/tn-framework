@@ -28,11 +28,9 @@ export default class BillingTab extends HTMLComponent {
     protected observe(): void {
         // Prevent multiple instances from initializing
         if (BillingTab.isInitialized) {
-            console.log('BillingTab already initialized');
             return;
         }
         BillingTab.isInitialized = true;
-        console.log('Initializing BillingTab');
 
         // Original form handling
         this.$cancelForm = $('#user_plans_staffer_cancel_form');
@@ -150,10 +148,8 @@ export default class BillingTab extends HTMLComponent {
 
     // Braintree Integration Methods
     private initBraintree(): void {
-        console.log('init braintree');
         // Wait for TN.braintreeClientToken to be available
         if (!TN.braintreeClientToken) {
-            console.error('Braintree client token not available');
             this.handlePaymentError('Payment system not properly initialized. Please try again later.');
             return;
         }
@@ -172,7 +168,6 @@ export default class BillingTab extends HTMLComponent {
             })
             .catch((error: Error) => {
                 this.handlePaymentError('Failed to initialize payment system: ' + error.message);
-                console.error(error);
             });
     }
 
