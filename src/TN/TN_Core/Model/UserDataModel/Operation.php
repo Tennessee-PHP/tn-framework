@@ -108,6 +108,11 @@ class Operation implements Persistence
         // otherwise, get the record
         $record = $this->getRecord($class);
 
+        // record may no longer exist (e.g. CREATE then DELETE in op log) - skip this op
+        if ($record === null) {
+            return [];
+        }
+
         // for create return that
         if ($this->method === self::CREATE) {
             return [array_merge($baseData, ['fields' => $record->getData($forClient)])];
