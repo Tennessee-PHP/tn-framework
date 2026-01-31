@@ -2,6 +2,8 @@
 
 namespace TN\TN_Core\Model\Response;
 
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Component\Renderer\Renderer;
 
 class HTTPResponse extends Response
@@ -31,20 +33,21 @@ class HTTPResponse extends Response
     public function respond(): void
     {
         http_response_code($this->code);
-        
-        // Set CORS headers if the matched method has AllowOrigin/AllowCredentials attributes
+
+        // Set CORS before prepare() so streaming responses send CORS before any output
         if ($this->matchedMethod) {
             foreach ($this->matchedMethod->getAttributes() as $attribute) {
                 $attributeName = $attribute->getName();
-                if ($attributeName === \TN\TN_Core\Attribute\Route\AllowOrigin::class) {
+                if ($attributeName === AllowOrigin::class) {
                     $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
                     header("Access-Control-Allow-Origin: $origin");
-                } elseif ($attributeName === \TN\TN_Core\Attribute\Route\AllowCredentials::class) {
+                } elseif ($attributeName === AllowCredentials::class) {
                     header('Access-Control-Allow-Credentials: true');
                 }
             }
         }
-        
+
+        $this->renderer->prepare();
         $this->renderer->headers();
         parent::respond();
     }
