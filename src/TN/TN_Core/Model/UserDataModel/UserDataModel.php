@@ -326,6 +326,11 @@ abstract class UserDataModel implements Persistence
             return $property;
         }
 
+        // Client already sent camelCase (e.g. draft-dominator sends fbgUserId). Do not convert.
+        if (strpos($property, '_') === false) {
+            return $property;
+        }
+
         // first, capitalize all letters that immediately follow an underscore
         $words = explode('_', $property);
         foreach ($words as $i => &$word) {

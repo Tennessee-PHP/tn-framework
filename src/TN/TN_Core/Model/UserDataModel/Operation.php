@@ -86,9 +86,9 @@ class Operation implements Persistence
     }
 
     /**
-     * operation represented in format that ExtJS clients require
+     * operation represented in format that clients require
      * @param string $class
-     * @param bool $forClient
+     * @param bool $forClient when true, return snake_case (ExtJS); when false, return camelCase (draft-dominator)
      * @return array
      */
     public function getSyncDataForClient(string $class, bool $forClient = true): array
@@ -113,7 +113,7 @@ class Operation implements Persistence
             return [];
         }
 
-        // for create return that
+        // for create return that (getData($forClient): true = snake_case, false = camelCase)
         if ($this->method === self::CREATE) {
             return [array_merge($baseData, ['fields' => $record->getData($forClient)])];
         }

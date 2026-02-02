@@ -22,6 +22,9 @@ class OperationSet
     public ?array $classes = null;
     public array $userOperationsSinceLastSync = [];
 
+    /** When set, apply() iterates models in this order (e.g. parent before child for FK constraints). */
+    protected ?array $modelApplyOrder = null;
+
     /**
      * @param array $operations
      * @return OperationSet
@@ -89,7 +92,10 @@ class OperationSet
             // try to find the class for this op
             $class = $modelToClassMap[trim(strtolower($opData['model']))] ?? false;
 
-            if (!$class || !$opData['record_id']) {
+            if (!$class) {
+                continue;
+            }
+            if (!$opData['record_id']) {
                 continue;
             }
 
@@ -361,14 +367,33 @@ class OperationSet
     }
 
     /**
+     * Set order in which models are applied (e.g. parent before child for FK constraints).
+     * @param array $modelNames e.g. ['HostAccount', 'FFLeague', 'FFTeam', 'FFDraft', 'FFDraftPicks']
+     * @return OperationSet
+     */
+    public function setModelApplyOrder(array $modelNames): OperationSet
+    {
+        $this->modelApplyOrder = $modelNames;
+        return $this;
+    }
+
+    /**
      * apply all these operations to the database. Return itself for chaining on routes
      * @return OperationSet
      * @throws DBException
      */
     public function apply(): OperationSet
     {
+        $byModel = $this->getOperationsByModelAndUuId();
+        $modelsToIterate = $this->modelApplyOrder !== null
+            ? $this->modelApplyOrder
+            : array_keys($byModel);
 
-        foreach ($this->getOperationsByModelAndUuId() as $model => $recordOperations) {
+        foreach ($modelsToIterate as $model) {
+            $recordOperations = $byModel[$model] ?? null;
+            if ($recordOperations === null) {
+                continue;
+            }
 
             $operationsByMethod = [];
             foreach ($recordOperations as $uuId => $operations) {
@@ -566,7 +591,7 @@ class OperationSet
 
     /**
      * gets the operations that the client isn't aware of yet
-     * @param bool $forClient
+     * @param bool $forClient when true, return snake_case (ExtJS); when false, return camelCase (draft-dominator)
      * @return array
      */
     public function setUserOperationsSinceLastSync(bool $forClient = true): array
