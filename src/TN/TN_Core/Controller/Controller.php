@@ -28,6 +28,8 @@ use TN\TN_Core\Model\Request\Request;
 use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Attribute\Route\RouteType;
 use TN\TN_Core\Component\Renderer\Page\Page;
 
@@ -251,18 +253,22 @@ abstract class Controller
             try {
                 $this->setAccess($request, $method);
             } catch (AccessForbiddenException $e) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (AccessLoginRequiredException $e) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (AccessUncontrolledException $e) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
             } catch (FullPageRoadblockException $e) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
@@ -273,12 +279,14 @@ abstract class Controller
             try {
                 $response = $this->getResponse($request, $method, $matcher);
             } catch (ResourceNotFoundException $e) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 404);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
+                $this->addCorsHeadersForMethod($method);
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403);
@@ -359,7 +367,7 @@ abstract class Controller
                 $renderer->httpResponseCode = 404;
                 return new HTTPResponse($renderer, 404);
             }
-            
+
             return new HTTPResponse($renderer);
         } catch (ResourceNotFoundException $e) {
             throw $e;
@@ -374,10 +382,29 @@ abstract class Controller
                 // do nothing
             }
 
+            $this->addCorsHeadersForMethod($method);
             $rendererClass = $this->getRendererClassFromMethod($method);
             $renderer = $rendererClass::error($e->getDisplayMessage());
             $renderer->prepare();
             return new HTTPResponse($renderer, $e->httpResponseCode);
+        }
+    }
+
+    /**
+     * Add CORS headers for routes with AllowOrigin/AllowCredentials attributes.
+     * Ensures error responses (401, 403, 404, etc.) include CORS headers so
+     * cross-origin clients can read the response.
+     */
+    private function addCorsHeadersForMethod(ReflectionMethod $method): void
+    {
+        foreach ($method->getAttributes() as $attribute) {
+            $attributeName = $attribute->getName();
+            if ($attributeName === AllowOrigin::class) {
+                $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+                header("Access-Control-Allow-Origin: $origin");
+            } elseif ($attributeName === AllowCredentials::class) {
+                header('Access-Control-Allow-Credentials: true');
+            }
         }
     }
 

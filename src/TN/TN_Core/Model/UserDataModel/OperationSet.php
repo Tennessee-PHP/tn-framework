@@ -576,7 +576,7 @@ class OperationSet
         foreach ($operations as $operation) {
             $data = array_merge($data, $operation->getSyncDataForClient($map[$operation->model]));
         }
-
+        $this->userOperationsSinceLastSync = $data;
         return $data;
     }
 

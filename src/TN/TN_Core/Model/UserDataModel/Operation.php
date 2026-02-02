@@ -107,6 +107,11 @@ class Operation implements Persistence
         // otherwise, get the record
         $record = $this->getRecord($class);
 
+        // Skip orphaned operations (record was deleted after operation was logged)
+        if ($record === null) {
+            return [];
+        }
+
         // for create return that
         if ($this->method === self::CREATE) {
             return [array_merge($baseData, ['fields' => $record->getData(true)])];
