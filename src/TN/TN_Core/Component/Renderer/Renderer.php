@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\Renderer;
 
 use TN\TN_Core\Component\Component;
 use TN\TN_Core\Model\Package\Stack;
+use TN\TN_Core\Model\CORS\CORS;
 use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Attribute\Route\AllowCredentials;
 use TN\TN_Core\Attribute\Components\Route;
@@ -57,18 +58,28 @@ abstract class Renderer extends Component
             return;
         }
 
-        // Check the controller method for CORS attributes
+        // Check the controller method for CORS attributes (whitelist only)
+        $allowedOrigin = CORS::getAllowedOrigin();
+        if ($allowedOrigin === null) {
+            return;
+        }
         $reflectionMethod = new \ReflectionMethod($controllerClass, $method);
         $methodAttributes = $reflectionMethod->getAttributes();
-
+        $hasAllowOrigin = false;
+        $hasAllowCredentials = false;
         foreach ($methodAttributes as $attribute) {
             $attributeName = $attribute->getName();
             if ($attributeName === AllowOrigin::class) {
-                $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-                header("Access-Control-Allow-Origin: $origin");
+                $hasAllowOrigin = true;
             } elseif ($attributeName === AllowCredentials::class) {
-                header('Access-Control-Allow-Credentials: true');
+                $hasAllowCredentials = true;
             }
+        }
+        if ($hasAllowOrigin) {
+            header("Access-Control-Allow-Origin: $allowedOrigin");
+        }
+        if ($hasAllowCredentials) {
+            header('Access-Control-Allow-Credentials: true');
         }
     }
 
