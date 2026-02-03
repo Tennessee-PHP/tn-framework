@@ -322,6 +322,12 @@ class User implements Persistence
         } else {
             $tnTokenCookie = $request->getQuery('access_token') ?? $request->getCookie('TN_token');
         }
+        if (empty($tnTokenCookie)) {
+            $authHeader = $request->getServer('HTTP_AUTHORIZATION') ?? $request->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
+            if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
+                $tnTokenCookie = trim($m[1]);
+            }
+        }
 
         if (empty($tnTokenCookie)) {
             static::setNoActiveUser();
