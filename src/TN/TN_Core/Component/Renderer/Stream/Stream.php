@@ -29,6 +29,11 @@ class Stream extends Renderer
             return;
         }
 
+        // Ensure CORS is sent with the stream (production can miss controller-set headers for SSE)
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+
         parent::headers();
 
         // Disable output buffering
