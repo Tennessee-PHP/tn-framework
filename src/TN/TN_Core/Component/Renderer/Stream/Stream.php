@@ -4,7 +4,6 @@ namespace TN\TN_Core\Component\Renderer\Stream;
 
 use TN\TN_Core\Component\Renderer\Renderer;
 use TN\TN_Core\Component\Renderer\Text\Text;
-use TN\TN_Core\Model\CORS\CORS;
 use TN\TN_Core\Model\PersistentModel\ReadOnlyProperties;
 
 /**
@@ -28,13 +27,6 @@ class Stream extends Renderer
     {
         if ($this->headersSent) {
             return;
-        }
-
-        // CORS for SSE (whitelist only; production can miss controller-set headers for SSE)
-        $allowedOrigin = CORS::getAllowedOrigin();
-        if ($allowedOrigin !== null) {
-            header("Access-Control-Allow-Origin: $allowedOrigin");
-            header('Access-Control-Allow-Credentials: true');
         }
 
         parent::headers();

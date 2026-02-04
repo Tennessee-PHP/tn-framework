@@ -11,6 +11,7 @@ use TN\TN_Core\Error\Access\AccessForbiddenException;
 use TN\TN_Core\Error\Access\AccessLoginRequiredException;
 use TN\TN_Core\Error\Access\AccessUncontrolledException;
 use TN\TN_Core\Error\Access\UnmatchedException;
+use TN\TN_Core\Model\CORS;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\User\User;
@@ -283,29 +284,16 @@ class HTTPRequest extends Request
         // Start performance logging for super-users
         \TN\TN_Core\Model\Performance\PerformanceLog::startRequest();
 
-        $response = null;
-
-        // todo: refactor options handling (CORS preflight; whitelist only)
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            $this->recordTiming('options_request', 'Handling OPTIONS request');
-            $allowedOrigin = \TN\TN_Core\Model\CORS\CORS::getAllowedOrigin();
-            if ($allowedOrigin !== null) {
-                header("Access-Control-Allow-Origin: $allowedOrigin");
-                header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-                header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-                header('Access-Control-Allow-Credentials: true');
-                header('Access-Control-Max-Age: 86400');
-            }
+        if ($this->method === 'OPTIONS') {
+            CORS::applyCorsHeaders();
+            header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+            header('Access-Control-Max-Age: 86400');
             http_response_code(204);
-            exit;
+            return;
         }
 
-        // Set CORS at the very start so streaming and any early output still get CORS headers
-        $allowedOrigin = \TN\TN_Core\Model\CORS\CORS::getAllowedOrigin();
-        if ($allowedOrigin !== null) {
-            header("Access-Control-Allow-Origin: $allowedOrigin");
-            header('Access-Control-Allow-Credentials: true');
-        }
+        $response = null;
 
         $this->recordTiming('file_check_start', 'Checking for static file');
         $filename = $this->path . ($this->ext ? '.' . $this->ext : '');
