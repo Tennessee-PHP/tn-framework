@@ -534,6 +534,28 @@ class User implements Persistence
     }
 
     /**
+     * Log in using a one-time code (login identifier and 6-digit code).
+     * @param string $login Username or email
+     * @param string $code 6-digit login code
+     * @throws TNException When user not found, code invalid, expired, or already used
+     * @throws RandomException
+     * @throws ValidationException
+     */
+    public static function attemptLoginFromCode(string $login, string $code): void
+    {
+        $user = static::getFromLogin($login);
+        if (!$user instanceof User) {
+            throw new TNException('Invalid or expired code');
+        }
+        $loginCode = LoginCode::findValidForUserAndCode($user->id, $code);
+        if ($loginCode === null) {
+            throw new TNException('Invalid or expired code');
+        }
+        $loginCode->update(['used' => true]);
+        $user->doLogin();
+    }
+
+    /**
      * @return void user has passed all login checks
      * @throws RandomException
      * @throws ValidationException
