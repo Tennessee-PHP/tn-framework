@@ -36,10 +36,6 @@ class Stream extends Renderer
             header("Access-Control-Allow-Origin: $allowedOrigin");
             header('Access-Control-Allow-Credentials: true');
         }
-        // Debug headers to verify what the stream sees (remove after diagnosing)
-        header('X-Debug-Origin: ' . ($_SERVER['HTTP_ORIGIN'] ?? '(not set)'));
-        header('X-Debug-X-Forwarded-Origin: ' . ($_SERVER['HTTP_X_FORWARDED_ORIGIN'] ?? '(not set)'));
-        header('X-Debug-Allowed-Origin: ' . ($allowedOrigin ?? '(null)'));
 
         parent::headers();
 

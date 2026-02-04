@@ -300,6 +300,13 @@ class HTTPRequest extends Request
             exit;
         }
 
+        // Set CORS at the very start so streaming and any early output still get CORS headers
+        $allowedOrigin = \TN\TN_Core\Model\CORS\CORS::getAllowedOrigin();
+        if ($allowedOrigin !== null) {
+            header("Access-Control-Allow-Origin: $allowedOrigin");
+            header('Access-Control-Allow-Credentials: true');
+        }
+
         $this->recordTiming('file_check_start', 'Checking for static file');
         $filename = $this->path . ($this->ext ? '.' . $this->ext : '');
         if (!empty($this->ext) && file_exists($_ENV['TN_WEB_ROOT'] . $filename)) {
