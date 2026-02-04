@@ -61,4 +61,9 @@ class UserController extends Controller
     #[Anyone]
     #[Component(\TN\TN_Core\Component\User\ResetPasswordForm\ResetPasswordForm::class)]
     public function resetPassword(): void {}
+
+    #[Path('users/search')]
+    #[Anyone]
+    #[Component(\TN\TN_Core\Component\User\Search::class)]
+    public function search(): void {}
 }

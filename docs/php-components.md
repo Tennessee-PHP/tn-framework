@@ -34,6 +34,8 @@ class ComponentName extends HTMLComponent
     #[FromPost] public ?string $action = null;  // From POST form data
     
     // Template properties (computed in prepare())
+    // CRITICAL: All public properties are automatically available in templates
+    // NEVER override getTemplateData() - just declare public properties and set them in prepare()
     public array $users = [];
     public int $totalCount = 0;
     public string $pageTitle = '';
@@ -50,6 +52,7 @@ class ComponentName extends HTMLComponent
         $this->users = User::searchByProperties($searchCriteria);
         
         // Compute all template data (never call methods in templates!)
+        // Set public properties directly - they will be automatically available in templates
         $this->totalCount = count($this->users);
         $this->pageTitle = $this->getPageTitle();
     }
@@ -377,6 +380,56 @@ class IntegrationController extends \TN\TN_Core\Controller\Controller
     public function dataImport(): void {}
 }
 ```
+
+## Template Data Anti-Patterns
+
+### NEVER Override getTemplateData()
+
+**CRITICAL:** The framework automatically makes all public properties available to templates. **DO NOT** override `getTemplateData()` to manually pass data to templates.
+
+```php
+// ❌ WRONG - DO NOT DO THIS
+class MyComponent extends HTMLComponent
+{
+    public array $items = [];
+    
+    public function prepare(): void
+    {
+        $this->items = Model::searchByProperties(['active' => true]);
+    }
+    
+    // ❌ NEVER OVERRIDE THIS METHOD
+    public function getTemplateData(): array
+    {
+        $data = parent::getTemplateData();
+        $data['items'] = $this->items;           // Redundant!
+        $data['itemCount'] = count($this->items); // Wrong!
+        return $data;
+    }
+}
+
+// ✅ CORRECT - Just declare public properties
+class MyComponent extends HTMLComponent
+{
+    public array $items = [];
+    public int $itemCount = 0;
+    
+    public function prepare(): void
+    {
+        // Set properties directly - they're automatically available in templates
+        $this->items = Model::searchByProperties(['active' => true]);
+        $this->itemCount = count($this->items);
+    }
+}
+```
+
+**Why this matters:**
+- Public properties are automatically exposed to templates by the framework
+- Overriding `getTemplateData()` bypasses this system and causes confusion
+- It creates unnecessary boilerplate and maintenance burden
+- The framework handles this for you - let it do its job
+
+**The only valid use of `getTemplateData()` is in the base `HTMLComponent` class itself** - never in your components.
 
 ## Data Layer Integration
 

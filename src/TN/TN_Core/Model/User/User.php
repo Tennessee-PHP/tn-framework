@@ -34,6 +34,7 @@ use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonArgument;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonJoin;
+use TN\TN_Core\Model\PersistentModel\Search\SearchLimit;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLogical;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Request\HTTPRequest;
@@ -1080,5 +1081,25 @@ class User implements Persistence
             }
         }
         return $roles;
+    }
+
+    /**
+     * Search for users by username for autocomplete
+     * @param string $term
+     * @return array
+     */
+    public static function autocomplete(string $term): array
+    {
+        // Fetch 6 results (5 to show + 1 to check if there are more)
+        $users = static::search(new SearchArguments(
+            conditions: new SearchComparison('`username`', 'LIKE', '%' . $term . '%'),
+            limit: new SearchLimit(0, 6)
+        ));
+        
+        $results = [];
+        foreach ($users as $user) {
+            $results[] = $user->username;
+        }
+        return $results;
     }
 }
