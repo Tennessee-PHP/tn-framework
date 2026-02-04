@@ -34,20 +34,19 @@ class HTTPResponse extends Response
     {
         http_response_code($this->code);
 
+        // Set CORS headers if the matched method has AllowOrigin/AllowCredentials attributes
         if ($this->matchedMethod) {
-            $hasAllowOrigin = false;
             foreach ($this->matchedMethod->getAttributes() as $attribute) {
-                if ($attribute->getName() === AllowOrigin::class) {
-                    $hasAllowOrigin = true;
-                    break;
+                $attributeName = $attribute->getName();
+                if ($attributeName === \TN\TN_Core\Attribute\Route\AllowOrigin::class) {
+                    $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+                    header("Access-Control-Allow-Origin: $origin");
+                } elseif ($attributeName === \TN\TN_Core\Attribute\Route\AllowCredentials::class) {
+                    header('Access-Control-Allow-Credentials: true');
                 }
-            }
-            if ($hasAllowOrigin) {
-                CORS::applyCorsHeaders();
             }
         }
 
-        $this->renderer->prepare();
         $this->renderer->headers();
         parent::respond();
     }

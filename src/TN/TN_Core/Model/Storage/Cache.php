@@ -16,9 +16,6 @@ class Cache
 {
     use PerformanceRecorder;
 
-    /** @var array request-level cache to avoid duplicate Redis calls within same HTTP request */
-    private static array $requestCache = [];
-
     /** @var string the redis key at which to store the set of cache keys */
     private static string $keysKey = 'Cache::_keys';
 
@@ -38,25 +35,22 @@ class Cache
      */
     public static function set(string $key, mixed $value, int $lifetime = 3600)
     {
-        $storageKey = self::getStorageKey($key);
-        $event = (new self())->startPerformanceEvent('Redis', "SET {$storageKey}", ['lifetime' => $lifetime]);
+        $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SET {$key}", ['lifetime' => $lifetime]);
 
         $client = Redis::getInstance();
 
         // Check if key exists with wrong type
-        $type = $client->type($storageKey);
+        $type = $client->type($key);
         if ($type !== 'none' && $type !== 'string') {
-            $client->del($storageKey);
+            $client->del($key);
         }
 
-        $client->set($storageKey, serialize($value));
-        $client->sadd(self::$keysKey, [$storageKey]);
-        if ($lifetime > 0) {
-            $client->expire($storageKey, $lifetime);
+        $client->set($key, serialize($value));
+        $client->sadd(self::$keysKey, [$key]);
+        if ($lifetime) {
+            $client->expire($key, $lifetime);
         }
-
-        // Update request cache with new value
-        self::$requestCache[$storageKey] = $value;
 
         $event?->end();
     }
@@ -75,17 +69,11 @@ class Cache
      */
     public static function get(string $key): mixed
     {
-        $storageKey = self::getStorageKey($key);
-
-        // Check request-level cache first
-        if (isset(self::$requestCache[$storageKey])) {
-            return self::$requestCache[$storageKey];
-        }
-
-        $event = (new self())->startPerformanceEvent('Redis', "GET {$storageKey}");
+        $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "GET {$key}");
 
         $client = Redis::getInstance();
-        $data = $client->get($storageKey);
+        $data = $client->get($key);
 
         // Handle null/false values from Redis to avoid unserialize deprecation warning
         if ($data === null || $data === false) {
@@ -93,9 +81,6 @@ class Cache
         } else {
             $result = unserialize($data);
         }
-
-        // Store in request cache for future lookups in same request
-        self::$requestCache[$storageKey] = $result;
 
         // Add hit/miss information to performance tracking
         $isHit = $result !== false && $result !== null;
@@ -158,30 +143,14 @@ class Cache
 
     public static function setAdd(string $key, string $value, int $lifespan): void
     {
-        $storageKey = self::getStorageKey($key);
-        $event = (new self())->startPerformanceEvent('Redis', "SADD {$storageKey} {$value}", ['lifespan' => $lifespan]);
+        $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
 
         $client = Redis::getInstance();
-
-        try {
-            $client->sadd($storageKey, [$value]);
-            $client->sadd(self::$keysKey, [$storageKey]);
-            $client->persist($storageKey);
-            $client->expire($storageKey, $lifespan);
-        } catch (\Predis\Response\ServerException $e) {
-            // Handle WRONGTYPE error - key exists with different data type
-            if (str_contains($e->getMessage(), 'WRONGTYPE')) {
-                // Delete the conflicting key and retry
-                $client->del($storageKey);
-                $client->sadd($storageKey, [$value]);
-                $client->sadd(self::$keysKey, [$storageKey]);
-                $client->persist($storageKey);
-                $client->expire($storageKey, $lifespan);
-            } else {
-                // Re-throw other Redis errors
-                throw $e;
-            }
-        }
+        $client->sadd($key, [$value]);
+        $client->sadd(self::$keysKey, [$key]);
+        $client->persist($key);
+        $client->expire($key, $lifespan);
 
         $event?->end();
     }
@@ -207,18 +176,6 @@ class Cache
 
         $event?->end();
         return $result;
-    }
-
-    /**
-     * check if a value exists in a cache set
-     * @param string $key the set key (should contain :set: for proper prefixing)
-     * @param string $value the value to check
-     * @return bool true if value exists in set
-     */
-    public static function setMembersContains(string $key, string $value): bool
-    {
-        $members = self::setMembers($key);
-        return in_array($value, $members, true);
     }
 
     /**
@@ -267,15 +224,13 @@ class Cache
      */
     public static function delete(string $key): void
     {
-        $storageKey = self::getStorageKey($key);
-        $event = (new self())->startPerformanceEvent('Redis', "DEL {$storageKey}");
+        $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "DEL {$key}");
 
         $client = Redis::getInstance();
-        $client->del($storageKey);
-        $client->srem(self::$keysKey, [$storageKey]);
-
-        // Remove from request cache
-        unset(self::$requestCache[$storageKey]);
+        $client->set($key, false);
+        $client->del($key);
+        $client->srem(self::$keysKey, [$key]);
 
         $event?->end();
     }
@@ -320,9 +275,6 @@ class Cache
             $client->del($key);
         }
         $client->del(self::$keysKey);
-
-        // Clear request cache
-        self::$requestCache = [];
 
         $event?->end();
     }

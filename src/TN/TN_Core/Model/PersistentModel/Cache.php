@@ -16,7 +16,7 @@ trait Cache
      * Get the class in the inheritance hierarchy that has the Cache attribute
      * Always prefers parent class Cache attributes over child class Cache attributes
      * to ensure consistent cache keys across the inheritance hierarchy
-     * 
+     *
      * @return string|null The class name with the Cache attribute, or null if none found
      */
     protected static function getCacheClass(): ?string
@@ -24,7 +24,7 @@ trait Cache
         // Walk up the entire inheritance hierarchy to find all classes with Cache attributes
         $class = static::class;
         $cacheClasses = [];
-        
+
         while ($class) {
             $reflection = new \ReflectionClass($class);
             if (!empty($reflection->getAttributes(CacheAttribute::class))) {
@@ -32,13 +32,12 @@ trait Cache
             }
             $class = get_parent_class($class);
         }
-        
+
         // If we found cache classes, return the one highest in the hierarchy (parent over child)
-        // This ensures child classes always use parent cache keys when parent has Cache attribute
         if (!empty($cacheClasses)) {
             return $cacheClasses[count($cacheClasses) - 1];
         }
-        
+
         return null;
     }
 
@@ -214,8 +213,7 @@ trait Cache
         }
 
         // Use getCacheKey() which now uses getCacheClass() to ensure consistent cache keys
-        // getCacheClass() always returns the parent class Cache attribute when available,
-        // ensuring child classes use parent cache keys for consistency
+        // getCacheClass() always returns the parent class Cache attribute when available
         CacheStorage::delete(static::getCacheKey('object', $this->id));
         CacheStorage::setRemove(static::getCacheKey('set', 'objects'), static::getCacheKey('object', $this->id));
 

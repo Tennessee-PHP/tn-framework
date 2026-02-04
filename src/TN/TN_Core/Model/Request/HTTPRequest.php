@@ -45,16 +45,6 @@ class HTTPRequest extends Request
     /** @var bool  */
     public bool $notFound = false;
 
-    // Performance tracking properties
-    /** @var float Request start time */
-    public float $requestStartTime;
-
-    /** @var array Performance timing data */
-    public array $performanceTimings = [];
-
-    /** @var array Performance counters */
-    public array $performanceCounters = [];
-
     /** @var bool Whether this request will render a full page or just a component */
     public bool $isFullPageRender = true;
 
@@ -81,18 +71,6 @@ class HTTPRequest extends Request
      */
     public function __construct(array $options = [])
     {
-        // Initialize performance tracking
-        $this->requestStartTime = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
-        $this->performanceTimings = [];
-        $this->performanceCounters = [
-            'controllers_checked' => 0,
-            'components_loaded' => 0,
-            'db_queries' => 0,
-            'cache_operations' => 0
-        ];
-
-        $this->recordTiming('request_start', 'Request received by framework');
-
         $options = array_merge([
             'query' => $_GET,
             'post' => $_POST,
@@ -107,8 +85,6 @@ class HTTPRequest extends Request
 
         // Set this as the active instance for global access
         self::$instance = $this;
-
-        $this->recordTiming('request_initialized', 'Request object initialized');
     }
     /**
      * @param string $key
@@ -280,9 +256,10 @@ class HTTPRequest extends Request
      */
     public function respond(): void
     {
-        $this->recordTiming('respond_start', 'Starting response processing');
         // Start performance logging for super-users
         \TN\TN_Core\Model\Performance\PerformanceLog::startRequest();
+
+        $response = null;
 
         if ($this->method === 'OPTIONS') {
             CORS::applyCorsHeaders();
@@ -295,134 +272,42 @@ class HTTPRequest extends Request
 
         $response = null;
 
-        $this->recordTiming('file_check_start', 'Checking for static file');
         $filename = $this->path . ($this->ext ? '.' . $this->ext : '');
         if (!empty($this->ext) && file_exists($_ENV['TN_WEB_ROOT'] . $filename)) {
-            $this->recordTiming('static_file_found', 'Static file found, including: ' . $filename);
             // for these older files, let's reduce the reporting level or we'll just drown in them
             error_reporting(E_ALL & ~E_NOTICE);
             include($_ENV['TN_WEB_ROOT'] . $filename);
             return;
         }
 
-        $this->recordTiming('controller_search_start', 'Starting controller search');
         $controllerClasses = Stack::getChildClasses(Controller::class);
-        $this->recordTiming('controller_classes_loaded', 'Found ' . count($controllerClasses) . ' controller classes');
 
         foreach ($controllerClasses as $controllerClassName) {
-            $this->incrementCounter('controllers_checked');
             $controller = new $controllerClassName;
             if ($response = $controller->respond($this)) {
-                $this->recordTiming('controller_matched', 'Controller matched: ' . $controllerClassName);
                 break;
             }
         }
 
         if (!$this->notFound && !$response) {
-            $this->recordTiming('no_match_retry', 'No controller matched, retrying as 404');
             $this->notFound = true;
             $this->respond();
             return;
         }
 
         if (!$response) {
-            $this->recordTiming('404_response', 'Creating 404 response');
             $response = new HTTPResponse(
                 new Text(['text' => '404 Not Found']),
                 404
             );
         }
 
-        $this->recordTiming('response_send_start', 'Starting response output');
         $response->respond();
-        $this->recordTiming('response_complete', 'Response sent to client');
     }
 
     public function redirect(string $url): void
     {
         header('Location: ' . $url);
         exit;
-    }
-
-    /**
-     * Record a timing event for performance analysis
-     * @param string $event Event name
-     * @param string $description Event description
-     * @return void
-     */
-    public function recordTiming(string $event, string $description = ''): void
-    {
-        $currentTime = microtime(true);
-        $this->performanceTimings[] = [
-            'event' => $event,
-            'description' => $description,
-            'timestamp' => $currentTime,
-            'elapsed_from_start' => $currentTime - $this->requestStartTime,
-            'elapsed_from_previous' => empty($this->performanceTimings)
-                ? 0
-                : $currentTime - end($this->performanceTimings)['timestamp']
-        ];
-    }
-
-    /**
-     * Increment a performance counter
-     * @param string $counter Counter name
-     * @param int $increment Amount to increment by
-     * @return void
-     */
-    public function incrementCounter(string $counter, int $increment = 1): void
-    {
-        if (!isset($this->performanceCounters[$counter])) {
-            $this->performanceCounters[$counter] = 0;
-        }
-        $this->performanceCounters[$counter] += $increment;
-    }
-
-    /**
-     * Get all performance data
-     * @return array
-     */
-    public function getPerformanceData(): array
-    {
-        $totalTime = microtime(true) - $this->requestStartTime;
-
-        return [
-            'request_start_time' => $this->requestStartTime,
-            'total_time' => $totalTime,
-            'timings' => $this->performanceTimings,
-            'counters' => $this->performanceCounters,
-            'memory_usage' => [
-                'current' => memory_get_usage(true),
-                'peak' => memory_get_peak_usage(true),
-                'current_formatted' => $this->formatBytes(memory_get_usage(true)),
-                'peak_formatted' => $this->formatBytes(memory_get_peak_usage(true))
-            ]
-        ];
-    }
-
-    /**
-     * Format bytes into human readable format
-     * @param int $bytes
-     * @return string
-     */
-    private function formatBytes(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-
-        $bytes /= (1 << (10 * $pow));
-
-        return round($bytes, 2) . ' ' . $units[$pow];
-    }
-
-    /**
-     * Get the active HTTPRequest instance for performance tracking
-     * @return HTTPRequest|null
-     */
-    public static function getActiveInstance(): ?HTTPRequest
-    {
-        return self::$instance instanceof HTTPRequest ? self::$instance : null;
     }
 }

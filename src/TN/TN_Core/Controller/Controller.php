@@ -263,15 +263,19 @@ abstract class Controller
                 $this->setAccess($request, $method);
             } catch (AccessForbiddenException $e) {
                 $renderer = $rendererClass::forbidden();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (AccessLoginRequiredException $e) {
                 $renderer = $rendererClass::loginRequired();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 401, $method);
             } catch (AccessUncontrolledException $e) {
                 $renderer = $rendererClass::uncontrolled();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (FullPageRoadblockException $e) {
                 $renderer = $rendererClass::roadblock();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (UnmatchedException) {
                 continue;
@@ -281,14 +285,17 @@ abstract class Controller
                 $response = $this->getResponse($request, $method, $matcher);
             } catch (ResourceNotFoundException $e) {
                 $renderer = $rendererClass::error($e->getMessage(), 404);
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 404, $method);
             } catch (\TN\TN_Core\Error\Access\AccessException $e) {
                 $renderer = $rendererClass::error($e->getMessage(), 403);
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
                 $renderer = $rendererClass::roadblock();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             }
 
@@ -335,31 +342,21 @@ abstract class Controller
     private function getResponse(HTTPRequest $request, ReflectionMethod $method, Matcher $matcher): HTTPResponse
     {
         try {
-            $request->recordTiming('controller_method_start', 'Starting controller method: ' . $method->getName());
-
             $args = $this->extractArgs($request, $matcher);
             $argValues = array_values($args);
-            $request->recordTiming('args_extracted', 'Arguments extracted from route');
 
             $routeTypeAttributes = $method->getAttributes(RouteType::class, \ReflectionAttribute::IS_INSTANCEOF);
             $renderer = null;
 
             if (!empty($routeTypeAttributes)) {
-                $request->recordTiming('route_type_start', 'Processing route type attributes');
                 $routeType = $routeTypeAttributes[0]->newInstance();
                 $renderer = $routeType->getRenderer($args);
-                $request->recordTiming('route_type_complete', 'Route type renderer created');
             }
 
             if (!$renderer) {
-                $request->recordTiming('method_invoke_start', 'Invoking controller method');
                 $renderer = $method->invoke($this, ...$argValues);
-                $request->recordTiming('method_invoke_complete', 'Controller method completed');
             }
-
-            $request->recordTiming('component_prepare_start', 'Component created');
-            $request->incrementCounter('components_loaded');
-
+            $renderer->prepare();
             return new HTTPResponse($renderer, 200, $method);
         } catch (ResourceNotFoundException $e) {
             throw $e;
@@ -378,6 +375,7 @@ abstract class Controller
 
             $rendererClass = $this->getRendererClassFromMethod($method);
             $renderer = $rendererClass::error($e->getDisplayMessage());
+            $renderer->prepare();
             return new HTTPResponse($renderer, $e->httpResponseCode, $method);
         }
     }
