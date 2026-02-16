@@ -83,6 +83,7 @@ class Component extends RouteType
         }
         $rendererClass = $this->getRendererClass();
 
-        return $rendererClass::getInstance(['component' => $component]);
+        $renderer = $rendererClass::getInstance(['component' => $component]);
+        return $renderer;
     }
 }

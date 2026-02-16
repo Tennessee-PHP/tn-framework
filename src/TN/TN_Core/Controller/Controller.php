@@ -28,6 +28,8 @@ use TN\TN_Core\Model\Request\Request;
 use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Attribute\Route\RouteType;
 use TN\TN_Core\Component\Renderer\Page\Page;
 use TN\TN_Core\Model\User\User;
@@ -419,15 +421,14 @@ abstract class Controller
                 $renderer = $method->invoke($this, ...$argValues);
             }
             $renderer->prepare();
-            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'H-getResponse-return',
-                'location' => __FILE__ . ':' . __LINE__,
-                'message' => 'getResponse returning 200',
-                'data' => ['path' => $request->path],
-                'timestamp' => time() * 1000
-            ]) . "\n", FILE_APPEND);
+            $request->recordTiming('component_prepare_complete', 'Component preparation completed');
+
+            // Set 404 status code for FileNotFound routes
+            foreach ($method->getAttributes(\TN\TN_Core\Attribute\Route\FileNotFound::class) as $attr) {
+                $renderer->httpResponseCode = 404;
+                return new HTTPResponse($renderer, 404, $method);
+            }
+
             return new HTTPResponse($renderer, 200, $method);
         } catch (ResourceNotFoundException $e) {
             throw $e;
@@ -444,10 +445,29 @@ abstract class Controller
                 // do nothing
             }
 
+            $this->addCorsHeadersForMethod($method);
             $rendererClass = $this->getRendererClassFromMethod($method);
             $renderer = $rendererClass::error($e->getDisplayMessage());
             $renderer->prepare();
             return new HTTPResponse($renderer, $e->httpResponseCode, $method);
+        }
+    }
+
+    /**
+     * Add CORS headers for routes with AllowOrigin/AllowCredentials attributes.
+     * Ensures error responses (401, 403, 404, etc.) include CORS headers so
+     * cross-origin clients can read the response.
+     */
+    private function addCorsHeadersForMethod(ReflectionMethod $method): void
+    {
+        foreach ($method->getAttributes() as $attribute) {
+            $attributeName = $attribute->getName();
+            if ($attributeName === AllowOrigin::class) {
+                $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+                header("Access-Control-Allow-Origin: $origin");
+            } elseif ($attributeName === AllowCredentials::class) {
+                header('Access-Control-Allow-Credentials: true');
+            }
         }
     }
 

@@ -15,6 +15,7 @@ use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\MySQL\Timestamp;
 use TN\TN_Core\Attribute\Relationships\ChildrenClass;
 use TN\TN_Core\Attribute\Relationships\ParentObject;
+use TN\TN_Core\Error\DBDuplicateKeyException;
 use TN\TN_Core\Error\DBException;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\SaveType;
@@ -157,6 +158,9 @@ trait MySQL
         try {
             $stmt->execute($values);
         } catch (\PDOException $e) {
+            if (DBDuplicateKeyException::isDuplicateKey($e)) {
+                throw new DBDuplicateKeyException(static::class . ': ' . $e->getMessage());
+            }
             throw new DBException(static::class . ': ' . $e->getMessage());
         }
 
@@ -460,6 +464,9 @@ trait MySQL
         try {
             $stmt->execute($values);
         } catch (\PDOException $e) {
+            if (DBDuplicateKeyException::isDuplicateKey($e)) {
+                throw new DBDuplicateKeyException(static::class . ': ' . $e->getMessage());
+            }
             throw new DBException(static::class . ': ' . $e->getMessage());
         }
 
