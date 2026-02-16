@@ -41,8 +41,6 @@ export default class EditPrices extends HTMLComponent {
     }
 
     onSaveComplete() {
-        console.log($('#change_price_modal').get(0));
-        console.log(new Modal($('#change_price_modal').get(0)));
         new Modal($('#change_price_modal').get(0)).hide();
     }
 }

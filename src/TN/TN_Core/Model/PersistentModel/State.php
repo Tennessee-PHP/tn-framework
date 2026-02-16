@@ -135,14 +135,12 @@ trait State
     {
         // Filter out objects that fail validation
         $validObjects = [];
-
         foreach ($objects as $object) {
             try {
                 // Call beforeSave to trigger validation
                 $object->beforeSave([]);
                 $validObjects[] = $object;
-            } catch (ValidationException $e) {
-                // Skip this object on validation exceptions
+            } catch (ValidationException) {
                 continue;
             }
         }

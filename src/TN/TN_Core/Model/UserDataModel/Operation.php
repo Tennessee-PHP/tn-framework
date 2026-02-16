@@ -86,11 +86,12 @@ class Operation implements Persistence
     }
 
     /**
-     * operation represented in format that ExtJS clients require
+     * operation represented in format that clients require
      * @param string $class
+     * @param bool $forClient when true, return snake_case (ExtJS); when false, return camelCase (draft-dominator)
      * @return array
      */
-    public function getSyncDataForClient(string $class): array
+    public function getSyncDataForClient(string $class, bool $forClient = true): array
     {
         $baseData = [
             'type' => $this->methodString(),
@@ -107,9 +108,14 @@ class Operation implements Persistence
         // otherwise, get the record
         $record = $this->getRecord($class);
 
-        // for create return that
+        // record may no longer exist (e.g. CREATE then DELETE in op log) - skip this op
+        if ($record === null) {
+            return [];
+        }
+
+        // for create return that (getData($forClient): true = snake_case, false = camelCase)
         if ($this->method === self::CREATE) {
-            return [array_merge($baseData, ['fields' => $record->getData(true)])];
+            return [array_merge($baseData, ['fields' => $record->getData($forClient)])];
         }
 
         // for update, return one operation per field
@@ -119,7 +125,8 @@ class Operation implements Persistence
             if (in_array($prop, $ignoreProperties)) {
                 continue;
             }
-            $data[] = array_merge($baseData, ['field' => $class::mapPropertyNameToClient($prop), 'value' => $record->$prop]);
+            $fieldName = $forClient ? $class::mapPropertyNameToClient($prop) : $prop;
+            $data[] = array_merge($baseData, ['field' => $fieldName, 'value' => $record->$prop]);
         }
         return $data;
     }

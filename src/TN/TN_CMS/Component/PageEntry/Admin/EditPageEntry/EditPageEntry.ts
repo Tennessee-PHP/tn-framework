@@ -76,7 +76,6 @@ export default class EditPageEntry extends HTMLComponent {
             });
 
             let data: any = await response.json();
-            console.log(field, data);
 
             // set the hidden field
             $('#page_entry_' + field + '_src').val(data.location);
@@ -101,8 +100,6 @@ export default class EditPageEntry extends HTMLComponent {
             thumbnailSrc: $('#page_entry_thumbnail_src').val(),
             vThumbnailSrc: $('#page_entry_vthumbnail_src').val()
         };
-
-        console.log(this.lastSaveData);
 
         // @ts-ignore
         axios.post(TN.BASE_URL + 'staff/page-entries/edit/save', this.lastSaveData, {
