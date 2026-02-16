@@ -421,7 +421,6 @@ abstract class Controller
                 $renderer = $method->invoke($this, ...$argValues);
             }
             $renderer->prepare();
-            $request->recordTiming('component_prepare_complete', 'Component preparation completed');
 
             // Set 404 status code for FileNotFound routes
             foreach ($method->getAttributes(\TN\TN_Core\Attribute\Route\FileNotFound::class) as $attr) {
