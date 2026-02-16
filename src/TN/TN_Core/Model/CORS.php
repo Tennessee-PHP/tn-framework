@@ -34,15 +34,42 @@ class CORS
     {
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
         if ($origin === '') {
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-origin',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'CORS skipped: HTTP_ORIGIN empty',
+                'data' => [],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
             return;
         }
 
         $allowlist = self::getAllowlist();
         if (!in_array($origin, $allowlist, true)) {
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-allowlist',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'CORS skipped: origin not in allowlist',
+                'data' => ['origin' => $origin, 'allowlist' => $allowlist],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
             return;
         }
 
         header("Access-Control-Allow-Origin: $origin");
         header('Access-Control-Allow-Credentials: true');
+        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'H-cors-set',
+            'location' => __FILE__ . ':' . __LINE__,
+            'message' => 'CORS headers set',
+            'data' => ['origin' => $origin],
+            'timestamp' => time() * 1000
+        ]) . "\n", FILE_APPEND);
     }
 }

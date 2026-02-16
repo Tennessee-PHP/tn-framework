@@ -69,6 +69,19 @@ use TN\TN_Core\Model\User\User;
  */
 abstract class Controller
 {
+    /** Stored when a route has matched, so shutdown handler can apply CORS for fatals from the route's #[AllowOrigin]. */
+    private static ?\ReflectionMethod $currentMatchedMethodForCORS = null;
+
+    public static function setCurrentMatchedMethodForCORS(?\ReflectionMethod $method): void
+    {
+        self::$currentMatchedMethodForCORS = $method;
+    }
+
+    public static function getCurrentMatchedMethodForCORS(): ?\ReflectionMethod
+    {
+        return self::$currentMatchedMethodForCORS;
+    }
+
     public static function path(string $moduleName, string $controllerName, string $routeName, array $args = []): string
     {
         // Append "Controller" suffix if not already present
@@ -257,51 +270,91 @@ abstract class Controller
                 continue;
             }
 
+            self::setCurrentMatchedMethodForCORS($method);
+
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-controller-match',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'route matched',
+                'data' => ['path' => $request->path, 'controller' => get_class($this), 'method' => $method->getName()],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
+
             $rendererClass = $this->getRendererClassFromMethod($method);
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-after-renderer-class',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'getRendererClassFromMethod done',
+                'data' => ['path' => $request->path, 'rendererClass' => $rendererClass],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
 
             try {
                 $this->setAccess($request, $method);
+                file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'H-setAccess-done',
+                    'location' => __FILE__ . ':' . __LINE__,
+                    'message' => 'setAccess returned',
+                    'data' => ['path' => $request->path],
+                    'timestamp' => time() * 1000
+                ]) . "\n", FILE_APPEND);
             } catch (AccessForbiddenException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (AccessLoginRequiredException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 401, $method);
             } catch (AccessUncontrolledException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::uncontrolled();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (FullPageRoadblockException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (UnmatchedException) {
+                self::setCurrentMatchedMethodForCORS(null);
                 continue;
             }
 
             try {
                 $response = $this->getResponse($request, $method, $matcher);
             } catch (ResourceNotFoundException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 404, $method);
             } catch (\TN\TN_Core\Error\Access\AccessException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::error($e->getMessage(), 403);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             }
 
             if ($request->roadblocked && $method->getAttributes(FullPageRoadblock::class)) {
+                self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::roadblock();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             }
 
+            self::setCurrentMatchedMethodForCORS(null);
             return $response;
         }
 
+        self::setCurrentMatchedMethodForCORS(null);
         return null;
     }
 
@@ -341,6 +394,15 @@ abstract class Controller
 
     private function getResponse(HTTPRequest $request, ReflectionMethod $method, Matcher $matcher): HTTPResponse
     {
+        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'H-getResponse-entry',
+            'location' => __FILE__ . ':' . __LINE__,
+            'message' => 'getResponse entered',
+            'data' => ['path' => $request->path, 'method' => $method->getName()],
+            'timestamp' => time() * 1000
+        ]) . "\n", FILE_APPEND);
         try {
             $args = $this->extractArgs($request, $matcher);
             $argValues = array_values($args);
@@ -357,6 +419,15 @@ abstract class Controller
                 $renderer = $method->invoke($this, ...$argValues);
             }
             $renderer->prepare();
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-getResponse-return',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'getResponse returning 200',
+                'data' => ['path' => $request->path],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
             return new HTTPResponse($renderer, 200, $method);
         } catch (ResourceNotFoundException $e) {
             throw $e;
@@ -428,6 +499,16 @@ abstract class Controller
      */
     private function getRendererClassFromMethod(ReflectionMethod $method): string
     {
+        $path = \TN\TN_Core\Model\Request\HTTPRequest::get()->path ?? '';
+        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'H-getRendererClass-entry',
+            'location' => __FILE__ . ':' . __LINE__,
+            'message' => 'getRendererClassFromMethod entered',
+            'data' => ['path' => $path, 'method' => $method->getName()],
+            'timestamp' => time() * 1000
+        ]) . "\n", FILE_APPEND);
         try {
             $routeTypeAttributes = $method->getAttributes(RouteType::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($routeTypeAttributes)) {

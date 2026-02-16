@@ -2,6 +2,9 @@
 
 namespace TN\TN_Core\Error;
 
+use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Controller\Controller;
+use TN\TN_Core\Model\CORS;
 use TN\TN_Core\Model\User\User;
 
 /**
@@ -121,13 +124,29 @@ class Handler
     {
         $error = error_get_last();
 
-        if ($error !== null && $error['type'] === 1) {
-            if ($_ENV['ENV'] === 'production' && false) {
-                $loggedError = self::logError('', '', '', $error['message']);
-                $msg = 'Something went wrong there - we\'ve logged the issue. Please try again later. If the issue persists, please contact us via ' . $_ENV['SITE_EMAIL'] . ' citing this error code: ' . $loggedError->id;
-            } else {
-                $msg = $error['message'];
+        if ($error === null || $error['type'] !== 1) {
+            return;
+        }
+
+        $matchedMethod = Controller::getCurrentMatchedMethodForCORS();
+        if ($matchedMethod !== null) {
+            foreach ($matchedMethod->getAttributes() as $attribute) {
+                if ($attribute->getName() === AllowOrigin::class) {
+                    CORS::applyCorsHeaders();
+                    break;
+                }
             }
         }
+
+        http_response_code(500);
+
+        if ($_ENV['ENV'] === 'production' && false) {
+            $loggedError = self::logError('', '', '', $error['message']);
+            $msg = 'Something went wrong there - we\'ve logged the issue. Please try again later. If the issue persists, please contact us via ' . ($_ENV['SITE_EMAIL'] ?? '') . ' citing this error code: ' . $loggedError->id;
+        } else {
+            $msg = $error['message'];
+        }
+
+        echo $msg;
     }
 }

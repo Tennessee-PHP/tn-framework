@@ -30,38 +30,45 @@ class Component extends RouteType
             return Text::class;
         }
 
-        $component = new (Stack::resolveClassName($this->componentClassName))();
-        $reflection = new \ReflectionClass($component);
+        try {
+            $resolvedClass = Stack::resolveClassName($this->componentClassName);
+            if ($resolvedClass === false) {
+                return Text::class;
+            }
+            $reflection = new \ReflectionClass($resolvedClass);
 
-        // If component implements PageComponent
-        if ($reflection->implementsInterface(PageComponent::class)) {
-            $request = HTTPRequest::get();
-            $isReloadable = !empty($reflection->getAttributes(ReloadableAttribute::class));
+            // If component implements PageComponent
+            if ($reflection->implementsInterface(PageComponent::class)) {
+                $request = HTTPRequest::get();
+                $isReloadable = !empty($reflection->getAttributes(ReloadableAttribute::class));
 
-            // If component is reloadable and request has reload=1, use HTML renderer
-            if ($isReloadable && $request->getRequest('reload', false)) {
-                $request->isFullPageRender = false;
-                return HTML::class;
+                // If component is reloadable and request has reload=1, use HTML renderer
+                if ($isReloadable && $request->getRequest('reload', false)) {
+                    $request->isFullPageRender = false;
+                    return HTML::class;
+                }
+
+                // Otherwise use Page renderer for HTML components
+                $request->isFullPageRender = true;
+                return Page::class;
             }
 
-            // Otherwise use Page renderer for HTML components
-            $request->isFullPageRender = true;
-            return Page::class;
-        }
-
-        // For non-HTML components, find the immediate Renderer subclass
-        $rendererClass = null;
-        $currentClass = $reflection;
-        while ($currentClass && !$rendererClass) {
-            $parentClass = $currentClass->getParentClass();
-            if ($parentClass && $parentClass->getName() === Renderer::class) {
-                $rendererClass = $currentClass->getName();
+            // For non-HTML components, find the immediate Renderer subclass
+            $rendererClass = null;
+            $currentClass = $reflection;
+            while ($currentClass && !$rendererClass) {
+                $parentClass = $currentClass->getParentClass();
+                if ($parentClass && $parentClass->getName() === Renderer::class) {
+                    $rendererClass = $currentClass->getName();
+                }
+                $currentClass = $parentClass;
             }
-            $currentClass = $parentClass;
-        }
 
-        // Return the found renderer class or default to Text
-        return $rendererClass ?: Text::class;
+            // Return the found renderer class or default to Text
+            return $rendererClass ?: Text::class;
+        } catch (\Throwable) {
+            return Text::class;
+        }
     }
 
     public function getRenderer(array $args = []): ?Renderer

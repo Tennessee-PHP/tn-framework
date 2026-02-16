@@ -214,6 +214,15 @@ class HTTPRequest extends Request
      */
     public function setAccess(Restriction|array $restrictions): void
     {
+        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+            'sessionId' => 'debug-session',
+            'runId' => 'run1',
+            'hypothesisId' => 'H-setAccess-start',
+            'location' => __FILE__ . ':' . __LINE__,
+            'message' => 'setAccess entered',
+            'data' => ['path' => $this->path, 'method' => $this->method],
+            'timestamp' => time() * 1000
+        ]) . "\n", FILE_APPEND);
         if (!is_array($restrictions)) {
             $restrictions = [$restrictions];
         }
@@ -282,27 +291,56 @@ class HTTPRequest extends Request
 
         $controllerClasses = Stack::getChildClasses(Controller::class);
 
-        foreach ($controllerClasses as $controllerClassName) {
-            $controller = new $controllerClassName;
-            if ($response = $controller->respond($this)) {
-                break;
+        try {
+            foreach ($controllerClasses as $controllerClassName) {
+                $controller = new $controllerClassName;
+                if ($response = $controller->respond($this)) {
+                    break;
+                }
             }
-        }
 
-        if (!$this->notFound && !$response) {
-            $this->notFound = true;
-            $this->respond();
-            return;
-        }
+            if (!$this->notFound && !$response) {
+                $this->notFound = true;
+                $this->respond();
+                return;
+            }
 
-        if (!$response) {
-            $response = new HTTPResponse(
-                new Text(['text' => '404 Not Found']),
-                404
-            );
-        }
+            if (!$response) {
+                file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                    'sessionId' => 'debug-session',
+                    'runId' => 'run1',
+                    'hypothesisId' => 'H-404',
+                    'location' => __FILE__ . ':' . __LINE__,
+                    'message' => 'no controller matched, sending 404',
+                    'data' => ['path' => $this->path, 'method' => $this->method],
+                    'timestamp' => time() * 1000
+                ]) . "\n", FILE_APPEND);
+                $response = new HTTPResponse(
+                    new Text(['text' => '404 Not Found']),
+                    404
+                );
+            }
 
-        $response->respond();
+            $response->respond();
+        } catch (\Throwable $e) {
+            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
+                'sessionId' => 'debug-session',
+                'runId' => 'run1',
+                'hypothesisId' => 'H-throw',
+                'location' => __FILE__ . ':' . __LINE__,
+                'message' => 'exception before/during respond',
+                'data' => [
+                    'path' => $this->path,
+                    'method' => $this->method,
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ],
+                'timestamp' => time() * 1000
+            ]) . "\n", FILE_APPEND);
+            throw $e;
+        }
     }
 
     public function redirect(string $url): void
