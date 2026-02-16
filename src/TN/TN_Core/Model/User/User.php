@@ -329,33 +329,36 @@ class User implements Persistence
             }
         }
 
-        $tnTokenCookie = false;
+        $token = null;
+        $tokenSource = null;
 
-        // First priority: Check Authorization header for Bearer token
-        $authHeader = $request->getServer('HTTP_AUTHORIZATION');
-        if ($authHeader && preg_match('/^Bearer\s+(\S+)$/i', $authHeader, $matches)) {
-            $tnTokenCookie = $matches[1];
+        $jsonRequestBody = $request->getJSONRequestBody();
+        if ($jsonRequestBody && isset($jsonRequestBody['access_token']) && $jsonRequestBody['access_token'] !== '') {
+            $token = $jsonRequestBody['access_token'];
+            $tokenSource = 'body';
         }
-
-        // Second priority: Check JSON request body for access_token
-        if (!$tnTokenCookie) {
-            $jsonRequestBody = $request->getJSONRequestBody();
-            if ($jsonRequestBody && isset($jsonRequestBody['access_token'])) {
-                $tnTokenCookie = $jsonRequestBody['access_token'];
+        if ($token === null && $request->getQuery('access_token') !== null && $request->getQuery('access_token') !== '') {
+            $token = $request->getQuery('access_token');
+            $tokenSource = 'query';
+        }
+        if ($token === null && $request->getCookie('TN_token') !== null && $request->getCookie('TN_token') !== '') {
+            $token = $request->getCookie('TN_token');
+            $tokenSource = 'cookie';
+        }
+        if ($token === null) {
+            $authHeader = $request->getServer('HTTP_AUTHORIZATION') ?? $request->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
+            if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
+                $token = trim($m[1]);
+                $tokenSource = 'header';
             }
         }
 
-        // Third priority: Check query parameter or cookie
-        if (!$tnTokenCookie) {
-            $tnTokenCookie = $request->getQuery('access_token') ?? $request->getCookie('TN_token');
-        }
-
-        if (empty($tnTokenCookie)) {
+        if ($token === null || $token === '') {
             static::setNoActiveUser();
             return;
         }
 
-        $users = self::searchByProperty('token', $tnTokenCookie);
+        $users = self::searchByProperty('token', $token);
         if (empty($users)) {
             static::setNoActiveUser();
             return;
@@ -363,6 +366,10 @@ class User implements Persistence
 
         $user = $users[0];
         self::setUserAsActive($user);
+
+        if ($tokenSource === 'body' || $tokenSource === 'header') {
+            self::persistSessionAndCookieForUser($user);
+        }
     }
 
     /** @param User $user we found a user - set it as active! */
@@ -386,6 +393,27 @@ class User implements Persistence
 
         self::$activeUser = $user;
         self::$activeUser->loggedIn = true;
+    }
+
+    /**
+     * Set session and TN_token cookie for the user (single place for persist logic).
+     * @param User $user
+     * @return void
+     */
+    private static function persistSessionAndCookieForUser(User $user): void
+    {
+        $request = HTTPRequest::get();
+        $request->setSession('TN_LoggedIn_User_Id', $user->id);
+        if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
+            $request->setCookie('TN_token', $user->token, [
+                'expires' => Time::getNow() + self::LOGIN_EXPIRES,
+                'secure' => $_ENV['ENV'] !== 'development',
+                'domain' => $_ENV['COOKIE_DOMAIN'],
+                'path' => '/',
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
+        }
     }
 
     /**
@@ -561,22 +589,8 @@ class User implements Persistence
      */
     public function doLogin(): void
     {
-        $request = HTTPRequest::get();
-
-        // remember to set the session here
-        $request->setSession('TN_LoggedIn_User_Id', $this->id);
-
         $this->ensureToken();
-
-        // set the cookie
-        if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
-            $request->setCookie('TN_token', $this->token, [
-                'expires' => Time::getNow() + self::LOGIN_EXPIRES,
-                'secure' => $_ENV['ENV'] === 'development',
-                'domain' => $_ENV['COOKIE_DOMAIN'],
-                'path' => '/'
-            ]);
-        }
+        self::persistSessionAndCookieForUser($this);
 
         // associate this IP login with this user
         $this->logIPLogin();
@@ -627,9 +641,11 @@ class User implements Persistence
             if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
                 $request->setCookie('TN_LoginAs_token', $otherUser->token, [
                     'expires' => Time::getNow() + self::LOGIN_EXPIRES,
-                    'secure' => $_ENV['ENV'] === 'development',
+                    'secure' => $_ENV['ENV'] !== 'development',
                     'domain' => $_ENV['COOKIE_DOMAIN'],
-                    'path' => '/'
+                    'path' => '/',
+                    'httponly' => true,
+                    'samesite' => 'Lax',
                 ]);
             }
         }
@@ -648,7 +664,9 @@ class User implements Persistence
         $request->setCookie('TN_LoginAs_token', '', [
             'expires' => Time::getNow() + self::LOGIN_EXPIRES,
             'secure' => true,
-            'domain' => $_ENV['COOKIE_DOMAIN']
+            'domain' => $_ENV['COOKIE_DOMAIN'],
+            'httponly' => true,
+            'samesite' => 'Lax',
         ]);
         $this->setActiveUser();
         return true;
@@ -734,7 +752,9 @@ class User implements Persistence
             $request->setCookie('TN_token', '', [
                 'expires' => Time::getNow() + self::LOGIN_EXPIRES,
                 'secure' => true,
-                'domain' => $_ENV['COOKIE_DOMAIN']
+                'domain' => $_ENV['COOKIE_DOMAIN'],
+                'httponly' => true,
+                'samesite' => 'Lax',
             ]);
         }
         static::setActiveUser();
