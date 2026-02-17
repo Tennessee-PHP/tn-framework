@@ -55,9 +55,15 @@ trait ExtendedSingletons
     public static function getInstances(): array
     {
         if (empty(self::$instances)) {
-            foreach(Stack::getClassesInPackageNamespaces(self::getExtendedNamespace()) as
-                    $class) {
+            foreach (Stack::getClassesInPackageNamespaces(self::getExtendedNamespace()) as $class) {
                 $class::getInstance();
+            }
+            if (method_exists(static::class, 'getAdditionalExtendedNamespaces')) {
+                foreach (static::getAdditionalExtendedNamespaces() as $namespace) {
+                    foreach (Stack::getClassesInModuleNamespaces($namespace, true, '', static::class) as $class) {
+                        $class::getInstance();
+                    }
+                }
             }
         }
         return self::$instances;

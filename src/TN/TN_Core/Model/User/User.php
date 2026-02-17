@@ -979,6 +979,10 @@ class User implements Persistence
             $role = Role::getInstanceByKey($ownedRole->roleKey);
             if ($role) {
                 $roles[] = $role;
+            } else {
+                // Key exists in DB but no Role subclass is registered (e.g. app-specific roles).
+                // Include a stub so getRoleKeys() and hasRole() reflect all owned keys.
+                $roles[] = (object)['key' => $ownedRole->roleKey, 'roleGroup' => null];
             }
         }
 

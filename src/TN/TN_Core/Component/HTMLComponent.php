@@ -150,10 +150,11 @@ abstract class HTMLComponent extends TemplateComponent implements PageComponent
             $data['pageDescription'] = $pageAttribute->description;
         }
         if ($this->getFirstAttributeInstance(Reloadable::class)) {
-            $data['reloadRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
+            // Pass route name so Smarty {path route=$reloadRoute} can build the URL (it expects "Module:Controller:method")
+            $data['reloadRoute'] = $routeAttribute?->route ?? '';
         }
         if ($this->getFirstAttributeInstance(\TN\TN_Core\Attribute\Components\HTMLComponent\LoadMore::class)) {
-            $data['loadMoreRoute'] = $this->buildRouteUrl($routeAttribute?->route ?? '');
+            $data['loadMoreRoute'] = $routeAttribute?->route ?? '';
             $data['supportsLoadMore'] = true;
         }
         return array_merge($data, get_object_vars($this));

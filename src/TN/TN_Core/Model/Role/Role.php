@@ -23,6 +23,13 @@ abstract class Role
     use \TN\TN_Core\Trait\ExtendedSingletons;
     use ReadOnlyProperties;
 
+    /**
+     * Additional module namespaces to scan for Role subclasses (e.g. app-specific roles).
+     * Set from application bootstrap so Role::getInstances() discovers them.
+     * @var string[]
+     */
+    public static array $additionalExtendedNamespaces = [];
+
     /** @var string the role's key. Used for storage in the DB and reference in $access arrays on routes */
     public string $key;
 
@@ -34,6 +41,12 @@ abstract class Role
 
     /** @var string|null key associated with the role's role-group ?string because Role Groups may or may not have this property */
     public ?string $roleGroup = null;
+
+    /** @return string[] module namespaces to scan for additional Role subclasses */
+    public static function getAdditionalExtendedNamespaces(): array
+    {
+        return self::$additionalExtendedNamespaces;
+    }
 
     /**
      * fires when a role owner is added to this role
