@@ -8,6 +8,7 @@ use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
+use TN\TN_Core\Model\PersistentModel\Search\SearchComparisonOperator;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLimit;
 use TN\TN_Core\Model\PersistentModel\Search\SearchLogical;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
@@ -30,6 +31,30 @@ class UserToken implements Persistence
     public int $expiresTs;
     public ?int $twoFaVerifiedAt = null;
     public ?string $csrfSecret = null;
+
+    /**
+     * Find one valid (non-expired) token for a user, or null if none.
+     *
+     * @param bool $nonTwoFaVerifiedOnly When true, only return tokens where twoFaVerifiedAt IS NULL.
+     */
+    public static function findOneValidForUser(int $userId, bool $nonTwoFaVerifiedOnly = false): ?UserToken
+    {
+        $now = Time::getNow();
+        $conditions = [
+            new SearchComparison('`userId`', '=', $userId),
+            new SearchComparison('`expiresTs`', '>', $now),
+        ];
+        if ($nonTwoFaVerifiedOnly) {
+            $conditions[] = new SearchComparison('`twoFaVerifiedAt`', SearchComparisonOperator::IsNull, null);
+        }
+        $results = self::search(new SearchArguments(
+            conditions: [
+                new SearchLogical('AND', $conditions),
+            ],
+            limit: new SearchLimit(0, 1)
+        ));
+        return $results !== [] ? $results[0] : null;
+    }
 
     /**
      * Find a valid (non-expired) token row by token string.
