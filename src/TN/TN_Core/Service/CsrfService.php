@@ -12,7 +12,8 @@ use TN\TN_Core\Model\User\UserToken;
 
 /**
  * CSRF validation for staff mutations. Staff = routes restricted by a role with requiresTwoFactor.
- * Only POST, PUT, PATCH, DELETE to such routes require a valid X-CSRF-Token (or body field).
+ * CSRF is required only when the auth token was sent via cookie (browser sends it automatically; cross-site risk).
+ * When the token was sent in Authorization header, body, or query, CSRF is skipped (no cross-site vector).
  */
 class CsrfService
 {
@@ -50,6 +51,9 @@ class CsrfService
         }
         $userToken = UserToken::findValidByToken($token);
         if ($userToken === null || !$userToken->isTwoFactorVerified()) {
+            return;
+        }
+        if ($request->getAuthTokenSource() !== 'cookie') {
             return;
         }
         $provided = $request->getCsrfToken();
