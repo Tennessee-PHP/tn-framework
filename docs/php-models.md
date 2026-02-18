@@ -209,6 +209,8 @@ foreach ($conversation->messages as $message) {
 
 ### Updating Existing Models
 
+To change and persist properties, use `$model->update($data)`; avoid calling `save()` with no arguments or manually tracking changed keys (nothing is persisted when `save()` is called with no arguments).
+
 ```php
 // ✅ CORRECT: Update existing model
 $user = User::readFromId($userId);

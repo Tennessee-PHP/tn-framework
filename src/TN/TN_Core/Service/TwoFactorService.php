@@ -112,8 +112,57 @@ class TwoFactorService
     public static function enrolUser(User $user): array
     {
         $data = self::prepareEnrolment($user);
-        $user->totpSecret = $data['secret'];
-        $user->save();
+        $user->update(['totpSecret' => $data['secret']]);
         return $data;
+    }
+
+    /** TTL in seconds for setup token (file-based, for Bearer-only / cross-origin clients that don't send session). */
+    private const SETUP_TOKEN_TTL = 600;
+
+    /**
+     * Store 2FA setup secret by one-time token (for SPA/Bearer clients that don't send session cookie).
+     * Returns the token to return to the client; client sends it back on POST to confirm.
+     */
+    public static function storeSetupPayload(int $userId, string $secret): string
+    {
+        $token = bin2hex(random_bytes(16));
+        $dir = rtrim($_ENV['TN_TMP_ROOT'] ?? '', '/') . '/2fa_setup';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $path = $dir . '/' . $token;
+        $payload = ['userId' => $userId, 'secret' => $secret, 'createdAt' => time()];
+        file_put_contents($path, json_encode($payload), LOCK_EX);
+        return $token;
+    }
+
+    /**
+     * Retrieve and consume 2FA setup payload by token. Returns null if missing or expired.
+     */
+    public static function consumeSetupPayload(string $token): ?array
+    {
+        if ($token === '' || preg_match('/[^a-f0-9]/', $token)) {
+            return null;
+        }
+        $dir = rtrim($_ENV['TN_TMP_ROOT'] ?? '', '/') . '/2fa_setup';
+        $path = $dir . '/' . $token;
+        if (!is_file($path)) {
+            return null;
+        }
+        $age = time() - filemtime($path);
+        if ($age > self::SETUP_TOKEN_TTL) {
+            @unlink($path);
+            return null;
+        }
+        $raw = @file_get_contents($path);
+        @unlink($path);
+        if ($raw === false) {
+            return null;
+        }
+        $payload = json_decode($raw, true);
+        if (!is_array($payload) || !isset($payload['userId'], $payload['secret'])) {
+            return null;
+        }
+        return ['userId' => (int)$payload['userId'], 'secret' => (string)$payload['secret']];
     }
 }

@@ -195,7 +195,8 @@ class HTTPRequest extends Request
     }
 
     /**
-     * Return the auth token from this request (body access_token, query access_token, cookie TN_token, or Bearer header).
+     * Return the auth token from this request (body, query, Bearer header, then cookie).
+     * Header is preferred over cookie when both are present so SPAs sending Bearer are not forced into CSRF.
      * Sets internal authTokenSource for getAuthTokenSource().
      * @return string|null
      */
@@ -211,14 +212,14 @@ class HTTPRequest extends Request
             $this->authTokenSource = 'query';
             return $this->getQuery('access_token');
         }
-        if ($this->getCookie('TN_token') !== null && $this->getCookie('TN_token') !== '') {
-            $this->authTokenSource = 'cookie';
-            return $this->getCookie('TN_token');
-        }
         $authHeader = $this->getServer('HTTP_AUTHORIZATION') ?? $this->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
         if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
             $this->authTokenSource = 'header';
             return trim($m[1]);
+        }
+        if ($this->getCookie('TN_token') !== null && $this->getCookie('TN_token') !== '') {
+            $this->authTokenSource = 'cookie';
+            return $this->getCookie('TN_token');
         }
         return null;
     }

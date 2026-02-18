@@ -293,8 +293,7 @@ abstract class Controller
                 return new HTTPResponse($renderer, 401, $method);
             } catch (AccessTwoFactorRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
-                $pageClass = Stack::resolveClassName(Page::class) ?: Page::class;
-                $renderer = $pageClass::twoFactorRequired();
+                $renderer = $rendererClass::twoFactorRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (AccessUncontrolledException $e) {

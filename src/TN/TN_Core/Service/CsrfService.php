@@ -6,6 +6,7 @@ use ReflectionMethod;
 use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Error\Access\AccessCsrfInvalidException;
+use TN\TN_Core\Error\ForbiddenReason;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\Role\Role;
 use TN\TN_Core\Model\User\UserToken;
@@ -47,6 +48,7 @@ class CsrfService
     {
         $token = $request->getAuthToken();
         if ($token === null || $token === '') {
+            ForbiddenReason::set(['source' => 'CsrfService', 'reason' => 'no_token']);
             throw new AccessCsrfInvalidException();
         }
         $userToken = UserToken::findValidByToken($token);
@@ -58,9 +60,11 @@ class CsrfService
         }
         $provided = $request->getCsrfToken();
         if ($provided === null || $provided === '') {
+            ForbiddenReason::set(['source' => 'CsrfService', 'reason' => 'csrf_missing']);
             throw new AccessCsrfInvalidException();
         }
         if ($userToken->csrfSecret === null || !hash_equals($userToken->csrfSecret, $provided)) {
+            ForbiddenReason::set(['source' => 'CsrfService', 'reason' => 'csrf_invalid']);
             throw new AccessCsrfInvalidException();
         }
     }

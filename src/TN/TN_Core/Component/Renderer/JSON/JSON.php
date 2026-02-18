@@ -43,7 +43,20 @@ class JSON extends Renderer
      */
     public static function forbidden(): Renderer
     {
-        return static::error('forbidden', 403);
+        $data = [
+            'result' => 'error',
+            'message' => 'forbidden',
+        ];
+        if (($_ENV['ENV'] ?? '') === 'development') {
+            $reason = \TN\TN_Core\Error\ForbiddenReason::get();
+            if ($reason !== null) {
+                $data['forbiddenReason'] = $reason;
+            }
+        }
+        return new JSON([
+            'httpResponseCode' => 403,
+            'data' => $data,
+        ]);
     }
 
     /**

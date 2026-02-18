@@ -6,6 +6,8 @@ use TN\TN_Core\Attribute\Route\Access\Restrictions\AnonymousOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\Anyone;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\UsersOnly;
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Attribute\Route\Component;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Component\Renderer\HTML\Redirect;
@@ -62,4 +64,25 @@ class UserController extends Controller
     #[Anyone]
     #[Component(\TN\TN_Core\Component\User\Search::class)]
     public function search(): void {}
+
+    #[Path('auth/two-factor/verify', 'POST')]
+    #[AllowCredentials]
+    #[AllowOrigin]
+    #[UsersOnly]
+    #[Component(\TN\TN_Core\Component\User\TwoFactor\Verify\Verify::class)]
+    public function twoFactorVerify(): void {}
+
+    #[Path('auth/two-factor/setup', 'GET')]
+    #[AllowCredentials]
+    #[AllowOrigin]
+    #[UsersOnly]
+    #[Component(\TN\TN_Core\Component\User\TwoFactor\SetupStart\SetupStart::class)]
+    public function twoFactorSetupStart(): void {}
+
+    #[Path('auth/two-factor/setup', 'POST')]
+    #[AllowCredentials]
+    #[AllowOrigin]
+    #[UsersOnly]
+    #[Component(\TN\TN_Core\Component\User\TwoFactor\SetupConfirm\SetupConfirm::class)]
+    public function twoFactorSetupConfirm(): void {}
 }

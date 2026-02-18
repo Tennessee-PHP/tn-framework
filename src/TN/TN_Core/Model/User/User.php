@@ -363,7 +363,7 @@ class User implements Persistence
         $user->token = $userToken->token;
         self::setUserAsActive($user);
 
-        if ($tokenSource === 'body' || $tokenSource === 'header') {
+        if ($tokenSource === 'body') {
             self::persistSessionAndCookieForUser($user);
         }
     }
