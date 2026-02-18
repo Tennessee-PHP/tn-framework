@@ -135,6 +135,11 @@ class Stream extends Renderer
         return static::error('login required', 401);
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return static::error('two-factor verification required', 403);
+    }
+
     /**
      * @inheritDoc
      */

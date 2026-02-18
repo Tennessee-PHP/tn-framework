@@ -14,12 +14,14 @@ class EditUserTab extends UserProfileTab
 
     public ?User $observer;
     public bool $observerIsSuperUser;
+    public bool $isEditingSelf;
     public array $userInactiveChanges;
 
     public function prepare(): void
     {
         $this->observer = User::getActive();
         $this->observerIsSuperUser = $this->observer->hasRole('super-user') || $this->observer->hasRole('user-admin');
+        $this->isEditingSelf = ($this->user->id === $this->observer->id);
         $this->userInactiveChanges = UserInactiveChange::getUserChanges($this->user);
     }
 }

@@ -53,6 +53,13 @@ class SQLDownload extends Renderer
         ]);
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return new SQLDownload([
+            'text' => 'Two-factor verification required'
+        ]);
+    }
+
     public static function uncontrolled(): Renderer
     {
         return new SQLDownload([

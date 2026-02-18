@@ -58,6 +58,12 @@ abstract class Renderer extends Component
     public abstract static function loginRequired(): Renderer;
 
     /**
+     * two-factor verification is required to access the route (e.g. staff routes)
+     * @return Renderer
+     */
+    public abstract static function twoFactorRequired(): Renderer;
+
+    /**
      * the matched route did not have any restrictions on it (set to Anyone if needed)
      * @return Renderer
      */

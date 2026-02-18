@@ -7,7 +7,9 @@ use Smarty\Smarty;
 use TN\TN_Core\Model\Package\Package;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\Package\Stack;
+use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\User\User;
+use TN\TN_Core\Service\CsrfService;
 
 /**
  * A wrapper for a template engine - just needs to assign data to the template engine and render templates!
@@ -178,6 +180,9 @@ class TemplateEngine extends Smarty
             $data[$env] = $_ENV[$env];
             $data['envList'][$env] = $_ENV[$env];
         }
+
+        $request = HTTPRequest::get();
+        $data['csrfToken'] = $request ? CsrfService::getCsrfSecretForRequest($request) : null;
 
         return $data;
     }

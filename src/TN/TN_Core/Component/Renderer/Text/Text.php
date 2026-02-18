@@ -47,6 +47,14 @@ class Text extends Renderer
         ]);
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return new Text([
+            'httpResponseCode' => 403,
+            'text' => 'Two-factor verification required'
+        ]);
+    }
+
     public static function uncontrolled(): Renderer
     {
         return new Text([

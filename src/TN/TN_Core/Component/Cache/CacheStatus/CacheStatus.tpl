@@ -6,7 +6,10 @@
             <b>Warning!</b> this will temporarily affect site performance.
         </p>
         <p>
-            <a href="{$BASE_URL}staff/storage/cache?clear_cache=true" class="btn btn-danger">Clear The Cache</a>
+            <form action="{path route='TN_Core:Cache:clearCache'}" method="post">
+                {if $csrfToken}<input type="hidden" name="_csrf" value="{$csrfToken|escape:'html'}">{/if}
+                <button type="submit" class="btn btn-danger">Clear The Cache</button>
+            </form>
         </p>
     </div>
 </div>

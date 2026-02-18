@@ -42,6 +42,9 @@ abstract class Role
     /** @var string|null key associated with the role's role-group ?string because Role Groups may or may not have this property */
     public ?string $roleGroup = null;
 
+    /** @var bool if true, routes restricted by this role (or role group) require 2FA-verified token */
+    public bool $requiresTwoFactor = false;
+
     /** @return string[] module namespaces to scan for additional Role subclasses */
     public static function getAdditionalExtendedNamespaces(): array
     {
@@ -85,6 +88,27 @@ abstract class Role
                 $role = Role::getInstanceByKey($role->roleGroup);
             } else {
                 $role = null;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether this role (or any of its ancestor role groups) requires two-factor verification.
+     * Used so routes restricted by a child role (e.g. stats-projector) inherit 2FA from the group (e.g. staffer).
+     */
+    public function getRequiresTwoFactor(): bool
+    {
+        $current = $this;
+        while ($current instanceof Role) {
+            if ($current->requiresTwoFactor) {
+                return true;
+            }
+            if ($current->roleGroup !== null && $current->roleGroup !== '') {
+                $parent = Role::getInstanceByKey($current->roleGroup);
+                $current = ($parent === false || $parent === null) ? null : $parent;
+            } else {
+                break;
             }
         }
         return false;

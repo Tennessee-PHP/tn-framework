@@ -27,6 +27,7 @@ class UserProfile extends HTMLComponent
     #[FromPath] public ?string $site = null;
     public UserProfileTab $tabComponent;
     public bool $canLoginAsUser = false;
+    public bool $isOwnProfile = false;
 
     public function getPageTitle(): string
     {
@@ -54,6 +55,7 @@ class UserProfile extends HTMLComponent
 
         $this->username = $this->user->username;
         $this->canLoginAsUser = User::getActive()->hasRole('super-user') || User::getActive()->hasRole('user-admin');
+        $this->isOwnProfile = User::getActive()->loggedIn && $this->user->id === User::getActive()->id;
 
         $selectedTabClass = null;
         $tabSortOrders = [];

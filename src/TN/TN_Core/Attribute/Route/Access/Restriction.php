@@ -37,6 +37,11 @@ abstract class Restriction
     const int LOGIN_REQUIRED = 4;
 
     /**
+     * the user must complete two-factor verification before accessing this resource
+     */
+    const int TWO_FACTOR_REQUIRED = 5;
+
+    /**
      * given the current user, return the integer access level
      * @param User $user
      * @return int

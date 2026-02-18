@@ -30,12 +30,8 @@ class UserController extends Controller
 
     #[Path('staff/users/user/:userId/login-as-user')]
     #[RoleOnly('super-user')]
-    public function loginAsUser(int $userId): Renderer
-    {
-        $user = UserModel::getActive();
-        $user->loginAs($userId);
-        return Redirect::getInstance(['url' => $_POST['redirect_url'] ?? $_ENV['BASE_URL']]);
-    }
+    #[Component(\TN\TN_Core\Component\User\LoginAsUser\LoginAsUser::class)]
+    public function loginAsUser(): void {}
 
     #[Path('users/list')]
     #[RoleOnly('super-user')]

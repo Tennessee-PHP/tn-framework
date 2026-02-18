@@ -49,6 +49,16 @@ export default class EditUserTabField {
         })
             .then((response: AxiosResponse): void => {
                 if (response.data.result === 'success') {
+                    if (response.data.logoutRequired) {
+                        new SuccessToast('Password updated. You have been logged out. Please sign in with your new password.');
+                        const loginUrl = (typeof TN !== 'undefined' && TN.BASE_URL)
+                            ? TN.BASE_URL + 'auth/login?redirect_url=' + encodeURIComponent(TN.BASE_URL + 'me/profile')
+                            : '/auth/login';
+                        _.delay(() => {
+                            window.location.href = loginUrl;
+                        }, 1500);
+                        return;
+                    }
                     this.$button.find('.bi-check-circle').removeClass('d-none');
                     this.$button.removeClass('btn-outline-primary').addClass('btn-success');
                     this.$form.trigger('success', response.data);

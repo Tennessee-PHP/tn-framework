@@ -70,6 +70,9 @@
             <form id="edit_password_form"
                   action="{path route="TN_Core:User:userProfileEditUserTabSaveField" userId=$user->id}">
                 <div class="form-group mb-3">
+                    {if $isEditingSelf}
+                        <p class="alert alert-info mb-3">Changing your password will log you out on all devices. You'll need to sign in again with your new password.</p>
+                    {/if}
                     {if !$observerIsSuperUser}
                         <label for="field_current_password" class="form-label">Current Password</label>
                         <div class="d-flex mb-2">

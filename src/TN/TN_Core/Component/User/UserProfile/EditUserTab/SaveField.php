@@ -61,10 +61,16 @@ class SaveField extends JSON
             }
         }
 
+        $passwordChangedForSelf = isset($update['password']) && $this->user->id === $this->observer->id;
+
         $this->user->update($update);
+
         $this->data = [
             'result' => 'success',
             'message' => 'User updated'
         ];
+        if ($passwordChangedForSelf) {
+            $this->data['logoutRequired'] = true;
+        }
     }
 }

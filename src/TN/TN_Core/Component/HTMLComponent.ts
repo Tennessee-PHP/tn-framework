@@ -1,5 +1,18 @@
 import $, { Cash } from 'cash-dom';
 import axios, { AxiosError, AxiosResponse } from 'axios';
+
+// Add CSRF token to all mutation requests when the page has a staff csrf-token meta tag
+axios.interceptors.request.use((config) => {
+    const method = (config.method ?? 'get').toLowerCase();
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (token) {
+            config.headers.set('X-CSRF-Token', token);
+        }
+    }
+    return config;
+});
+
 import ComponentFactory from './ComponentFactory';
 import ErrorToast from './Toast/ErrorToast';
 import PageSingleton from '@tn/TN_Core/Component/Renderer/Page/PageSingleton';

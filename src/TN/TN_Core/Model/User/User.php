@@ -13,6 +13,7 @@ use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Subscription\SubscriptionOrganizer;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Billing\Model\VoucherCode;
+use TN\TN_Core\Attribute\Encrypt;
 use TN\TN_Core\Attribute\Constraints\EmailAddress;
 use TN\TN_Core\Attribute\Constraints\OnlyContains;
 use TN\TN_Core\Attribute\Constraints\Strlen;
@@ -73,7 +74,7 @@ class User implements Persistence
     const int IP_LIMIT = 8;
 
     /** @var int how many login attempts are allowed before lock-out */
-    const int LOGIN_ATTEMPTS_ALLOWED = 50;
+    const int LOGIN_ATTEMPTS_ALLOWED = 5;
 
     /** @var int how long to wait when locked out */
     const int LOGIN_ATTEMPT_TIMEOUT = 600;
@@ -92,7 +93,8 @@ class User implements Persistence
     #[EmailAddress] public string $email;
     public string $hash;
     public string $hashMethodKey;
-    public string $token = '';
+    /** Current-session token from user_tokens; not persisted to users table */
+    #[Impersistent] public string $token = '';
     #[Impersistent] protected ?array $roles = null;
 
     /** @var string the user's password - in practice, only ever set in PHP during a registration attempt.
@@ -101,6 +103,9 @@ class User implements Persistence
     #[Impersistent] public string $passwordRepeat;
     public string $last;
     public string $first;
+
+    /** TOTP secret for 2FA (encrypted at rest). Null if user has not enrolled. */
+    #[Encrypt] public ?string $totpSecret = null;
 
     /** methods */
 
@@ -114,15 +119,16 @@ class User implements Persistence
         if (empty($token)) {
             return null;
         }
-        $db = DB::getInstance($_ENV['MYSQL_DB']);
-        $table = self::getTableName();
-        $stmt = $db->prepare("SELECT * FROM {$table} WHERE `token`=? LIMIT 1");
-        $stmt->execute([$token]);
-
-        $stmt->setFetchMode(PDO::FETCH_ASSOC);
-        $res = static::getInstance($stmt->fetch());
-
-        return $res ? $res : null;
+        $userToken = UserToken::findValidByToken($token);
+        if ($userToken === null) {
+            return null;
+        }
+        $user = static::readFromId($userToken->userId);
+        if (!$user instanceof User) {
+            return null;
+        }
+        $user->token = $userToken->token;
+        return $user;
     }
 
     /**
@@ -304,11 +310,16 @@ class User implements Persistence
         if (empty($token)) {
             return;
         }
-        $users = self::searchByProperty('token', $token);
-        if (empty($users)) {
+        $userToken = UserToken::findValidByToken($token);
+        if ($userToken === null) {
             return;
         }
-        self::setUserAsActive($users[0]);
+        $user = static::readFromId($userToken->userId);
+        if (!$user instanceof User) {
+            return;
+        }
+        $user->token = $userToken->token;
+        self::setUserAsActive($user);
     }
 
     /** set the active user */
@@ -323,55 +334,33 @@ class User implements Persistence
 
         if ($request->getSession('TN_LoggedIn_User_Id', null) !== null) {
             $sessionUserId = $request->getSession('TN_LoggedIn_User_Id');
-            $user = static::readFromId($sessionUserId);
+            $user = static::readFromId($sessionUserId, true);
             if ($user instanceof User) {
                 self::setUserAsActive($user);
                 return;
             }
         }
 
-        $token = null;
-        $tokenSource = null;
-
-        $jsonRequestBody = $request->getJSONRequestBody();
-        if ($jsonRequestBody && isset($jsonRequestBody['access_token']) && $jsonRequestBody['access_token'] !== '') {
-            $token = $jsonRequestBody['access_token'];
-            $tokenSource = 'body';
-        }
-        if ($token === null && $request->getQuery('access_token') !== null && $request->getQuery('access_token') !== '') {
-            $token = $request->getQuery('access_token');
-            $tokenSource = 'query';
-        }
-        if ($token === null && $request->getCookie('TN_token') !== null && $request->getCookie('TN_token') !== '') {
-            $token = $request->getCookie('TN_token');
-            $tokenSource = 'cookie';
-        }
-        if ($token === null) {
-            $authHeader = $request->getServer('HTTP_AUTHORIZATION') ?? $request->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
-            if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
-                $token = trim($m[1]);
-                $tokenSource = 'header';
-            }
-        }
-        if (empty($tnTokenCookie)) {
-            $authHeader = $request->getServer('HTTP_AUTHORIZATION') ?? $request->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
-            if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
-                $tnTokenCookie = trim($m[1]);
-            }
-        }
+        $token = $request->getAuthToken();
+        $tokenSource = $request->getAuthTokenSource();
 
         if ($token === null || $token === '') {
             static::setNoActiveUser();
             return;
         }
 
-        $users = self::searchByProperty('token', $token);
-        if (empty($users)) {
+        $userToken = UserToken::findValidByToken($token);
+        if ($userToken === null) {
             static::setNoActiveUser();
             return;
         }
 
-        $user = $users[0];
+        $user = static::readFromId($userToken->userId, true);
+        if (!$user instanceof User) {
+            static::setNoActiveUser();
+            return;
+        }
+        $user->token = $userToken->token;
         self::setUserAsActive($user);
 
         if ($tokenSource === 'body' || $tokenSource === 'header') {
@@ -386,16 +375,27 @@ class User implements Persistence
         $user->logIPLogin();
 
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id');
+        $baseUserId = $user->id;
+        $hasAdminRole = $user->hasRole('super-user') || $user->hasRole('user-admin');
 
-        // do we have a loginAs in play?
-        if (
-            !empty($tnLoginAsUserId) &&
-            ($user->hasRole('super-user') || $user->hasRole('user-admin'))
-        ) {
+        // Resolve impersonation: session first, then TN_LoginAs_token cookie (for requests that don't send session cookie, e.g. GET /)
+        $otherUser = null;
+        if (!empty($tnLoginAsUserId)) {
             $otherUser = static::readFromId((int)$tnLoginAsUserId);
-            if ($otherUser instanceof User) {
-                $user = $otherUser;
+        } else {
+            $loginAsToken = $request->getCookie('TN_LoginAs_token');
+            if ($loginAsToken !== null && $loginAsToken !== '') {
+                $loginAsUserToken = UserToken::findValidByToken($loginAsToken);
+                if ($loginAsUserToken !== null) {
+                    $otherUser = static::readFromId($loginAsUserToken->userId);
+                    if ($otherUser instanceof User) {
+                        $otherUser->token = $loginAsUserToken->token;
+                    }
+                }
             }
+        }
+        if ($otherUser instanceof User && $hasAdminRole) {
+            $user = $otherUser;
         }
 
         self::$activeUser = $user;
@@ -421,33 +421,6 @@ class User implements Persistence
                 'samesite' => 'Lax',
             ]);
         }
-    }
-
-    /**
-     * if a token is not currently set for this user - set it
-     * @throws ValidationException
-     */
-    protected function ensureToken(): void
-    {
-        if (empty($this->token)) {
-            try {
-                $token = $this->generateToken();
-            } catch (RandomException $e) {
-                throw new ValidationException('Could not generate a token');
-            }
-            $this->update([
-                'token' => $token
-            ]);
-        }
-    }
-
-    /**
-     * @return string generates a token
-     * @throws RandomException
-     */
-    private function generateToken(): string
-    {
-        return bin2hex(random_bytes(64));
     }
 
     /**
@@ -483,10 +456,12 @@ class User implements Persistence
     protected function beforeSave(array $changedProperties): array
     {
         if (!isset($this->id) || in_array('password', $changedProperties)) {
+            $isPasswordChange = isset($this->id) && in_array('password', $changedProperties);
             // we need to add the password hash value
             $changedProperties = $this->setPasswordHash();
-            $this->token = $this->generateToken();
-            $changedProperties[] = 'token';
+            if ($isPasswordChange) {
+                UserToken::revokeAllForUser($this->id);
+            }
             if (!isset($this->createdTs)) {
                 $this->createdTs = Time::getNow();
                 $changedProperties[] = 'createdTs';
@@ -533,7 +508,6 @@ class User implements Persistence
             return false;
         }
 
-        $this->ensureToken();
         $this->logIPLogin();
         $this->updateLocked();
 
@@ -618,12 +592,15 @@ class User implements Persistence
      */
     public function doLogin(): void
     {
-        $this->ensureToken();
+        $userToken = UserToken::createForUser($this);
+        $this->token = $userToken->token;
         self::persistSessionAndCookieForUser($this);
 
         // associate this IP login with this user
         $this->logIPLogin();
-        self::setActiveUser();
+        // Use setUserAsActive($this) so the active user keeps this instance (with token). If we
+        // called setActiveUser() it would re-load from session and get a fresh User with no token.
+        self::setUserAsActive($this);
     }
 
     /**
@@ -666,9 +643,9 @@ class User implements Persistence
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id', null);
         if (empty($tnLoginAsUserId)) {
             $request->setSession('TN_LoginAs_User_Id', $otherUserId);
-            $otherUser->ensureToken();
+            $loginAsUserToken = UserToken::createForUser($otherUser);
             if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
-                $request->setCookie('TN_LoginAs_token', $otherUser->token, [
+                $request->setCookie('TN_LoginAs_token', $loginAsUserToken->token, [
                     'expires' => Time::getNow() + self::LOGIN_EXPIRES,
                     'secure' => $_ENV['ENV'] !== 'development',
                     'domain' => $_ENV['COOKIE_DOMAIN'],
@@ -705,7 +682,11 @@ class User implements Persistence
     public function isLoggedInAsOther(): bool
     {
         $request = HTTPRequest::get();
-        return $request->getSession('TN_LoginAs_User_Id', null) !== null;
+        if ($request->getSession('TN_LoginAs_User_Id', null) !== null) {
+            return true;
+        }
+        $loginAsToken = $request->getCookie('TN_LoginAs_token');
+        return $loginAsToken !== null && $loginAsToken !== '';
     }
 
     /** @return string the redis key for the hash to store ip addresses' last access timestamps */
@@ -787,6 +768,30 @@ class User implements Persistence
             ]);
         }
         static::setActiveUser();
+        return true;
+    }
+
+    /**
+     * Revoke all tokens for the given user (e.g. admin revoking for another user).
+     */
+    public static function revokeAllTokensForUser(User $user): void
+    {
+        UserToken::revokeAllForUser($user->id);
+    }
+
+    /**
+     * Revoke all tokens for the currently active user and log out the current request.
+     *
+     * @return bool true if revoke and logout happened, false if no active user
+     */
+    public static function revokeAllTokensForSelf(): bool
+    {
+        $user = static::getActive();
+        if (!$user->loggedIn) {
+            return false;
+        }
+        UserToken::revokeAllForUser($user->id);
+        $user->logout();
         return true;
     }
 
@@ -1147,7 +1152,7 @@ class User implements Persistence
             conditions: new SearchComparison('`username`', 'LIKE', '%' . $term . '%'),
             limit: new SearchLimit(0, 6)
         ));
-        
+
         $results = [];
         foreach ($users as $user) {
             $results[] = $user->username;

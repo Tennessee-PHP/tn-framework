@@ -9,6 +9,7 @@ use TN\TN_Core\Component\Renderer\Text\Text;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Error\Access\AccessForbiddenException;
 use TN\TN_Core\Error\Access\AccessLoginRequiredException;
+use TN\TN_Core\Error\Access\AccessTwoFactorRequiredException;
 use TN\TN_Core\Error\Access\AccessUncontrolledException;
 use TN\TN_Core\Error\Access\UnmatchedException;
 use TN\TN_Core\Model\CORS;
@@ -60,6 +61,11 @@ class HTTPRequest extends Request
      * @var string|null Test request body for functional testing
      */
     private ?string $testRequestBody = null;
+
+    /**
+     * @var string|null Source of auth token when getAuthToken() returned non-null: 'body', 'query', 'cookie', 'header'
+     */
+    private ?string $authTokenSource = null;
 
     /**
      * @var HTTPRequest|null static instance
@@ -188,6 +194,68 @@ class HTTPRequest extends Request
         return $this->session[$key] ?? $default;
     }
 
+    /**
+     * Return the auth token from this request (body access_token, query access_token, cookie TN_token, or Bearer header).
+     * Sets internal authTokenSource for getAuthTokenSource().
+     * @return string|null
+     */
+    public function getAuthToken(): ?string
+    {
+        $this->authTokenSource = null;
+        $jsonRequestBody = $this->getJSONRequestBody();
+        if ($jsonRequestBody && isset($jsonRequestBody['access_token']) && $jsonRequestBody['access_token'] !== '') {
+            $this->authTokenSource = 'body';
+            return $jsonRequestBody['access_token'];
+        }
+        if ($this->getQuery('access_token') !== null && $this->getQuery('access_token') !== '') {
+            $this->authTokenSource = 'query';
+            return $this->getQuery('access_token');
+        }
+        if ($this->getCookie('TN_token') !== null && $this->getCookie('TN_token') !== '') {
+            $this->authTokenSource = 'cookie';
+            return $this->getCookie('TN_token');
+        }
+        $authHeader = $this->getServer('HTTP_AUTHORIZATION') ?? $this->getServer('REDIRECT_HTTP_AUTHORIZATION') ?? '';
+        if (preg_match('/^\s*Bearer\s+(.+)\s*$/i', $authHeader, $m)) {
+            $this->authTokenSource = 'header';
+            return trim($m[1]);
+        }
+        return null;
+    }
+
+    /**
+     * Source of the token returned by getAuthToken(): 'body', 'query', 'cookie', or 'header'. Null if getAuthToken() not yet called or returned null.
+     * @return string|null
+     */
+    public function getAuthTokenSource(): ?string
+    {
+        return $this->authTokenSource;
+    }
+
+    /**
+     * Return the CSRF token from this request: X-CSRF-Token header, then JSON body (csrfToken or _csrf), then POST field.
+     * @return string|null
+     */
+    public function getCsrfToken(): ?string
+    {
+        $header = $this->getServer('HTTP_X_CSRF_TOKEN');
+        if ($header !== null && $header !== '') {
+            return is_string($header) ? trim($header) : (string)$header;
+        }
+        $json = $this->getJSONRequestBody();
+        if ($json !== null) {
+            $v = $json['csrfToken'] ?? $json['_csrf'] ?? null;
+            if ($v !== null && $v !== '') {
+                return is_string($v) ? trim($v) : (string)$v;
+            }
+        }
+        $post = $this->getPost('csrfToken') ?? $this->getPost('_csrf');
+        if ($post !== null && $post !== '') {
+            return is_string($post) ? trim($post) : (string)$post;
+        }
+        return null;
+    }
+
     public function setSession(string $key, mixed $value): void
     {
         if ($value === null) {
@@ -214,15 +282,6 @@ class HTTPRequest extends Request
      */
     public function setAccess(Restriction|array $restrictions): void
     {
-        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'H-setAccess-start',
-            'location' => __FILE__ . ':' . __LINE__,
-            'message' => 'setAccess entered',
-            'data' => ['path' => $this->path, 'method' => $this->method],
-            'timestamp' => time() * 1000
-        ]) . "\n", FILE_APPEND);
         if (!is_array($restrictions)) {
             $restrictions = [$restrictions];
         }
@@ -251,6 +310,8 @@ class HTTPRequest extends Request
                     throw new AccessForbiddenException();
                 case Restriction::LOGIN_REQUIRED:
                     throw new AccessLoginRequiredException();
+                case Restriction::TWO_FACTOR_REQUIRED:
+                    throw new AccessTwoFactorRequiredException();
                 case Restriction::UNMATCHED:
                     throw new UnmatchedException();
                 default:
@@ -273,7 +334,7 @@ class HTTPRequest extends Request
         if ($this->method === 'OPTIONS') {
             CORS::applyCorsHeaders();
             header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin');
+            header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
             header('Access-Control-Max-Age: 86400');
             http_response_code(204);
             return;
@@ -306,15 +367,6 @@ class HTTPRequest extends Request
             }
 
             if (!$response) {
-                file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                    'sessionId' => 'debug-session',
-                    'runId' => 'run1',
-                    'hypothesisId' => 'H-404',
-                    'location' => __FILE__ . ':' . __LINE__,
-                    'message' => 'no controller matched, sending 404',
-                    'data' => ['path' => $this->path, 'method' => $this->method],
-                    'timestamp' => time() * 1000
-                ]) . "\n", FILE_APPEND);
                 $response = new HTTPResponse(
                     new Text(['text' => '404 Not Found']),
                     404
@@ -323,22 +375,6 @@ class HTTPRequest extends Request
 
             $response->respond();
         } catch (\Throwable $e) {
-            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'H-throw',
-                'location' => __FILE__ . ':' . __LINE__,
-                'message' => 'exception before/during respond',
-                'data' => [
-                    'path' => $this->path,
-                    'method' => $this->method,
-                    'exception' => get_class($e),
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ],
-                'timestamp' => time() * 1000
-            ]) . "\n", FILE_APPEND);
             throw $e;
         }
     }

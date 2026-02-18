@@ -16,11 +16,6 @@ class CacheStatus extends HTMLComponent
 
     public function prepare(): void
     {
-        if (isset($_GET['clear_cache'])) {
-            CacheModel::deleteAll();
-        }
-        
         $this->cacheSize = CacheModel::getCacheKeysSize();
-        
     }
 }

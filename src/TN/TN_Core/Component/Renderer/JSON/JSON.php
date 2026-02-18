@@ -56,6 +56,21 @@ class JSON extends Renderer
 
     /**
      * @inheritDoc
+     * For AJAX/API: ask client to open a new window to complete 2FA, then retry.
+     */
+    public static function twoFactorRequired(): Renderer
+    {
+        return new JSON([
+            'httpResponseCode' => 403,
+            'data' => [
+                'requireTwoFactor' => true,
+                'message' => 'This action requires two-factor verification. Please open a new window or tab, sign in there and complete two-factor verification, then return here and try again.'
+            ]
+        ]);
+    }
+
+    /**
+     * @inheritDoc
      */
     public static function uncontrolled(): Renderer
     {
@@ -67,3 +82,4 @@ class JSON extends Renderer
         return static::error('subscription required to access this content', 403);
     }
 }
+

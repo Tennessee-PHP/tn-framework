@@ -12,11 +12,14 @@ use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Attribute\Route\Matcher;
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Core\Component\Renderer\Text\Text;
+use TN\TN_Core\Error\Access\AccessCsrfInvalidException;
 use TN\TN_Core\Error\Access\AccessForbiddenException;
 use TN\TN_Core\Error\Access\AccessLoginRequiredException;
+use TN\TN_Core\Error\Access\AccessTwoFactorRequiredException;
 use TN\TN_Core\Error\Access\AccessUncontrolledException;
 use TN\TN_Core\Error\Access\FullPageRoadblockException;
 use TN\TN_Core\Error\Access\UnmatchedException;
+use TN\TN_Core\Service\CsrfService;
 use TN\TN_Core\Error\LoggedError;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Error\TNException;
@@ -274,38 +277,10 @@ abstract class Controller
 
             self::setCurrentMatchedMethodForCORS($method);
 
-            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'H-controller-match',
-                'location' => __FILE__ . ':' . __LINE__,
-                'message' => 'route matched',
-                'data' => ['path' => $request->path, 'controller' => get_class($this), 'method' => $method->getName()],
-                'timestamp' => time() * 1000
-            ]) . "\n", FILE_APPEND);
-
             $rendererClass = $this->getRendererClassFromMethod($method);
-            file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                'sessionId' => 'debug-session',
-                'runId' => 'run1',
-                'hypothesisId' => 'H-after-renderer-class',
-                'location' => __FILE__ . ':' . __LINE__,
-                'message' => 'getRendererClassFromMethod done',
-                'data' => ['path' => $request->path, 'rendererClass' => $rendererClass],
-                'timestamp' => time() * 1000
-            ]) . "\n", FILE_APPEND);
 
             try {
                 $this->setAccess($request, $method);
-                file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-                    'sessionId' => 'debug-session',
-                    'runId' => 'run1',
-                    'hypothesisId' => 'H-setAccess-done',
-                    'location' => __FILE__ . ':' . __LINE__,
-                    'message' => 'setAccess returned',
-                    'data' => ['path' => $request->path],
-                    'timestamp' => time() * 1000
-                ]) . "\n", FILE_APPEND);
             } catch (AccessForbiddenException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::forbidden();
@@ -316,6 +291,12 @@ abstract class Controller
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 401, $method);
+            } catch (AccessTwoFactorRequiredException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
+                $pageClass = Stack::resolveClassName(Page::class) ?: Page::class;
+                $renderer = $pageClass::twoFactorRequired();
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 403, $method);
             } catch (AccessUncontrolledException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::uncontrolled();
@@ -329,6 +310,17 @@ abstract class Controller
             } catch (UnmatchedException) {
                 self::setCurrentMatchedMethodForCORS(null);
                 continue;
+            }
+
+            if (CsrfService::isStaffMutation($request, $method)) {
+                try {
+                    CsrfService::validateCsrfForRequest($request);
+                } catch (AccessCsrfInvalidException $e) {
+                    self::setCurrentMatchedMethodForCORS(null);
+                    $renderer = $rendererClass::forbidden();
+                    $renderer->prepare();
+                    return new HTTPResponse($renderer, 403, $method);
+                }
             }
 
             try {
@@ -396,15 +388,6 @@ abstract class Controller
 
     private function getResponse(HTTPRequest $request, ReflectionMethod $method, Matcher $matcher): HTTPResponse
     {
-        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'H-getResponse-entry',
-            'location' => __FILE__ . ':' . __LINE__,
-            'message' => 'getResponse entered',
-            'data' => ['path' => $request->path, 'method' => $method->getName()],
-            'timestamp' => time() * 1000
-        ]) . "\n", FILE_APPEND);
         try {
             $args = $this->extractArgs($request, $matcher);
             $argValues = array_values($args);
@@ -518,16 +501,6 @@ abstract class Controller
      */
     private function getRendererClassFromMethod(ReflectionMethod $method): string
     {
-        $path = \TN\TN_Core\Model\Request\HTTPRequest::get()->path ?? '';
-        file_put_contents('/var/www/html/.cursor/debug.log', json_encode([
-            'sessionId' => 'debug-session',
-            'runId' => 'run1',
-            'hypothesisId' => 'H-getRendererClass-entry',
-            'location' => __FILE__ . ':' . __LINE__,
-            'message' => 'getRendererClassFromMethod entered',
-            'data' => ['path' => $path, 'method' => $method->getName()],
-            'timestamp' => time() * 1000
-        ]) . "\n", FILE_APPEND);
         try {
             $routeTypeAttributes = $method->getAttributes(RouteType::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($routeTypeAttributes)) {
@@ -617,6 +590,7 @@ abstract class Controller
                 if (
                     $access === Restriction::FORBIDDEN ||
                     $access === Restriction::LOGIN_REQUIRED ||
+                    $access === Restriction::TWO_FACTOR_REQUIRED ||
                     $access === Restriction::UNMATCHED
                 ) {
                     return false;

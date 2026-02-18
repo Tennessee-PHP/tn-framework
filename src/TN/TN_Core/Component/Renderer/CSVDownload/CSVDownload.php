@@ -53,6 +53,13 @@ class CSVDownload extends Renderer
         ]);
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return new CSVDownload([
+            'text' => 'Two-factor verification required'
+        ]);
+    }
+
     public static function uncontrolled(): Renderer
     {
         return new CSVDownload([

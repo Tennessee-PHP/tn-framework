@@ -63,6 +63,14 @@ class HTML extends Renderer
         ]);
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return Text::getInstance([
+            'httpResponseCode' => 403,
+            'text' => 'Two-factor verification required'
+        ]);
+    }
+
     public static function uncontrolled(): Renderer
     {
         return Text::getInstance([

@@ -53,6 +53,11 @@ class XML extends Renderer
         return static::error('login required');
     }
 
+    public static function twoFactorRequired(): Renderer
+    {
+        return static::error('two-factor verification required', 403);
+    }
+
     /**
      * @inheritDoc
      */

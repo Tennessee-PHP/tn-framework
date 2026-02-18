@@ -17,7 +17,9 @@
         "ext-curl": "*",
         "ext-pdo": "*",
         "guzzlehttp/guzzle": "^7.9.2",
-        "brick/math": "0.12.1"
+        "brick/math": "0.12.1",
+        "pragmarx/google2fa": "^9.0",
+        "bacon/bacon-qr-code": "^3.0"
     },
     "require-dev": {
         "phpunit/phpunit": "10.5.39"

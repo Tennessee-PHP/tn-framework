@@ -14,6 +14,9 @@ use TN\TN_Core\Component\Renderer\Renderer;
 use TN\TN_Core\Component\Renderer\TemplateRender;
 use TN\TN_Core\Component\Title\Title as TitleComponent;
 use TN\TN_Core\Component\User\LoginForm\LoginForm;
+use TN\TN_Core\Component\User\TwoFactorChallenge\TwoFactorChallenge;
+use TN\TN_Core\Model\Request\HTTPRequest;
+use TN\TN_Core\Service\CsrfService;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\PersistentModel\ReadOnlyProperties;
 use TN\TN_Core\Model\User\User;
@@ -103,6 +106,12 @@ class Page extends Renderer
      * The currently selected navigation item key, or null if none selected
      */
     public ?string $selectedNavigation = null;
+
+    /**
+     * CSRF token for staff mutations when the current request has a 2FA-verified token. Null otherwise.
+     * Used in staff layout for meta tag and forms.
+     */
+    public ?string $csrfToken = null;
 
     /**
      * @param string $url adds an externally hosted javascript file to the page
@@ -229,6 +238,8 @@ class Page extends Renderer
         // prepare the component first as it may mutate header/footer
         $this->addResources();
         $this->user = User::getActive();
+
+        $this->csrfToken = CsrfService::getCsrfSecretForRequest(HTTPRequest::get());
 
         if (!$this->user->loggedIn && !($this->component instanceof \TN\TN_Core\Component\User\LoginForm\LoginForm)) {
             $this->loginForm = new LoginForm();
@@ -370,6 +381,15 @@ class Page extends Renderer
             'title' => 'Please Log In',
             'description' => 'An error occurred',
             'component' => new LoginForm()
+        ]);
+    }
+
+    public static function twoFactorRequired(): Renderer
+    {
+        return self::getInstance([
+            'title' => 'Two-Factor Verification Required',
+            'description' => 'Enter your verification code',
+            'component' => new TwoFactorChallenge()
         ]);
     }
 
