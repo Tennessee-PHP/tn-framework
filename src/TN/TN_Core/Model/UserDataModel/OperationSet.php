@@ -83,10 +83,10 @@ class OperationSet
         $modelToClassMap = self::getModelToClassMap($classes ?? []);
         $recordsToReadByClass = [];
 
-        foreach ($operationsData as &$opData) {
+        foreach ($operationsData as $idx => $opData) {
             // Normalize timestamp to seconds if it's in milliseconds
             if (isset($opData['ts']) && strlen((string)$opData['ts']) === 13) {
-                $opData['ts'] = (int)($opData['ts'] / 1000);
+                $operationsData[$idx]['ts'] = (int)($opData['ts'] / 1000);
             }
 
             // try to find the class for this op
@@ -145,7 +145,11 @@ class OperationSet
                     continue;
                 }
                 if (strtolower($opData['type']) === 'update') {
-                    $op = $record->updateUserData(self::getUser(), $opData['ts'], [$opData['field'] => $opData['value']], true, false);
+                    $field = trim((string)($opData['field'] ?? ''));
+                    if ($field === '') {
+                        continue;
+                    }
+                    $op = $record->updateUserData(self::getUser(), $opData['ts'], [$field => $opData['value']], true, false);
                     if ($op) {
                         $ops[] = $op;
                     }

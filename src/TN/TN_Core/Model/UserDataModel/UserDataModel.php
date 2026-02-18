@@ -180,11 +180,12 @@ abstract class UserDataModel implements Persistence
         }
 
         $changedProps = [];
+        $calledClass = get_called_class();
 
         foreach ($data as $prop => $value) {
             if ($prop !== 'id') {
                 try {
-                    $rp = new ReflectionProperty(get_called_class(), $prop);
+                    $rp = new ReflectionProperty($calledClass, $prop);
                     $value = match ($rp->getType()->getName()) {
                         'int' => (int)$value,
                         'float' => (float)$value,
