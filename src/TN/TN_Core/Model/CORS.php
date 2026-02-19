@@ -45,4 +45,20 @@ class CORS
         header("Access-Control-Allow-Origin: $origin");
         header('Access-Control-Allow-Credentials: true');
     }
+
+    /**
+     * Reflect the request Origin in Access-Control-Allow-Origin (for ReflectOrigin routes).
+     * Matches fbg-cloud-server-node behavior: any client origin is echoed back.
+     * When Origin is missing, no CORS headers are set.
+     */
+    public static function applyReflectedOriginHeaders(): void
+    {
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if ($origin === '') {
+            return;
+        }
+
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+    }
 }

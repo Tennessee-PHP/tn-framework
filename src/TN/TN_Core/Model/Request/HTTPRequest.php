@@ -351,7 +351,7 @@ class HTTPRequest extends Request
         $response = null;
 
         if ($this->method === 'OPTIONS') {
-            CORS::applyCorsHeaders();
+            CORS::applyReflectedOriginHeaders();
             header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
             header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
             header('Access-Control-Max-Age: 86400');
