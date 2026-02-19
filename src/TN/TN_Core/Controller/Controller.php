@@ -262,6 +262,7 @@ abstract class Controller
             }
             if (!isset($_SESSION['skip_maintenance'])) {
                 $renderer = Stack::resolveClassName(Page::class)::maintenance();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 503);
             }
         }
