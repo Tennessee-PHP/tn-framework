@@ -34,6 +34,7 @@ use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
 use TN\TN_Core\Attribute\Route\AllowCredentials;
 use TN\TN_Core\Attribute\Route\AllowOrigin;
 use TN\TN_Core\Attribute\Route\RouteType;
+use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Component\Renderer\Page\Page;
 use TN\TN_Core\Model\User\User;
 
@@ -293,7 +294,16 @@ abstract class Controller
                 return new HTTPResponse($renderer, 401, $method);
             } catch (AccessTwoFactorRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
-                $renderer = $rendererClass::twoFactorRequired();
+                // Use resolved Page so apps get their 2FA challenge (e.g. ShowTwoFactorChallenge with setup link)
+                $twoFactorRendererClass = ($rendererClass === Page::class)
+                    ? (Stack::resolveClassName(Page::class) ?: Page::class)
+                    : $rendererClass;
+                $renderer = $twoFactorRendererClass::twoFactorRequired();
+                if ($renderer instanceof JSON) {
+                    $user = User::getActive();
+                    $needsSetup = $user->loggedIn && ($user->totpSecret === null || $user->totpSecret === '');
+                    $renderer->data['data']['needsSetup'] = $needsSetup;
+                }
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (AccessUncontrolledException $e) {

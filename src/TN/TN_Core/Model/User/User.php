@@ -756,6 +756,9 @@ class User implements Persistence
             $this->returnToBaseLogin();
             return true;
         }
+        if ($this->token !== '') {
+            UserToken::revokeByToken($this->token);
+        }
         $request = HTTPRequest::get();
         $request->setSession('TN_LoggedIn_User_Id', null);
         if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {

@@ -12,7 +12,9 @@ use TN\TN_Core\Error\Access\AccessLoginRequiredException;
 use TN\TN_Core\Error\Access\AccessTwoFactorRequiredException;
 use TN\TN_Core\Error\Access\AccessUncontrolledException;
 use TN\TN_Core\Error\Access\UnmatchedException;
+use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Model\CORS;
+use TN\TN_Core\Service\RateLimitService;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\User\User;
@@ -234,6 +236,22 @@ class HTTPRequest extends Request
     }
 
     /**
+     * Client IP for this request: first IP in X-Forwarded-For if present, otherwise REMOTE_ADDR.
+     * @return string
+     */
+    public function getClientIp(): string
+    {
+        $forwarded = $this->getServer('HTTP_X_FORWARDED_FOR');
+        if ($forwarded !== null && $forwarded !== '') {
+            $first = trim(explode(',', (string) $forwarded)[0]);
+            if ($first !== '') {
+                return $first;
+            }
+        }
+        return (string) $this->getServer('REMOTE_ADDR', 'unknown');
+    }
+
+    /**
      * Return the CSRF token from this request: X-CSRF-Token header, then JSON body (csrfToken or _csrf), then POST field.
      * @return string|null
      */
@@ -348,6 +366,18 @@ class HTTPRequest extends Request
             // for these older files, let's reduce the reporting level or we'll just drown in them
             error_reporting(E_ALL & ~E_NOTICE);
             include($_ENV['TN_WEB_ROOT'] . $filename);
+            return;
+        }
+
+        try {
+            RateLimitService::check($this);
+        } catch (RateLimitExceededException $e) {
+            header('Retry-After: ' . (int) $e->retryAfter);
+            $response = new HTTPResponse(
+                new \TN\TN_Core\Component\Renderer\JSON\JSON(['error' => 'rate_limit_exceeded', 'retry_after' => $e->retryAfter]),
+                429
+            );
+            $response->respond();
             return;
         }
 
