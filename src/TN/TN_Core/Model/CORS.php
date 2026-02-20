@@ -10,12 +10,16 @@ class CORS
 {
     /**
      * Parse comma-separated CORS_ALLOWED_ORIGINS from env into an array of trimmed origins.
+     * Checks $_ENV, getenv(), and $_SERVER so it works with .env, shell env, and PHP-FPM/nginx-passed vars.
      *
      * @return list<string>
      */
     public static function getAllowlist(): array
     {
         $raw = $_ENV['CORS_ALLOWED_ORIGINS'] ?? getenv('CORS_ALLOWED_ORIGINS') ?: '';
+        if ($raw === '' && isset($_SERVER['CORS_ALLOWED_ORIGINS'])) {
+            $raw = (string) $_SERVER['CORS_ALLOWED_ORIGINS'];
+        }
         if ($raw === '') {
             return [];
         }
