@@ -21,18 +21,23 @@ class TNException extends \Exception
 
     public function canShowMessage(): bool
     {
-        return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
+        return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development'
+            || !empty($_ENV['EXPOSE_ERROR_MESSAGES']);
     }
 
     public function getDisplayMessage(): string
     {
+        $genericMessage = 'An error has occurred - it has been logged! Please try again later.';
         if ($this->canShowMessage()) {
             $message = $this->getPrevious() ? $this->getPrevious()->getMessage() : $this->message;
+            if (!empty($_ENV['EXPOSE_ERROR_MESSAGES'])) {
+                $message = $genericMessage . PHP_EOL . PHP_EOL . 'Exposed error (EXPOSE_ERROR_MESSAGES is set): ' . PHP_EOL . $message;
+            }
         } else {
-            $message = 'An error has occurred - it has been logged! Please try again later.';
+            $message = $genericMessage;
         }
 
-        if ($this->getUserIsAdmin() || $_ENV['ENV'] === 'development') {
+        if ($this->getUserIsAdmin() || $_ENV['ENV'] === 'development' || !empty($_ENV['EXPOSE_ERROR_MESSAGES'])) {
             $message .= PHP_EOL . PHP_EOL;
             $message .= 'Admin-only viewable error (not visible by regular users): ' . PHP_EOL;
 
