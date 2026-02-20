@@ -112,6 +112,21 @@ class UserToken implements Persistence
     }
 
     /**
+     * Revoke a single token by token string (e.g. on logout). Deletes the row for that token.
+     * No-op if token is empty.
+     */
+    public static function revokeByToken(string $token): void
+    {
+        if ($token === '') {
+            return;
+        }
+        $db = DB::getInstance($_ENV['MYSQL_DB'], true);
+        $table = self::getTableName();
+        $stmt = $db->prepare("DELETE FROM `{$table}` WHERE `token` = ?");
+        $stmt->execute([$token]);
+    }
+
+    /**
      * Revoke all tokens for a user (e.g. on password change). Deletes all rows for that userId.
      */
     public static function revokeAllForUser(int $userId): void

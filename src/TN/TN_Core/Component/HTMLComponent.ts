@@ -264,7 +264,14 @@ abstract class HTMLComponent {
             }
 
             if ($control.data('request-unpack-value-from-json') === 'yes') {
-                const parsedVal = typeof val === 'object' ? val : JSON.parse(val);
+                let parsedVal: object;
+                if (typeof val === 'object') {
+                    parsedVal = val;
+                } else if (typeof val === 'string' && val.trim() === '') {
+                    parsedVal = {};
+                } else {
+                    parsedVal = JSON.parse(val);
+                }
                 _.assign(data, parsedVal);
             } else {
                 // Get timestamp from the control

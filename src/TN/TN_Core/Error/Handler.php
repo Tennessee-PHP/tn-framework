@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Error;
 
 use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Attribute\Route\ReflectOrigin;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Model\CORS;
 use TN\TN_Core\Model\User\User;
@@ -131,7 +132,12 @@ class Handler
         $matchedMethod = Controller::getCurrentMatchedMethodForCORS();
         if ($matchedMethod !== null) {
             foreach ($matchedMethod->getAttributes() as $attribute) {
-                if ($attribute->getName() === AllowOrigin::class) {
+                $name = $attribute->getName();
+                if ($name === ReflectOrigin::class) {
+                    CORS::applyReflectedOriginHeaders();
+                    break;
+                }
+                if ($name === AllowOrigin::class) {
                     CORS::applyCorsHeaders();
                     break;
                 }

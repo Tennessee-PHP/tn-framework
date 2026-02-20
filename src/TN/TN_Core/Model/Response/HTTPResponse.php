@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Model\Response;
 
 use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Attribute\Route\ReflectOrigin;
 use TN\TN_Core\Component\Renderer\Renderer;
 use TN\TN_Core\Model\CORS;
 
@@ -34,19 +35,22 @@ class HTTPResponse extends Response
     {
         http_response_code($this->code);
 
-        $hasAllowOrigin = false;
-        $matchedMethodClass = null;
-        $matchedMethodName = null;
+        $corsApply = null;
         if ($this->matchedMethod) {
-            $matchedMethodClass = $this->matchedMethod->getDeclaringClass()->getName();
-            $matchedMethodName = $this->matchedMethod->getName();
             foreach ($this->matchedMethod->getAttributes() as $attribute) {
-                if ($attribute->getName() === AllowOrigin::class) {
-                    $hasAllowOrigin = true;
+                $name = $attribute->getName();
+                if ($name === ReflectOrigin::class) {
+                    $corsApply = 'reflect';
+                    break;
+                }
+                if ($name === AllowOrigin::class) {
+                    $corsApply = 'allowlist';
                     break;
                 }
             }
-            if ($hasAllowOrigin) {
+            if ($corsApply === 'reflect') {
+                CORS::applyReflectedOriginHeaders();
+            } elseif ($corsApply === 'allowlist') {
                 CORS::applyCorsHeaders();
             }
         }

@@ -33,7 +33,9 @@ use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Route\Access\FullPageRoadblock;
 use TN\TN_Core\Attribute\Route\AllowCredentials;
 use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Attribute\Route\ReflectOrigin;
 use TN\TN_Core\Attribute\Route\RouteType;
+use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Component\Renderer\Page\Page;
 use TN\TN_Core\Model\User\User;
 
@@ -74,7 +76,7 @@ use TN\TN_Core\Model\User\User;
  */
 abstract class Controller
 {
-    /** Stored when a route has matched, so shutdown handler can apply CORS for fatals from the route's #[AllowOrigin]. */
+    /** Stored when a route has matched, so shutdown handler can apply CORS for fatals from the route's #[AllowOrigin] / #[ReflectOrigin]. */
     private static ?\ReflectionMethod $currentMatchedMethodForCORS = null;
 
     public static function setCurrentMatchedMethodForCORS(?\ReflectionMethod $method): void
@@ -260,6 +262,7 @@ abstract class Controller
             }
             if (!isset($_SESSION['skip_maintenance'])) {
                 $renderer = Stack::resolveClassName(Page::class)::maintenance();
+                $renderer->prepare();
                 return new HTTPResponse($renderer, 503);
             }
         }
@@ -293,7 +296,16 @@ abstract class Controller
                 return new HTTPResponse($renderer, 401, $method);
             } catch (AccessTwoFactorRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
-                $renderer = $rendererClass::twoFactorRequired();
+                // Use resolved Page so apps get their 2FA challenge (e.g. ShowTwoFactorChallenge with setup link)
+                $twoFactorRendererClass = ($rendererClass === Page::class)
+                    ? (Stack::resolveClassName(Page::class) ?: Page::class)
+                    : $rendererClass;
+                $renderer = $twoFactorRendererClass::twoFactorRequired();
+                if ($renderer instanceof JSON) {
+                    $user = User::getActive();
+                    $needsSetup = $user->loggedIn && ($user->totpSecret === null || $user->totpSecret === '');
+                    $renderer->data['data']['needsSetup'] = $needsSetup;
+                }
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
             } catch (AccessUncontrolledException $e) {
@@ -435,7 +447,7 @@ abstract class Controller
     }
 
     /**
-     * Add CORS headers for routes with AllowOrigin/AllowCredentials attributes.
+     * Add CORS headers for routes with AllowOrigin/ReflectOrigin/AllowCredentials attributes.
      * Ensures error responses (401, 403, 404, etc.) include CORS headers so
      * cross-origin clients can read the response.
      */
@@ -443,7 +455,12 @@ abstract class Controller
     {
         foreach ($method->getAttributes() as $attribute) {
             $attributeName = $attribute->getName();
-            if ($attributeName === AllowOrigin::class) {
+            if ($attributeName === ReflectOrigin::class) {
+                $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+                if ($origin !== '') {
+                    header("Access-Control-Allow-Origin: $origin");
+                }
+            } elseif ($attributeName === AllowOrigin::class) {
                 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
                 header("Access-Control-Allow-Origin: $origin");
             } elseif ($attributeName === AllowCredentials::class) {
