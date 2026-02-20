@@ -1136,6 +1136,9 @@ class User implements Persistence
     {
         $roles = [];
         foreach ($this->getRoles() as $role) {
+            if (!$role instanceof Role) {
+                continue;
+            }
             if ($role->isInRoleGroup($roleGroupKey)) {
                 $roles[] = $role;
             }
