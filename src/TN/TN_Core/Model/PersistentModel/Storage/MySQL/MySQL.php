@@ -320,6 +320,53 @@ trait MySQL
     }
 
     /**
+     * Run a search that returns distinct rows for the given columns only (no hydration).
+     * Use SearchArguments for conditions, sorters, and limit as usual.
+     *
+     * @param SearchArguments $search
+     * @param string[] $properties Column/property names to SELECT DISTINCT (e.g. ['sport', 'competition', 'season'])
+     * @param bool $absoluteLatest
+     * @return array<int, array<string, mixed>> Rows as associative arrays
+     * @throws DBException
+     */
+    public static function searchDistinctRows(SearchArguments $search, array $properties, bool $absoluteLatest = false): array
+    {
+        if ($properties === []) {
+            return [];
+        }
+        $select = new MySQLSelect(
+            table: self::getTableName(),
+            className: static::class,
+            selectType: MySQLSelectType::Objects,
+            search: $search,
+            sumProperty: null,
+            distinctSelectProperties: $properties
+        );
+
+        try {
+            $event = self::startPerformanceEvent('MySQL', $select->query, ['params' => $select->params]);
+
+            if (MYSQL_DEBUG_MODE) {
+                echo $select->query . PHP_EOL;
+            }
+
+            $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
+            $stmt = $db->prepare($select->query);
+
+            if (!$stmt->execute($select->params)) {
+                throw new DBException('Failed to execute search distinct query');
+            }
+
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $event?->end();
+        } catch (\PDOException $e) {
+            throw new DBException($e->getMessage());
+        }
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
      * eradicate this object
      * @throws DBException
      */

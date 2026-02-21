@@ -21,9 +21,7 @@ class TNException extends \Exception
 
     public function canShowMessage(): bool
     {
-        // TEMPORARY: always show errors for login debugging - revert after
-        return true;
-        // return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
+        return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
     }
 
     public function getDisplayMessage(): string
@@ -35,10 +33,7 @@ class TNException extends \Exception
             $message = $genericMessage;
         }
 
-        // TEMPORARY: always show full error + stack for login debugging - revert after
-        $showFullError = true;
-        // $showFullError = $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
-        if ($showFullError) {
+        if ($this->getUserIsAdmin() || $_ENV['ENV'] === 'development') {
             $message .= PHP_EOL . PHP_EOL;
             $message .= 'Admin-only viewable error (not visible by regular users): ' . PHP_EOL;
 
