@@ -80,6 +80,54 @@ export default class EditAdvert extends HTMLComponent {
             // @ts-ignore
             images_upload_url: TN.BASE_URL + 'staff/upload-image',
             images_upload_credentials: true,
+            images_upload_handler: (blobInfo: any, progress: (percent: number) => void): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', TN.BASE_URL + 'staff/upload-image');
+                    xhr.withCredentials = true;
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    if (csrfToken) {
+                        xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+                    }
+
+                    xhr.upload.onprogress = (event: ProgressEvent<EventTarget>) => {
+                        if (event.lengthComputable) {
+                            progress((event.loaded / event.total) * 100);
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status < 200 || xhr.status >= 300) {
+                            reject('Image upload failed with HTTP status ' + xhr.status);
+                            return;
+                        }
+
+                        let response: any;
+                        try {
+                            response = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            reject('Image upload failed: invalid server response');
+                            return;
+                        }
+
+                        if (!response || typeof response.location !== 'string') {
+                            reject('Image upload failed: missing image location');
+                            return;
+                        }
+
+                        resolve(response.location);
+                    };
+
+                    xhr.onerror = () => {
+                        reject('Image upload failed due to a network error');
+                    };
+
+                    const formData = new FormData();
+                    formData.append('file', blobInfo.blob(), blobInfo.filename());
+                    xhr.send(formData);
+                });
+            },
             automatic_uploads: true,
             toolbar_sticky: true,
             init_instance_callback: this.observeTinyMce.bind(this),
