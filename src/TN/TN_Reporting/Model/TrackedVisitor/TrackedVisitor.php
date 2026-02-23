@@ -141,7 +141,7 @@ class TrackedVisitor implements Persistence
         // set it!
         $request->setCookie('TN_tvid', $this->uuId, [
             'expires' => Time::getNow() + self::SESSION_EXPIRES,
-            'secure' => $_ENV['ENV'] === 'development',
+            'secure' => $_ENV['ENV'] !== 'development',
             'domain' => $_ENV['COOKIE_DOMAIN'],
             'path' => '/'
         ]);
