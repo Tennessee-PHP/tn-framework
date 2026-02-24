@@ -182,7 +182,12 @@ class AnalyticsDataSeries extends DataSeries
                 $filterKey = $filter . 'Key';
             }
             if ($filterKey !== $this->breakdown) {
-                $conditions[] = new SearchComparison("`{$filterKey}`", '=', $this->filters[$filterKey] ?? '');
+                $filterValue = $this->filters[$filterKey] ?? '';
+                // When "All" is selected (empty value), skip this filter so we include all rows.
+                // Otherwise e.g. campaignId = '' becomes campaign_id = 0 in MySQL and matches nothing.
+                if ($filterValue !== '' && $filterValue !== null) {
+                    $conditions[] = new SearchComparison("`{$filterKey}`", '=', $filterValue);
+                }
             }
         }
         return $this->dayReportClass::search(new SearchArguments($conditions));

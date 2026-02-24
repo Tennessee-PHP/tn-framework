@@ -53,24 +53,38 @@ class DataSeriesChart extends HTMLComponent
             $labels[] = $entry->getDisplayValue($labelColumn);
             unset($item);
             foreach ($data as &$item) {
-                $item['data'][] = $entry->getValue($item['column']);
+                $value = $entry->getValue($item['column']);
+                $item['data'][] = is_numeric($value) ? (float)$value : 0.0;
             }
         }
 
+        $filteredData = [];
         unset($item);
         foreach ($data as &$item) {
+            $hasNonZeroValue = false;
+            foreach ($item['data'] as $value) {
+                if ((float)$value !== 0.0) {
+                    $hasNonZeroValue = true;
+                    break;
+                }
+            }
+            if (!$hasNonZeroValue) {
+                continue;
+            }
+
             unset($item['column']);
             $item['borderWidth'] = 1;
             if ($this->chartType == 'bar' && $this->stackBars) {
                 $item['stack'] = 'main';
             }
+            $filteredData[] = $item;
         }
 
         $this->config = json_encode([
             'type' => $this->chartType,
             'data' => [
                 'labels' => $labels,
-                'datasets' => $data
+                'datasets' => $filteredData
             ],
             'options' => [
                 'scales' => [

@@ -15,9 +15,13 @@ use TN\TN_Core\Component\Input\Select\ProductTypeSelect\RefundReasonSelect;
 use TN\TN_Core\Component\Input\Select\TimeCompareSelect\TimeCompareSelect;
 use TN\TN_Core\Component\Input\Select\TimeUnitSelect\TimeUnitSelect;
 use TN\TN_Core\Model\DataSeries\DataSeries;
+use TN\TN_Core\Model\DataSeries\DataSeriesColumn;
+use TN\TN_Core\Model\DataSeries\DataSeriesEntry;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Reporting\Component\Analytics\Dashboard\DashboardComponent;
+use TN\TN_Reporting\Model\Analytics\Campaign\CampaignDailyEntry;
 use TN\TN_Reporting\Model\Analytics\DataSeries\AnalyticsDataSeries;
+use TN\TN_Reporting\Model\Campaign\Campaign;
 
 class TypeReport extends DashboardComponent
 {
@@ -84,16 +88,12 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'gatewayKey';
-                $this->filterSelects['gateway']->selected = '';
+                $this->filterSelects['gateway']->selected = $this->filterSelects['gateway']->options[0];
                 break;
 
             case 'campaign':
-                if (!in_array('campaign', $this->analyticsEntryClassName::$filters)) {
-                    $this->breakdown = null;
-                    break;
-                }
-                $this->breakdown = 'campaignId';
-                $this->filterSelects['campaign']->selected = '';
+                // Campaign breakdown is intentionally disabled.
+                $this->breakdown = null;
                 break;
 
             case 'plan':
@@ -102,7 +102,7 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'planKey';
-                $this->filterSelects['plan']->selected = '';
+                $this->filterSelects['plan']->selected = $this->filterSelects['plan']->options[0];
                 break;
 
             case 'billingcycle':
@@ -111,7 +111,7 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'billingCycleKey';
-                $this->filterSelects['billingCycle']->selected = '';
+                $this->filterSelects['billingCycle']->selected = $this->filterSelects['billingCycle']->options[0];
                 break;
             case 'producttype':
                 if (!in_array('productType', $this->analyticsEntryClassName::$filters)) {
@@ -119,7 +119,7 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'productTypeKey';
-                $this->filterSelects['productType']->selected = '';
+                $this->filterSelects['productType']->selected = $this->filterSelects['productType']->options[0];
                 break;
             case 'refundreason':
                 if (!in_array('refundReason', $this->analyticsEntryClassName::$filters)) {
@@ -127,7 +127,7 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'refundReasonKey';
-                $this->filterSelects['refundReason']->selected = '';
+                $this->filterSelects['refundReason']->selected = $this->filterSelects['refundReason']->options[0];
                 break;
             case 'endedreason':
                 if (!in_array('endedReason', $this->analyticsEntryClassName::$filters)) {
@@ -135,7 +135,7 @@ class TypeReport extends DashboardComponent
                     break;
                 }
                 $this->breakdown = 'endedReasonKey';
-                $this->filterSelects['endedReason']->selected = '';
+                $this->filterSelects['endedReason']->selected = $this->filterSelects['endedReason']->options[0];
                 break;
         };
 
@@ -163,10 +163,11 @@ class TypeReport extends DashboardComponent
     {
         $filters = [];
         foreach ($this->filterSelects as $filter => $select) {
+            $key = is_object($select->selected) ? $select->selected->key : '';
             if ($filter === 'campaign') {
-                $filters['campaignId'] = $select->selected->key;
+                $filters['campaignId'] = $key;
             } else {
-                $filters[$filter . 'Key'] = $select->selected->key;
+                $filters[$filter . 'Key'] = $key;
             }
         }
 
@@ -209,8 +210,84 @@ class TypeReport extends DashboardComponent
      */
     protected function prepareTable(): void
     {
-        $this->table = new DataSeriesTable($this->dataSeries);
+        if ($this->analyticsEntryClassName === CampaignDailyEntry::class) {
+            $this->table = new DataSeriesTable($this->getCampaignTableDataSeries());
+        } else {
+            $this->table = new DataSeriesTable($this->dataSeries);
+        }
         $this->table->prepare();
+    }
+
+    /**
+     * Build a campaign-focused table for each time unit, showing only campaigns
+     * with non-zero values in that period.
+     */
+    protected function getCampaignTableDataSeries(): DataSeries
+    {
+        $columns = [
+            new DataSeriesColumn('date', 'Date'),
+            new DataSeriesColumn('campaign', 'Campaign'),
+            new DataSeriesColumn('revenue', 'Revenue', ['prefix' => '$', 'decimals' => 2, 'emphasize' => true]),
+            new DataSeriesColumn('subscriptions', 'Subscriptions', ['decimals' => 0]),
+        ];
+
+        $entries = [];
+        $campaignNameById = [];
+        foreach ($this->dataSeries->entries as $timeEntry) {
+            if (!property_exists($timeEntry, 'dayReports') || !is_array($timeEntry->dayReports)) {
+                continue;
+            }
+
+            $campaignTotals = [];
+            $totalRevenue = 0.0;
+            $totalSubscriptions = 0;
+            foreach ($timeEntry->dayReports as $dayReport) {
+                $campaignId = (int)($dayReport->campaignId ?? 0);
+                if ($campaignId <= 0) {
+                    continue;
+                }
+                $revenue = (float)($dayReport->revenue ?? 0);
+                $subscriptions = (int)($dayReport->subscriptions ?? 0);
+                $totalRevenue += $revenue;
+                $totalSubscriptions += $subscriptions;
+                if (!isset($campaignTotals[$campaignId])) {
+                    if (!isset($campaignNameById[$campaignId])) {
+                        $campaign = Campaign::readFromId($campaignId);
+                        $campaignNameById[$campaignId] = $campaign ? $campaign->key : (string)$campaignId;
+                    }
+                    $campaignTotals[$campaignId] = [
+                        'campaign' => $campaignNameById[$campaignId],
+                        'revenue' => 0.0,
+                        'subscriptions' => 0,
+                    ];
+                }
+                $campaignTotals[$campaignId]['revenue'] += $revenue;
+                $campaignTotals[$campaignId]['subscriptions'] += $subscriptions;
+            }
+
+            foreach ($campaignTotals as $totals) {
+                if ($totals['revenue'] <= 0.0 && $totals['subscriptions'] <= 0) {
+                    continue;
+                }
+                $entry = new DataSeriesEntry();
+                $entry->addValue('date', $timeEntry->values['date'] ?? '');
+                $entry->addValue('campaign', $totals['campaign']);
+                $entry->addValue('revenue', $totals['revenue']);
+                $entry->addValue('subscriptions', $totals['subscriptions']);
+                $entries[] = $entry;
+            }
+
+            if ($totalRevenue > 0.0 || $totalSubscriptions > 0) {
+                $totalEntry = new DataSeriesEntry();
+                $totalEntry->addValue('date', $timeEntry->values['date'] ?? '');
+                $totalEntry->addValue('campaign', 'All Campaigns');
+                $totalEntry->addValue('revenue', $totalRevenue);
+                $totalEntry->addValue('subscriptions', $totalSubscriptions);
+                $entries[] = $totalEntry;
+            }
+        }
+
+        return new DataSeries($columns, $entries);
     }
 
     /**

@@ -55,14 +55,16 @@
                             {/if}
                         </label>
                         {$select->render()}
-                        <div class="form-check mt-1">
-                            <input type="radio" name="breakdown" class="form-check-input"
-                                   id="breakdown_{$select->requestKey}"
-                                   value="{$select->requestKey}"
-                                   {if $select->requestKey|cat:'key' === $breakdown|lower || $select->requestKey|cat:'id' === $breakdown|lower}checked{/if}/>
-                            <label for="breakdown_{$select->requestKey}"
-                                   class="form-check-label"><small>Breakdown</small></label>
-                        </div>
+                        {if $select->requestKey !== 'campaign'}
+                            <div class="form-check mt-1">
+                                <input type="radio" name="breakdown" class="form-check-input"
+                                       id="breakdown_{$select->requestKey}"
+                                       value="{$select->requestKey}"
+                                       {if $select->requestKey|cat:'key' === $breakdown|lower || $select->requestKey|cat:'id' === $breakdown|lower}checked{/if}/>
+                                <label for="breakdown_{$select->requestKey}"
+                                       class="form-check-label"><small>Breakdown</small></label>
+                            </div>
+                        {/if}
                     </div>
                 {/foreach}
 
