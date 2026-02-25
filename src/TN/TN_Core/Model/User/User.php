@@ -717,36 +717,7 @@ class User implements Persistence
      */
     protected function updateLocked(): void
     {
-        $client = Redis::getInstance();
-        $ipLogins = $client->hgetall($this->getIPHashKey());
-        if (!is_array($ipLogins)) {
-            $ipLogins = [];
-        }
-        $threshold = Time::getNow() - self::IP_TIMEFRAME;
-        $ipCount = 0;
-        foreach ($ipLogins as $ip => $ts) {
-            if ($ts > $threshold) {
-                $ipCount += 1;
-            }
-        }
-        $locked = ($ipCount > self::IP_LIMIT);
-        if ($locked !== $this->locked) {
-            $this->update([
-                'locked' => $locked
-            ]);
-            if ($locked) {
-                Email::sendFromTemplate(
-                    //                    'Locked Account for ' . $_ENV['SITE_NAME'],
-                    'user/locked',
-                    $this->email,
-                    [
-                        'username' => $this->username,
-                        'ipLimit' => self::IP_LIMIT,
-                        'hours' => ceil(self::IP_TIMEFRAME) / 3600
-                    ]
-                );
-            }
-        }
+        // Intentionally disabled: no automatic account locking based on IP activity.
     }
 
     /** @return bool logs the user out */
