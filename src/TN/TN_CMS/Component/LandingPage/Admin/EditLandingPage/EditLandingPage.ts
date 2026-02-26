@@ -132,6 +132,10 @@ export default class EditLandingPage extends HTMLComponent {
         this.$landingPageTitleEditor.on('change', this.onChange.bind(this));
 
         this.$tagEditor.on('change', (e: Event, tags: string[]) => {
+            this.onUnsavedChange();
+            if (this.landingPageId === 'new') {
+                return;
+            }
             this.onChange(e, { tags: this.$tagEditor.data('tags') });
         });
     }

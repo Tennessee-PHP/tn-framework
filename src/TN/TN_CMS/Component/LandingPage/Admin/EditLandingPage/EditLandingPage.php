@@ -75,9 +75,7 @@ class EditLandingPage extends HTMLComponent
         foreach ($data as $property => $value) {
             switch ($property) {
                 case 'tags':
-                    if (!isset($this->landingPage->id)) {
-                        $edits['title'] = $this->landingPage->title; // force a save to make sure we have an ID
-                    }
+                    // Tags are handled after content save once we have a real landing page ID.
                     break;
                 case 'title':
                     $edits['title'] = $value;
@@ -115,8 +113,20 @@ class EditLandingPage extends HTMLComponent
         }
 
         if (isset($data['tags'])) {
-            $this->tagEditor->contentId = $this->landingPage->id;
-            $this->tagEditor->updateTags(json_decode($data['tags'], true));
+            // New landing pages may receive a tags-only autosave before first save.
+            // Skip tag persistence until a real landing page ID exists.
+            $landingPageId = isset($this->landingPage->id) ? (int)$this->landingPage->id : 0;
+            if ($landingPageId <= 0) {
+                return;
+            }
+
+            $tagData = is_string($data['tags']) ? json_decode($data['tags'], true) : $data['tags'];
+            if (!is_array($tagData)) {
+                $tagData = [];
+            }
+
+            $this->tagEditor->contentId = $landingPageId;
+            $this->tagEditor->updateTags($tagData);
         }
     }
 }
