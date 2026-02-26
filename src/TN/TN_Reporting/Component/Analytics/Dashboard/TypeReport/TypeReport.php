@@ -265,6 +265,10 @@ class TypeReport extends DashboardComponent
                 $campaignTotals[$campaignId]['subscriptions'] += $subscriptions;
             }
 
+            uasort($campaignTotals, static function (array $campaignA, array $campaignB): int {
+                return $campaignB['revenue'] <=> $campaignA['revenue'];
+            });
+
             foreach ($campaignTotals as $totals) {
                 if ($totals['revenue'] <= 0.0 && $totals['subscriptions'] <= 0) {
                     continue;
