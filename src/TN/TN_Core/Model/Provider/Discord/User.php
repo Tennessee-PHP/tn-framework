@@ -26,13 +26,19 @@ class User extends ThirdPartyUser
     /** @var string discord refresh token */
     public string $refreshToken;
 
-    public static function getOAuthProvider(): DiscordProvider
+    public static function getOAuthProvider(?string $redirectUri = null): DiscordProvider
     {
         return new DiscordProvider([
             'clientId' => $_ENV['DISCORD_APPLICATION_ID'],
             'clientSecret' => $_ENV['DISCORD_OAUTH_SECRET'],
-            'redirectUri' => $_ENV['BASE_URL'] . 'me/profile/connected-accounts/discord'
+            'redirectUri' => $redirectUri ?? ($_ENV['BASE_URL'] . 'me/profile/connected-accounts/discord')
         ]);
+    }
+
+    public static function getFromDiscordUserId(int|string $discordUserId, bool $useWriteUser = false): ?User
+    {
+        $results = self::searchByProperty('discordUserId', (int) $discordUserId, $useWriteUser);
+        return empty($results) ? null : $results[0];
     }
 
     /** @return void redirect the user to the oauth2 login */
@@ -60,6 +66,7 @@ class User extends ThirdPartyUser
         ]);
 
         $discordUser = $provider->getResourceOwner($token);
+        $discordUserData = method_exists($discordUser, 'toArray') ? (array) $discordUser->toArray() : [];
         $user = self::getInstance();
         $user->update([
             'oAuthToken' => $token->getToken(),
@@ -67,7 +74,7 @@ class User extends ThirdPartyUser
             'refreshToken' => $token->getRefreshToken(),
             'tnUserId' => $tnUser->id,
             'discordUserId' => $discordUser->getId(),
-            'username' => $discordUser->getUsername()
+            'username' => (string) ($discordUserData['username'] ?? '')
         ]);
         $user->onCreate();
         return $user;
