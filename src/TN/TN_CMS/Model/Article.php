@@ -223,19 +223,51 @@ class Article extends Content implements Persistence
             array_multisort($sortFactors, SORT_DESC, $timestamps, SORT_DESC, $ids);
         }
 
+        $pageIds = [];
         foreach ($ids as $i => $id) {
             if ($sortProperty === null && $i < $start) {
                 continue;
             }
-            $article = static::readFromId($id);
-            // Populate numTags field for the article list
-            if ($article) {
-                $article->numTags = count(TaggedContent::getFromContentItem(get_class($article), $article->id));
-            }
-            $articles[] = $article;
-            if (count($articles) >= $num) {
+            $pageIds[] = $id;
+            if (count($pageIds) >= $num) {
                 break;
             }
+        }
+
+        if (empty($pageIds)) {
+            return [];
+        }
+
+        $articlesById = static::readFromIds($pageIds);
+
+        $tagCountsByContentId = [];
+        $taggedContents = TaggedContent::search(new SearchArguments([
+            new SearchComparison('`contentClass`', '=', get_called_class()),
+            new SearchComparison('`contentId`', 'IN', $pageIds)
+        ]));
+        foreach ($taggedContents as $taggedContent) {
+            $contentId = (string)$taggedContent->contentId;
+            if (!isset($tagCountsByContentId[$contentId])) {
+                $tagCountsByContentId[$contentId] = 0;
+            }
+            $tagCountsByContentId[$contentId]++;
+        }
+
+        $authorIds = [];
+        foreach ($articlesById as $article) {
+            if ($article instanceof self && $article->authorId > 0) {
+                $authorIds[] = $article->authorId;
+            }
+        }
+        $authorsById = empty($authorIds) ? [] : User::readFromIds($authorIds);
+
+        foreach ($pageIds as $id) {
+            $article = $articlesById[$id] ?? null;
+            if ($article) {
+                $article->numTags = $tagCountsByContentId[(string)$article->id] ?? 0;
+                $article->author = $authorsById[$article->authorId] ?? null;
+            }
+            $articles[] = $article;
         }
 
         return $articles;
