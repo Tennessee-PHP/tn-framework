@@ -7,6 +7,7 @@ use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Model\User\UserToken;
+use TN\TN_Core\Service\RefreshTokenService;
 use TN\TN_Core\Service\TwoFactorService;
 
 /**
@@ -53,6 +54,7 @@ class Verify extends JSON
         if (!TwoFactorService::verifyAndUpgradeToken($userForVerify, $userToken, $code)) {
             throw new ValidationException('Invalid or expired code');
         }
+        RefreshTokenService::syncTwoFactorTrustFromAccessToken($userToken);
 
         $this->data = [
             'result' => 'success',

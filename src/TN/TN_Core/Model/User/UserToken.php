@@ -82,19 +82,27 @@ class UserToken implements Persistence
      *
      * @throws RandomException
      */
-    public static function createForUser(User $user): UserToken
+    public static function createForUser(
+        User $user,
+        ?int $twoFaVerifiedAt = null,
+        ?string $csrfSecret = null
+    ): UserToken
     {
         $now = Time::getNow();
         $expiresTs = $now + User::LOGIN_EXPIRES;
         $tokenString = bin2hex(random_bytes(64));
+        $validTwoFaTs = null;
+        if ($twoFaVerifiedAt !== null && ($twoFaVerifiedAt + Time::ONE_MONTH) > $now) {
+            $validTwoFaTs = $twoFaVerifiedAt;
+        }
 
         $ut = self::getInstance();
         $ut->userId = $user->id;
         $ut->token = $tokenString;
         $ut->createdTs = $now;
         $ut->expiresTs = $expiresTs;
-        $ut->twoFaVerifiedAt = null;
-        $ut->csrfSecret = null;
+        $ut->twoFaVerifiedAt = $validTwoFaTs;
+        $ut->csrfSecret = $validTwoFaTs !== null ? $csrfSecret : null;
         $ut->save();
 
         return $ut;

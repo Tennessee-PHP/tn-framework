@@ -47,6 +47,7 @@ use TN\TN_Core\Model\Storage\Redis;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Attribute\Cache;
 use TN\TN_Core\Error\CodeException;
+use TN\TN_Core\Model\User\UserRefreshToken;
 
 /**
  * a user of the website
@@ -411,7 +412,8 @@ class User implements Persistence
     {
         $request = HTTPRequest::get();
         $request->setSession('TN_LoggedIn_User_Id', $user->id);
-        if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
+        $disableLegacyTokenCookie = trim((string) ($_ENV['AUTH_DISABLE_LEGACY_TOKEN_COOKIE'] ?? '0')) === '1';
+        if ((!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) && !$disableLegacyTokenCookie) {
             $request->setCookie('TN_token', $user->token, [
                 'expires' => Time::getNow() + self::LOGIN_EXPIRES,
                 'secure' => $_ENV['ENV'] !== 'development',
@@ -461,6 +463,7 @@ class User implements Persistence
             $changedProperties = $this->setPasswordHash();
             if ($isPasswordChange) {
                 UserToken::revokeAllForUser($this->id);
+                UserRefreshToken::revokeAllForUser($this->id);
             }
             if (!isset($this->createdTs)) {
                 $this->createdTs = Time::getNow();
@@ -522,7 +525,7 @@ class User implements Persistence
      * @throws RandomException
      * @throws ValidationException
      */
-    public static function attemptLogin(string $login, string $password): bool
+    public static function attemptLogin(string $login, string $password, bool $persistSessionAndCookie = true): bool
     {
         $ip = IP::getInstance();
         $event = self::class . ':attempt-login';
@@ -538,7 +541,7 @@ class User implements Persistence
             } else if ($user->locked) {
                 throw new LoginException(LoginErrorMessage::Locked);
             } else {
-                $user->login($password);
+                $user->login($password, $persistSessionAndCookie);
                 return true;
             }
         } else {
@@ -554,12 +557,12 @@ class User implements Persistence
      * @throws RandomException
      * @throws ValidationException
      */
-    public function login(string $password): bool
+    public function login(string $password, bool $persistSessionAndCookie = true): bool
     {
         if (!$this->verifyPassword($password)) {
             return false;
         }
-        $this->doLogin();
+        $this->doLogin($persistSessionAndCookie);
         return true;
     }
 
@@ -590,17 +593,38 @@ class User implements Persistence
      * @throws RandomException
      * @throws ValidationException
      */
-    public function doLogin(): void
+    public function doLogin(bool $persistSessionAndCookie = true): void
     {
-        $userToken = UserToken::createForUser($this);
-        $this->token = $userToken->token;
-        self::persistSessionAndCookieForUser($this);
+        $this->issueAccessToken(false);
+        if ($persistSessionAndCookie) {
+            self::persistSessionAndCookieForUser($this);
+        }
 
         // associate this IP login with this user
         $this->logIPLogin();
         // Use setUserAsActive($this) so the active user keeps this instance (with token). If we
         // called setActiveUser() it would re-load from session and get a fresh User with no token.
         self::setUserAsActive($this);
+    }
+
+    /**
+     * Create and attach a fresh access token to this user.
+     *
+     * @throws RandomException
+     * @throws ValidationException
+     */
+    public function issueAccessToken(
+        bool $setActiveUser = false,
+        ?int $twoFaVerifiedAt = null,
+        ?string $csrfSecret = null
+    ): string
+    {
+        $userToken = UserToken::createForUser($this, $twoFaVerifiedAt, $csrfSecret);
+        $this->token = $userToken->token;
+        if ($setActiveUser) {
+            self::setUserAsActive($this);
+        }
+        return $this->token;
     }
 
     /**
@@ -751,6 +775,7 @@ class User implements Persistence
     public static function revokeAllTokensForUser(User $user): void
     {
         UserToken::revokeAllForUser($user->id);
+        UserRefreshToken::revokeAllForUser($user->id);
     }
 
     /**
