@@ -8,6 +8,7 @@ use TN\TN_Core\Attribute\Constraints\NumberRange;
 use TN\TN_Core\Attribute\Constraints\Strlen;
 use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\AutoIncrement;
+use TN\TN_Core\Attribute\MySQL\ColumnType;
 use TN\TN_Core\Attribute\MySQL\ForeignKey;
 use TN\TN_Core\Attribute\MySQL\Index;
 use TN\TN_Core\Attribute\MySQL\PrimaryKey;
@@ -658,13 +659,19 @@ trait MySQL
             $type = 'decimal';
             $typeOptions = '11, 2';
         } else if ($typeName === 'string') {
-            $strlenAttributes = $property->getAttributes(Strlen::class);
-            if (count($strlenAttributes) > 0) {
-                $constraintInstance = $strlenAttributes[0]->newInstance();
-                $type = 'varchar';
-                $typeOptions = $constraintInstance->max;
+            $columnTypeAttributes = $property->getAttributes(ColumnType::class);
+            if (count($columnTypeAttributes) > 0) {
+                $type = $columnTypeAttributes[0]->newInstance()->type;
+                $typeOptions = '';
             } else {
-                $type = 'text';
+                $strlenAttributes = $property->getAttributes(Strlen::class);
+                if (count($strlenAttributes) > 0) {
+                    $constraintInstance = $strlenAttributes[0]->newInstance();
+                    $type = 'varchar';
+                    $typeOptions = $constraintInstance->max;
+                } else {
+                    $type = 'text';
+                }
             }
         } else if (strtolower($typeName) === 'datetime') {
             $type = 'datetime';

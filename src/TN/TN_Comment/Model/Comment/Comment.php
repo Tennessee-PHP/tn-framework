@@ -3,6 +3,7 @@
 namespace TN\TN_Comment\Model\Comment;
 
 use DateTime;
+use TN\TN_Core\Attribute\MySQL\ColumnType;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_Core\Attribute\MySQL\ForeignKey;
@@ -33,7 +34,7 @@ class Comment implements Persistence
     public string $contentType;
     public int $contentId;
     #[ForeignKey(User::class)] public int $userId;
-    public string $content;
+    #[ColumnType('mediumtext')] public string $content;
     public DateTime $createdAt;
     public DateTime $updatedAt;
     public ?int $parentId = null;

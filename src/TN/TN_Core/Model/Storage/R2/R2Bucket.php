@@ -49,6 +49,10 @@ abstract class R2Bucket
                 'secret' => $this->getSecretKey(),
             ],
             'use_path_style_endpoint' => true,
+            'http' => [
+                'timeout' => 60,
+                'connect_timeout' => 10,
+            ],
         ]);
     }
 
