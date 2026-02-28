@@ -187,7 +187,7 @@ abstract class Controller
                     }
                 }
 
-                $commandLog = false;
+                $commandLog = null;
                 if ($command->isCron) {
                     try {
                         $commandLog = CommandLog::getInstance();
@@ -195,8 +195,9 @@ abstract class Controller
                             'commandName' => $command->name,
                             'startTs' => Time::getNow()
                         ]);
-                    } catch (\PDOException) {
-                        echo 'Command Log storage error: please ensure database table is created' . PHP_EOL;
+                    } catch (\Throwable $logError) {
+                        $commandLog = null;
+                        echo 'Command Log storage error: ' . $logError->getMessage() . PHP_EOL;
                     }
                 }
 
@@ -213,14 +214,20 @@ abstract class Controller
                         $method->invoke($this);
                     }
 
-                    if ($command->isCron) {
-                        $commandLog?->update([
-                            'result' => ob_get_clean(),
-                            'completed' => true,
-                            'success' => true,
-                            'endTs' => Time::getNow(),
-                            'duration' => Time::getNow() - $commandLog->startTs
-                        ]);
+                    if ($command->isCron && $commandLog !== null) {
+                        try {
+                            $commandLog->update([
+                                'result' => ob_get_clean(),
+                                'completed' => true,
+                                'success' => true,
+                                'endTs' => Time::getNow(),
+                                'duration' => Time::getNow() - $commandLog->startTs
+                            ]);
+                        } catch (\Throwable $logError) {
+                            echo 'Command Log (completion) storage error: ' . $logError->getMessage() . PHP_EOL;
+                        }
+                    } elseif ($command->isCron) {
+                        ob_end_clean();
                     }
                 } catch (\Error | \Exception $e) {
 
@@ -229,15 +236,23 @@ abstract class Controller
                     }
 
                     if ($command->isCron) {
-                        $commandLog?->update([
-                            'result' => $e->getDisplayMessage(),
-                            'completed' => true,
-                            'success' => false,
-                            'endTs' => Time::getNow(),
-                            'duration' => Time::getNow() - $commandLog->startTs
-                        ]);
+                        if ($commandLog !== null) {
+                            try {
+                                $commandLog->update([
+                                    'result' => $e->getDisplayMessage(),
+                                    'completed' => true,
+                                    'success' => false,
+                                    'endTs' => Time::getNow(),
+                                    'duration' => Time::getNow() - $commandLog->startTs
+                                ]);
+                            } catch (\Throwable $logError) {
+                                echo 'Command Log (error) storage error: ' . $logError->getMessage() . PHP_EOL;
+                            }
+                        }
+                        echo $e->getDisplayMessage() . PHP_EOL;
                     } else {
                         if ($cliClass) {
+                            $cli = new $cliClass();
                             $cli->red($e->getDisplayMessage());
                         } else {
                             echo $e->getDisplayMessage() . PHP_EOL;
