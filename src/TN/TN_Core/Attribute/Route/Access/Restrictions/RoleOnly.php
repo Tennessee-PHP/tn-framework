@@ -39,6 +39,9 @@ class RoleOnly extends Restriction
         if ($roleInstance === false || $roleInstance === null || !$roleInstance->getRequiresTwoFactor()) {
             return self::UNRESTRICTED;
         }
+        if (($_ENV['ENV'] ?? '') === 'development') {
+            return self::UNRESTRICTED;
+        }
         $request = HTTPRequest::get();
         $token = $request->getAuthToken();
         $userToken = $token !== null && $token !== '' ? UserToken::findValidByToken($token) : null;
