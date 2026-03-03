@@ -128,10 +128,15 @@ class TaggedContent implements Persistence
         
         if (!empty($tagIds)) {
             $tagsById = Tag::readFromIds($tagIds);
-            
+
+            // Only keep TaggedContent entries that have a corresponding Tag (skip orphaned refs)
+            $taggedContents = array_values(array_filter($taggedContents, function ($tc) use ($tagsById) {
+                return isset($tagsById[$tc->tagId]);
+            }));
+
             // Assign the loaded tags to each TaggedContent
             foreach ($taggedContents as $taggedContent) {
-                $taggedContent->tag = $tagsById[$taggedContent->tagId] ?? null;
+                $taggedContent->tag = $tagsById[$taggedContent->tagId];
             }
         }
 
