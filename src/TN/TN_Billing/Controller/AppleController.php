@@ -11,7 +11,7 @@ use TN\TN_Core\Attribute\Route\AllowCredentials;
 
 class AppleController extends Controller
 {
-    #[Path('api/apple/subscription')]
+    #[Path('apple/subscription')]
     #[Anyone]
     #[AllowOrigin]
     #[AllowCredentials]

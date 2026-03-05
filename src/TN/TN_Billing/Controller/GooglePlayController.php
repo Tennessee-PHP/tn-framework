@@ -12,7 +12,7 @@ use TN\TN_Core\Attribute\Route\AllowCredentials;
 
 class GooglePlayController extends Controller
 {
-    #[Path('api/googleplay/subscription')]
+    #[Path('googleplay/subscription')]
     #[Anyone]
     #[AllowOrigin]
     #[AllowCredentials]
