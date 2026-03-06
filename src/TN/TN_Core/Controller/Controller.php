@@ -271,7 +271,16 @@ abstract class Controller
      */
     public function respond(HTTPRequest $request): ?HTTPResponse
     {
-        if ($_ENV['SITE_MAINTENANCE_MODE']) {
+        $requestPath = trim((string) $request->path, '/');
+        $maintenanceExemptPaths = ['health', 'maintenance-bypass'];
+        $isMaintenanceExemptPath = in_array($requestPath, $maintenanceExemptPaths, true);
+        $maintenanceModeEnabled = isset($_ENV['SITE_MAINTENANCE_MODE'])
+            && $_ENV['SITE_MAINTENANCE_MODE'] !== ''
+            && $_ENV['SITE_MAINTENANCE_MODE'] !== '0'
+            && $_ENV['SITE_MAINTENANCE_MODE'] !== 'false'
+            && $_ENV['SITE_MAINTENANCE_MODE'] !== false;
+
+        if ($maintenanceModeEnabled && !$isMaintenanceExemptPath) {
             if (isset($_GET['_test'])) {
                 $_SESSION['skip_maintenance'] = true;
             }
