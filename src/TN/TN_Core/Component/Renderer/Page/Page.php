@@ -354,12 +354,13 @@ class Page extends Renderer
 
     public static function maintenance(): Renderer
     {
+        $message = (string) ($_ENV['SITE_MAINTENANCE_MESSAGE'] ?? '');
         return self::getInstance([
             'httpResponseCode' => 503,
             'title' => 'Work in Progress!',
-            'description' => $_ENV['SITE_MAINTENANCE_MESSAGE'],
+            'description' => $message,
             'component' => new Maintenance([
-                'message' => $_ENV['SITE_MAINTENANCE_MESSAGE']
+                'message' => $message
             ])
         ]);
     }

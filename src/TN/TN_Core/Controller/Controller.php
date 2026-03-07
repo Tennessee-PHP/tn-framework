@@ -274,11 +274,10 @@ abstract class Controller
         $requestPath = trim((string) $request->path, '/');
         $maintenanceExemptPaths = ['health', 'maintenance-bypass'];
         $isMaintenanceExemptPath = in_array($requestPath, $maintenanceExemptPaths, true);
-        $maintenanceModeEnabled = isset($_ENV['SITE_MAINTENANCE_MODE'])
-            && $_ENV['SITE_MAINTENANCE_MODE'] !== ''
-            && $_ENV['SITE_MAINTENANCE_MODE'] !== '0'
-            && $_ENV['SITE_MAINTENANCE_MODE'] !== 'false'
-            && $_ENV['SITE_MAINTENANCE_MODE'] !== false;
+        $maintenanceModeRaw = isset($_ENV['SITE_MAINTENANCE_MODE'])
+            ? trim((string) $_ENV['SITE_MAINTENANCE_MODE'])
+            : '';
+        $maintenanceModeEnabled = $maintenanceModeRaw !== '' && $maintenanceModeRaw !== '0' && strtolower($maintenanceModeRaw) !== 'false';
 
         if ($maintenanceModeEnabled && !$isMaintenanceExemptPath) {
             if (isset($_GET['_test'])) {
