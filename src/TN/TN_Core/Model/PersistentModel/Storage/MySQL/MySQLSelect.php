@@ -33,24 +33,23 @@ class MySQLSelect
         public ?array          $distinctSelectProperties = null
     ) {
         $this->className = Stack::resolveClassName($className);
+        $this->foreignTables = [];
+        foreach ($search->conditions as $condition) {
+            $this->getConditionForeignTables($condition);
+        }
+        $foreignTablesList = array_unique(array_values($this->foreignTables));
+
         $this->query = "SELECT ";
         $this->query .= match ($selectType) {
-            MySQLSelectType::Objects => $this->distinctSelectProperties !== null && $this->distinctSelectProperties !== []
-                ? 'DISTINCT ' . implode(', ', array_map(fn(string $p) => "`{$table}`.`{$p}`", $this->distinctSelectProperties))
-                : "DISTINCT `{$table}`.*",
+            MySQLSelectType::Objects => $this->buildObjectsSelect($table, $search, $foreignTablesList),
             MySQLSelectType::Count => "COUNT(DISTINCT `{$table}`.`id`)",
             MySQLSelectType::CountAndSum => "COUNT(DISTINCT `{$table}`.`id`) as count, SUM(`{$table}`.`{$sumProperty}`) as sum",
             MySQLSelectType::Sum => "SUM(`{$table}`.*)"
         };
         $this->query .= " FROM {$table}";
 
-        $this->foreignTables = [];
-        foreach ($search->conditions as $condition) {
-            $this->getConditionForeignTables($condition);
-        }
-        $foreignTables = array_unique(array_values($this->foreignTables));
-        if (!empty($foreignTables)) {
-            $this->query .= ', ' . implode(', ', $foreignTables);
+        if (!empty($foreignTablesList)) {
+            $this->query .= ', ' . implode(', ', $foreignTablesList);
         }
 
         $this->params = [];
@@ -66,12 +65,23 @@ class MySQLSelect
         }
 
         if (!empty($search->sorters)) {
-            $this->query .= ' ORDER BY ';
-            foreach ($search->sorters as $i => $sorter) {
-                if ($i > 0) {
-                    $this->query .= ', ';
+            $useOrderBy = true;
+            if ($selectType !== MySQLSelectType::Objects) {
+                foreach ($search->sorters as $sorter) {
+                    if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+                        $useOrderBy = false;
+                        break;
+                    }
                 }
-                $this->addSorter($sorter);
+            }
+            if ($useOrderBy) {
+                $this->query .= ' ORDER BY ';
+                foreach ($search->sorters as $i => $sorter) {
+                    if ($i > 0) {
+                        $this->query .= ', ';
+                    }
+                    $this->addSorter($sorter, $i);
+                }
             }
         }
 
@@ -116,8 +126,26 @@ class MySQLSelect
     }
 
     /**
-     * @throws ReflectionException
+     * Build SELECT for Objects type. When sorters reference foreign tables, add those columns with aliases
+     * so ORDER BY is compatible with DISTINCT (MySQL requires ORDER BY expressions to appear in SELECT list).
      */
+    private function buildObjectsSelect(string $table, SearchArguments $search, array $foreignTablesList): string
+    {
+        if ($this->distinctSelectProperties !== null && $this->distinctSelectProperties !== []) {
+            return 'DISTINCT ' . implode(', ', array_map(fn(string $p) => "`{$table}`.`{$p}`", $this->distinctSelectProperties));
+        }
+        $select = "DISTINCT `{$table}`.*";
+        if (!empty($search->sorters)) {
+            foreach ($search->sorters as $i => $sorter) {
+                if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+                    $ft = $this->foreignTables[$sorter->class];
+                    $select .= ", `{$ft}`.`{$sorter->property}` AS `_order_{$i}`";
+                }
+            }
+        }
+        return $select;
+    }
+
     private function addClassToForeignTables(string $class): void
     {
         $reflection = new \ReflectionClass($class);
@@ -131,9 +159,13 @@ class MySQLSelect
         }
     }
 
-    private function addSorter(SearchSorter $sorter): void
+    private function addSorter(SearchSorter $sorter, int $index): void
     {
-        $this->query .= "`{$this->table}`.`{$sorter->property}` ";
+        if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+            $this->query .= "`_order_{$index}` ";
+        } else {
+            $this->query .= "`{$this->table}`.`{$sorter->property}` ";
+        }
         $this->query .= match ($sorter->direction) {
             SearchSorterDirection::ASC => 'ASC',
             SearchSorterDirection::DESC => 'DESC'
