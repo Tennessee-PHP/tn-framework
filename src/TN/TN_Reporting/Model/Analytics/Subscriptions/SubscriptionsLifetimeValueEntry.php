@@ -100,16 +100,10 @@ class SubscriptionsLifetimeValueEntry extends AnalyticsEntry
 
     public static function getValuesFromDayReports(array $dayReports): array
     {
-        $total = 0;
+        $latestDayReport = static::getLatestDayReport($dayReports);
 
-        foreach ($dayReports as $dayReport) {
-            // add each day's churn to the total
-            $total += $dayReport->lifetimeValue;
-        }
-
-        // now add the aggregate of all the values as a value on the data series entry
         return [
-            'lifetimeValue' => $total > 0 ? $total / count($dayReports) : 0.0
+            'lifetimeValue' => $latestDayReport?->lifetimeValue ?? 0.0
         ];
     }
 

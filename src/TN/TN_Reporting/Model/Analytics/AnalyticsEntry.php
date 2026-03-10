@@ -146,6 +146,25 @@ abstract class AnalyticsEntry implements Persistence
     }
 
     /**
+     * Snapshot-style reports should use the last day in a grouped period rather than
+     * averaging all daily values together.
+     *
+     * @param AnalyticsEntry[] $dayReports
+     * @return AnalyticsEntry|null
+     */
+    protected static function getLatestDayReport(array $dayReports): ?AnalyticsEntry
+    {
+        $latestDayReport = null;
+        foreach ($dayReports as $dayReport) {
+            if (!$latestDayReport || $dayReport->dayTs > $latestDayReport->dayTs) {
+                $latestDayReport = $dayReport;
+            }
+        }
+
+        return $latestDayReport;
+    }
+
+    /**
      * given a report, get updated data, and save it to the database
      * @return void
      */

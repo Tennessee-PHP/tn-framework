@@ -58,6 +58,22 @@ class EmailListConvertKitTypeEntry extends AnalyticsEntry
 
     public static function getValuesFromDayReports(array $dayReports): array
     {
+        /** @var self[] $dayReports */
+        if (static::$type === 'active') {
+            $latestCount = 0;
+            $latestDayTs = -1;
+            foreach ($dayReports as $dayReport) {
+                if ($dayReport->dayTs > $latestDayTs) {
+                    $latestDayTs = $dayReport->dayTs;
+                    $latestCount = $dayReport->count;
+                }
+            }
+
+            return [
+                'count' => $latestCount
+            ];
+        }
+
         $count = 0;
 
         foreach ($dayReports as $dayReport) {

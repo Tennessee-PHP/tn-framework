@@ -62,6 +62,7 @@ abstract class TypeSummary extends HTMLComponent
             'season' => 0
         ];
 
+        $chartValueKey = $this->getChartValueKey();
         $compareKey = $this->compareKey;
 
         foreach (array_reverse($this->dataSeries->entries) as $entry) {
@@ -71,6 +72,24 @@ abstract class TypeSummary extends HTMLComponent
                     '1-season' => 'season',
                     default => 'now'
                 };
+
+                // Use aggregated entry values when available (matches chart). For summaries with many
+                // day reports per period (e.g. RevenueRecurring by gateway/plan/billingCycle),
+                // the raw 'last' day report can be zero while the chart shows the average.
+                if ($chartValueKey !== null) {
+                    $valueKey = $prefix === '1-year' ? '1-year' . $chartValueKey
+                        : ($prefix === '1-season' ? '1-season' . $chartValueKey : $chartValueKey);
+                    $value = $entry->values[$valueKey] ?? null;
+                    if ($value !== null && is_numeric($value)) {
+                        if ($this->compareMethod === 'total') {
+                            $totals[$key] += (float) $value;
+                        } elseif ($this->compareMethod === 'last') {
+                            $totals[$key] = (float) $value;
+                        }
+                    }
+                    continue;
+                }
+
                 foreach ($dayReports as $dayReport) {
                     if (isset($dayReport->$compareKey)) {
                         if ($this->compareMethod === 'total') {
@@ -84,6 +103,20 @@ abstract class TypeSummary extends HTMLComponent
         }
 
         return $totals;
+    }
+
+    /**
+     * Column key used for the primary chart value (e.g. 'revenue', 'annual').
+     * Used so the dial matches the chart's aggregated values.
+     */
+    protected function getChartValueKey(): ?string
+    {
+        foreach ($this->dataSeries->columns as $column) {
+            if ($column->chart && !str_contains($column->key, '1-')) {
+                return $column->key;
+            }
+        }
+        return null;
     }
 
     /**

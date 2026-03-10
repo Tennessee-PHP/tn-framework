@@ -71,17 +71,10 @@ class SubscriptionsActiveEntry extends AnalyticsEntry
 
     public static function getValuesFromDayReports(array $dayReports): array
     {
-        // for each, we want to show total churn, for each of the reasons
-        $total = 0;
+        $latestDayReport = static::getLatestDayReport($dayReports);
 
-        foreach ($dayReports as $dayReport) {
-            // add each day's churn to the total
-            $total += $dayReport->activeSubscriptions;
-        }
-
-        // now add the aggregate of all the values as a value on the data series entry
         return [
-            'active-subscriptions' => $total > 0 ? $total / count($dayReports) : 0.0
+            'active-subscriptions' => $latestDayReport?->activeSubscriptions ?? 0
         ];
     }
 

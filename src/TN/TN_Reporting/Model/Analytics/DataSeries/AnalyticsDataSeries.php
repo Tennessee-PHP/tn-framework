@@ -183,10 +183,14 @@ class AnalyticsDataSeries extends DataSeries
             }
             if ($filterKey !== $this->breakdown) {
                 $filterValue = $this->filters[$filterKey] ?? '';
-                // When "All" is selected (empty value), skip this filter so we include all rows.
-                // Otherwise e.g. campaignId = '' becomes campaign_id = 0 in MySQL and matches nothing.
-                if ($filterValue !== '' && $filterValue !== null) {
-                    $conditions[] = new SearchComparison("`{$filterKey}`", '=', $filterValue);
+                if ($filterKey === 'campaignId') {
+                    // Campaign ids are numeric, so an empty "All" value should not be added as "= ''".
+                    if ($filterValue !== '' && $filterValue !== null) {
+                        $conditions[] = new SearchComparison("`{$filterKey}`", '=', $filterValue);
+                    }
+                } else {
+                    // String filters store aggregate rows as empty strings, so keep the explicit filter.
+                    $conditions[] = new SearchComparison("`{$filterKey}`", '=', $filterValue ?? '');
                 }
             }
         }

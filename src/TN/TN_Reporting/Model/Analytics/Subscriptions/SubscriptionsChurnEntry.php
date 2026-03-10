@@ -157,28 +157,22 @@ class SubscriptionsChurnEntry extends AnalyticsEntry
 
     public static function getValuesFromDayReports(array $dayReports): array
     {
-        // for each, we want to show total churn, for each of the reasons
-        $churnTotals = [
-            'total' => 0,
-            'user-cancelled' => 0,
-            'payment-failed' => 0,
-            'refunded' => 0
-        ];
-
-        foreach ($dayReports as $dayReport) {
-            // add each day's churn to the total
-            $churnTotals['total'] += self::calculateChurn($dayReport->churnStartCount, $dayReport->endedCount);
-            $churnTotals['user-cancelled'] += self::calculateChurn($dayReport->churnStartCount, $dayReport->endedUserCancelledCount);
-            $churnTotals['payment-failed'] += self::calculateChurn($dayReport->churnStartCount, $dayReport->endedPaymentFailedCount);
-            $churnTotals['refunded'] += self::calculateChurn($dayReport->churnStartCount, $dayReport->endedRefundedCount);
+        /** @var self|null $latestDayReport */
+        $latestDayReport = static::getLatestDayReport($dayReports);
+        if (!$latestDayReport) {
+            return [
+                'total-churn' => 0.0,
+                'user-cancelled-churn' => 0.0,
+                'payment-failed-churn' => 0.0,
+                'refunded-churn' => 0.0,
+            ];
         }
 
-        // now add the aggregate of all the values as a value on the data series entry
         return [
-            'total-churn' => $churnTotals['total'] > 0 ? $churnTotals['total'] / count($dayReports) : 0.0,
-            'user-cancelled-churn' => $churnTotals['user-cancelled'] > 0 ? $churnTotals['user-cancelled'] / count($dayReports) : 0.0,
-            'payment-failed-churn' => $churnTotals['payment-failed'] > 0 ? $churnTotals['payment-failed'] / count($dayReports) : 0.0,
-            'refunded-churn' => $churnTotals['refunded'] > 0 ? $churnTotals['refunded'] / count($dayReports) : 0.0
+            'total-churn' => self::calculateChurn($latestDayReport->churnStartCount, $latestDayReport->endedCount),
+            'user-cancelled-churn' => self::calculateChurn($latestDayReport->churnStartCount, $latestDayReport->endedUserCancelledCount),
+            'payment-failed-churn' => self::calculateChurn($latestDayReport->churnStartCount, $latestDayReport->endedPaymentFailedCount),
+            'refunded-churn' => self::calculateChurn($latestDayReport->churnStartCount, $latestDayReport->endedRefundedCount)
         ];
     }
 

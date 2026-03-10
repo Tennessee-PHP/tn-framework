@@ -225,22 +225,11 @@ class RevenueRecurringEntry extends AnalyticsEntry
 
     public static function getValuesFromDayReports(array $dayReports): array
     {
-        // for each, we want to show total churn, for each of the reasons
-        $totals = [
-            'monthly' => 0,
-            'annual' => 0
-        ];
+        $latestDayReport = static::getLatestDayReport($dayReports);
 
-        foreach ($dayReports as $dayReport) {
-            // add each day's churn to the total
-            $totals['monthly'] += $dayReport->monthlyRecurringRevenue;
-            $totals['annual'] += $dayReport->annualRecurringRevenue;
-        }
-
-        // now add the aggregate of all the values as a value on the data series entry
         return [
-            'monthly' => $totals['monthly'] > 0 ? $totals['monthly'] / count($dayReports) : 0.0,
-            'annual' => $totals['annual'] > 0 ? $totals['annual'] / count($dayReports) : 0.0
+            'monthly' => $latestDayReport?->monthlyRecurringRevenue ?? 0.0,
+            'annual' => $latestDayReport?->annualRecurringRevenue ?? 0.0
         ];
     }
 
