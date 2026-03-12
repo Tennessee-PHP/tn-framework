@@ -86,6 +86,11 @@ trait State
     }
 
     abstract protected function saveStorage(array $changedProperties = []): SaveType;
+
+    /**
+     * Internal use only. Do not call from application or component code.
+     * Use update(array $data) instead so the framework can invalidate cache correctly.
+     */
     public function save(array $changedProperties = []): void
     {
         try {
