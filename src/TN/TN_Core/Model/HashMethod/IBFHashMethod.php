@@ -13,7 +13,8 @@ class IBFHashMethod extends HashMethod
 
     public function verify(string $password = '', string $hash = '', string $salt = ''): bool
     {
-        return $this->hash($password, $salt) === $hash;
+        $computed = $this->hash($password, $salt);
+        return strtolower($computed) === strtolower($hash);
     }
 
     public function getHashData(string $password): array

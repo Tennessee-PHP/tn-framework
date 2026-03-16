@@ -459,9 +459,19 @@ class User implements Persistence
     {
         if (!isset($this->id) || in_array('password', $changedProperties)) {
             $isPasswordChange = isset($this->id) && in_array('password', $changedProperties);
+            if ($isPasswordChange) {
+                $this->hashMethodKey = static::$defaultHashMethodKey;
+                if (property_exists($this, 'salt')) {
+                    $this->salt = '';
+                }
+            }
             // we need to add the password hash value
             $changedProperties = $this->setPasswordHash();
             if ($isPasswordChange) {
+                $changedProperties[] = 'hashMethodKey';
+                if (property_exists($this, 'salt')) {
+                    $changedProperties[] = 'salt';
+                }
                 UserToken::revokeAllForUser($this->id);
                 UserRefreshToken::revokeAllForUser($this->id);
             }

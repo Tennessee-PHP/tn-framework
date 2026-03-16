@@ -88,8 +88,9 @@ trait State
     abstract protected function saveStorage(array $changedProperties = []): SaveType;
 
     /**
-     * Internal use only. Do not call from application or component code.
-     * Use update(array $data) instead so the framework can invalidate cache correctly.
+     * Internal use only. NEVER call save() from application or component code.
+     * ALWAYS use update(array $data) instead—so the framework can invalidate cache
+     * and persist correctly. Call save() only from within the framework (e.g. Validation::update).
      */
     public function save(array $changedProperties = []): void
     {
