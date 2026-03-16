@@ -179,6 +179,24 @@ class Cache
     }
 
     /**
+     * Check whether a value is a member of the set at key
+     * @param string $key set key
+     * @param string $value member to check
+     * @return bool true if value is in the set
+     */
+    public static function setMembersContains(string $key, string $value): bool
+    {
+        $key = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "SISMEMBER {$key} {$value}");
+
+        $client = Redis::getInstance();
+        $result = (bool) $client->sismember($key, $value);
+
+        $event?->end();
+        return $result;
+    }
+
+    /**
      * @param string $key
      * @param string $field
      * @param mixed $value
