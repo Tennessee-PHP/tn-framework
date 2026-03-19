@@ -58,7 +58,7 @@ abstract class UserDataModel implements Persistence
     }
 
     /** @returns static[] */
-    public static function readFromIdsOrUuIdsForUser(int $userId, array|string|int $ids): array
+    public static function readFromIdsOrUuIdsForUser(int $userId, array|string|int $ids, bool $absoluteLatest = false): array
     {
         if (!is_array($ids)) {
             $ids = [$ids];
@@ -82,7 +82,7 @@ abstract class UserDataModel implements Persistence
                         new SearchComparison('`uuId`', '=', $id)
                     ])
                 ])
-            ]));
+            ]), $absoluteLatest);
         }
 
         return static::search(new SearchArguments([
@@ -93,7 +93,7 @@ abstract class UserDataModel implements Persistence
                     new SearchComparison('`uuId`', 'IN', $ids)
                 ])
             ])
-        ]));
+        ]), $absoluteLatest);
     }
 
     public static function readMultipleForUser(int $userId, array $extraSearch = []): array
