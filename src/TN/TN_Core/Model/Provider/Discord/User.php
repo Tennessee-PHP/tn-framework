@@ -2,6 +2,8 @@
 
 namespace TN\TN_Core\Model\Provider\Discord;
 
+use League\OAuth2\Client\Provider\ResourceOwnerInterface;
+use League\OAuth2\Client\Token\AccessTokenInterface;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\Provider\ThirdPartyUser;
@@ -75,6 +77,34 @@ class User extends ThirdPartyUser
             'tnUserId' => $tnUser->id,
             'discordUserId' => $discordUser->getId(),
             'username' => (string) ($discordUserData['username'] ?? '')
+        ]);
+        $user->onCreate();
+        return $user;
+    }
+
+    /**
+     * Create a Discord user link from an already-obtained access token and resource owner.
+     * Use this when the code was already exchanged (e.g. in login flow) to avoid using the code twice.
+     *
+     * @param AccessTokenInterface $token
+     * @param ResourceOwnerInterface $resourceOwner
+     * @param TNUser $tnUser
+     * @return User
+     */
+    public static function createFromAccessTokenAndResourceOwner(
+        AccessTokenInterface $token,
+        ResourceOwnerInterface $resourceOwner,
+        TNUser $tnUser
+): User {
+        $discordUserData = method_exists($resourceOwner, 'toArray') ? (array) $resourceOwner->toArray() : [];
+        $user = self::getInstance();
+        $user->update([
+            'oAuthToken' => $token->getToken(),
+            'tokenExpires' => $token->getExpires(),
+            'refreshToken' => $token->getRefreshToken() ?? '',
+            'tnUserId' => $tnUser->id,
+            'discordUserId' => (int) $resourceOwner->getId(),
+            'username' => (string) ($discordUserData['username'] ?? ''),
         ]);
         $user->onCreate();
         return $user;
