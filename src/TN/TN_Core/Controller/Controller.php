@@ -364,6 +364,19 @@ abstract class Controller
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 404, $method);
+            } catch (AccessTwoFactorRequiredException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
+                $twoFactorRendererClass = ($rendererClass === Page::class)
+                    ? (Stack::resolveClassName(Page::class) ?: Page::class)
+                    : $rendererClass;
+                $renderer = $twoFactorRendererClass::twoFactorRequired();
+                if ($renderer instanceof JSON) {
+                    $user = User::getActive();
+                    $needsSetup = $user->loggedIn && ($user->totpSecret === null || $user->totpSecret === '');
+                    $renderer->data['data']['needsSetup'] = $needsSetup;
+                }
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 403, $method);
             } catch (\TN\TN_Core\Error\Access\AccessException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::error($e->getMessage(), 403);

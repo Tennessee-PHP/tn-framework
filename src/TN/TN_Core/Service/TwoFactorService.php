@@ -83,13 +83,21 @@ class TwoFactorService
     }
 
     /**
-     * Build otpauth URI for QR and manual entry. Issuer from ENV (TOTP_ISSUER or SITE_NAME).
-     * Account label shown in authenticator app: "{issuer}: {username}".
+     * Build otpauth URI for QR and manual entry. Issuer from ENV (TOTP_ISSUER or SITE_NAME), else "New Element".
+     * Holder uses a leading space so the otpauth path decodes to "{issuer}: {account}" for authenticator display.
      */
     public static function getOtpAuthUri(User $user, string $secret, ?string $label = null): string
     {
         $issuer = $_ENV['TOTP_ISSUER'] ?? $_ENV['SITE_NAME'] ?? '';
-        $holder = $label ?? $user->username ?? $user->email ?? (string)$user->id;
+        if ($issuer === '') {
+            $issuer = 'New Element';
+        }
+        if ($label !== null) {
+            $holder = $label;
+        } else {
+            $namePart = trim((string)($user->username ?? $user->email ?? (string)$user->id));
+            $holder = ' ' . $namePart;
+        }
         return self::getGoogle2FA()->getQRCodeUrl($issuer, $holder, $secret);
     }
 
