@@ -539,15 +539,19 @@ class OperationSet
      */
     public function getReturnSyncData(bool $forClient = true): array
     {
+        $ts = $this->recTs;
+        if ($forClient) {
+            $ts *= 1000;
+        }
         if ($this->sendFullSync()) {
             return [
                 'data' => $this->getFullSyncData($forClient),
-                'ts' => $this->recTs
+                'ts' => $ts
             ];
         } else {
             return [
                 'operations' => $this->userOperationsSinceLastSync,
-                'ts' => $this->recTs
+                'ts' => $ts
             ];
         }
     }
