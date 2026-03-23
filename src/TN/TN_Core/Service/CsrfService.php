@@ -5,6 +5,7 @@ namespace TN\TN_Core\Service;
 use ReflectionMethod;
 use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
+use TN\TN_Core\Attribute\Route\Access\Restrictions\SuperUserOrLoginAs;
 use TN\TN_Core\Error\Access\AccessCsrfInvalidException;
 use TN\TN_Core\Error\ForbiddenReason;
 use TN\TN_Core\Model\Request\HTTPRequest;
@@ -32,6 +33,12 @@ class CsrfService
             $restriction = $attribute->newInstance();
             if ($restriction instanceof RoleOnly) {
                 $role = Role::getInstanceByKey($restriction->getRole());
+                if ($role !== false && $role !== null && $role->getRequiresTwoFactor()) {
+                    return true;
+                }
+            }
+            if ($restriction instanceof SuperUserOrLoginAs) {
+                $role = Role::getInstanceByKey('super-user');
                 if ($role !== false && $role !== null && $role->getRequiresTwoFactor()) {
                     return true;
                 }

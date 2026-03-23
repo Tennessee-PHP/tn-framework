@@ -723,6 +723,35 @@ class User implements Persistence
         return $loginAsToken !== null && $loginAsToken !== '';
     }
 
+    /**
+     * User that owns the request auth token (TN_token, Bearer, etc.), if valid.
+     * Under login-as, this is the staff account; {@see getActive()} is the impersonated account.
+     */
+    public static function readFromRequestAuthToken(): ?User
+    {
+        try {
+            $request = HTTPRequest::get();
+        } catch (CodeException $e) {
+            return null;
+        }
+        return static::readFromToken($request->getAuthToken() ?? '');
+    }
+
+    /**
+     * Super-user-only routes that should still work while impersonating when the auth token belongs to a super-user.
+     */
+    public function canAccessSuperUserSessionRoutes(): bool
+    {
+        if ($this->hasRole('super-user')) {
+            return true;
+        }
+        if (!$this->isLoggedInAsOther()) {
+            return false;
+        }
+        $authTokenUser = static::readFromRequestAuthToken();
+        return $authTokenUser instanceof User && $authTokenUser->hasRole('super-user');
+    }
+
     /** @return string the redis key for the hash to store ip addresses' last access timestamps */
     private function getIPHashKey(): string
     {
