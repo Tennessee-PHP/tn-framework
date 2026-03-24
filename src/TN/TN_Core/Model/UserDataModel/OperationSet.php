@@ -598,6 +598,81 @@ class OperationSet
     }
 
     /**
+     * Build lookup maps for the latest incoming operation ts by record and by updated field.
+     * @return array{record: array, field: array}
+     */
+    protected function getLatestIncomingOriginTsByRecordAndField(): array
+    {
+        $latestByRecord = [];
+        $latestByField = [];
+
+        foreach ($this->operations as $operation) {
+            $model = $operation->model ?? null;
+            $recordUuId = $operation->recordUuId ?? null;
+            $originTs = (int)($operation->originTs ?? 0);
+            if (!$model || !$recordUuId || !$originTs) {
+                continue;
+            }
+
+            if (!isset($latestByRecord[$model][$recordUuId]) || $originTs > $latestByRecord[$model][$recordUuId]) {
+                $latestByRecord[$model][$recordUuId] = $originTs;
+            }
+
+            if ($operation->method !== Operation::UPDATE || empty($operation->prop)) {
+                continue;
+            }
+
+            foreach (explode(',', (string)$operation->prop) as $prop) {
+                $prop = trim($prop);
+                if ($prop === '') {
+                    continue;
+                }
+                if (!isset($latestByField[$model][$recordUuId][$prop]) || $originTs > $latestByField[$model][$recordUuId][$prop]) {
+                    $latestByField[$model][$recordUuId][$prop] = $originTs;
+                }
+            }
+        }
+
+        return [
+            'record' => $latestByRecord,
+            'field' => $latestByField
+        ];
+    }
+
+    /**
+     * Suppress server operations that are already superseded by incoming ops in this same sync request.
+     * This prevents stale server echoes from overwriting fresher client edits on the same record/field.
+     */
+    protected function shouldSuppressServerOperation(Operation $serverOperation, array $latestIncomingByRecord, array $latestIncomingByField): bool
+    {
+        $model = $serverOperation->model;
+        $recordUuId = $serverOperation->recordUuId;
+        $serverOriginTs = (int)$serverOperation->originTs;
+
+        $latestRecordTs = $latestIncomingByRecord[$model][$recordUuId] ?? null;
+        if ($latestRecordTs === null) {
+            return false;
+        }
+
+        if ($serverOperation->method !== Operation::UPDATE || empty($serverOperation->prop)) {
+            return $latestRecordTs >= $serverOriginTs;
+        }
+
+        foreach (explode(',', (string)$serverOperation->prop) as $prop) {
+            $prop = trim($prop);
+            if ($prop === '') {
+                continue;
+            }
+            $latestFieldTs = $latestIncomingByField[$model][$recordUuId][$prop] ?? null;
+            if ($latestFieldTs === null || $latestFieldTs < $serverOriginTs) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * gets the operations that the client isn't aware of yet
      * @param bool $forClient when true, return snake_case (ExtJS); when false, return camelCase (draft-dominator)
      * @return array
@@ -608,7 +683,11 @@ class OperationSet
         $operations = Operation::getForUserSinceTs($this->getUser()->id, $this->lastSyncTs, $this->getModels());
         $data = [];
         $map = $this->getModelMap();
+        $latestIncomingTs = $this->getLatestIncomingOriginTsByRecordAndField();
         foreach ($operations as $operation) {
+            if ($this->shouldSuppressServerOperation($operation, $latestIncomingTs['record'], $latestIncomingTs['field'])) {
+                continue;
+            }
             $data = array_merge($data, $operation->getSyncDataForClient($map[$operation->model], $forClient));
         }
 

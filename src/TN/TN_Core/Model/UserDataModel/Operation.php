@@ -93,11 +93,16 @@ class Operation implements Persistence
      */
     public function getSyncDataForClient(string $class, bool $forClient = true): array
     {
+        $syncTs = $this->appliedTs;
+        if ($forClient) {
+            $syncTs *= 1000;
+        }
+
         $baseData = [
             'type' => $this->methodString(),
             'record_id' => $this->recordUuId,
             'model' => $this->model,
-            'ts' => $this->appliedTs
+            'ts' => $syncTs
         ];
 
         // if delete, we can handle that already!
