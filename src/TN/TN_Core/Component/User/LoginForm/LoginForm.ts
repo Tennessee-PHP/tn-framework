@@ -26,8 +26,29 @@ export default class LoginForm extends HTMLComponent {
         // observe change action buttons
         this.$element.find('a.change-action').on('click', this.onChangeAction.bind(this));
 
+        this.$element.find('.password-toggle').on('click', this.onPasswordToggle.bind(this));
+
         // observe create account button
         //this.$element.find('a.create-account-button').on('click', this.onCreateAccount.bind(this));
+    }
+
+    protected onPasswordToggle(e: Event): void {
+        e.preventDefault();
+        const $btn = $(e.currentTarget as HTMLElement);
+        const $input = this.$element.find('input[name="password"]');
+        const $icon = $btn.find('i');
+        const isHidden = $input.attr('type') === 'password';
+        if (isHidden) {
+            $input.attr('type', 'text');
+            $icon.removeClass('bi-eye').addClass('bi-eye-slash');
+            $btn.attr('aria-label', 'Hide password');
+            $btn.attr('aria-pressed', 'true');
+        } else {
+            $input.attr('type', 'password');
+            $icon.removeClass('bi-eye-slash').addClass('bi-eye');
+            $btn.attr('aria-label', 'Show password');
+            $btn.attr('aria-pressed', 'false');
+        }
     }
 
     protected onCreateAccount(e: Event) {

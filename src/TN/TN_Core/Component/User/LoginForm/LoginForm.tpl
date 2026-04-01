@@ -14,8 +14,16 @@
         </div>
         <div class="mb-3">
             <label for="password_field_{$num}" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password_field_{$num}" name="password"
-                   {if $success}disabled{/if}>
+            <div class="input-group">
+                <input type="password" class="form-control field-password" id="password_field_{$num}" name="password"
+                       autocomplete="current-password"
+                       {if $success}disabled{/if}>
+                <button type="button" class="btn btn-outline-secondary password-toggle" id="password_toggle_{$num}"
+                        aria-label="Show password" aria-pressed="false"
+                        {if $success}disabled{/if}>
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+            </div>
         </div>
         <button type="submit" class="btn btn-primary me-2" {if $success}disabled{/if}>
             {if $success}<i class="bi bi-check-circle"></i>{/if}
