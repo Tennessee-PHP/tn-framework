@@ -81,7 +81,10 @@ class UserInactiveChange implements Persistence
      */
     public static function createAndSave(User $user, User $byUser, bool $active, string $comment = ""): void
     {
-        if (!$byUser->hasRole('user-admin') && $user->id !== $byUser->id) {
+        $mayAffectOther =
+            $byUser->hasRole('user-admin') ||
+            $byUser->hasRole('super-user');
+        if (!$mayAffectOther && $user->id !== $byUser->id) {
             throw new ValidationException('You do not have permission to change this user\'s status');
         }
         if ($user->inactive === !$active) {

@@ -51,7 +51,7 @@ class RateLimitService
 
             $count = self::incrementWithExpire($redisClient, $ipKey, $window);
             if ($count > $ipLimit) {
-                throw new RateLimitExceededException('Staff rate limit exceeded (by IP)', $window);
+                throw new RateLimitExceededException('Staff rate limit exceeded (by IP)', $window, null, false);
             }
 
             $token = $request->getAuthToken();
@@ -60,7 +60,7 @@ class RateLimitService
                 $tokenKey = self::KEY_PREFIX . 'token:' . $tokenHash;
                 $count = self::incrementWithExpire($redisClient, $tokenKey, $window);
                 if ($count > $tokenLimit) {
-                    throw new RateLimitExceededException('Staff rate limit exceeded (by token)', $window);
+                    throw new RateLimitExceededException('Staff rate limit exceeded (by token)', $window, null, false);
                 }
             }
         } catch (RateLimitExceededException $e) {

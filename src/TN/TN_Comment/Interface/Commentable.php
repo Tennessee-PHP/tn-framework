@@ -28,13 +28,15 @@ interface Commentable
     
     /**
      * Add a new comment to this content
-     * 
+     *
      * @param int $userId User ID of the commenter
-     * @param string $content Comment content (HTML)
+     * @param string $content Raw body; meaning depends on contentFormat (see NE RichContentContract)
      * @param int|null $parentId Optional parent comment ID for replies
+     * @param string $contentFormat Persisted format key (e.g. markdown, html); implementations that do not store format may ignore
+     * @param array|null $mentions Optional structured mention metadata; implementations without a mentions column may ignore
      * @return Comment Created comment object
      */
-    public function addComment(int $userId, string $content, ?int $parentId = null): Comment;
+    public function addComment(int $userId, string $content, ?int $parentId = null, string $contentFormat = 'markdown', ?array $mentions = null): Comment;
     
     /**
      * Get the topic ID for this content (used for comment organization)

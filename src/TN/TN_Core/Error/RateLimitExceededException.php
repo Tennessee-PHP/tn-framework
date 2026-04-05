@@ -10,12 +10,26 @@ class RateLimitExceededException extends TNException
 {
     public int $httpResponseCode = 429;
 
+    public bool $messageIsUserFacing = true;
+
     /** @var int seconds after which the client may retry */
     public int $retryAfter = 60;
 
-    public function __construct(string $message = 'Rate limit exceeded', int $retryAfter = 60, ?\Throwable $previous = null)
-    {
+    /**
+     * Machine-readable code for JSON clients (e.g. posting_cooldown, rate_limit_exceeded).
+     */
+    public ?string $errorCode = null;
+
+    public function __construct(
+        string $message = 'Rate limit exceeded',
+        int $retryAfter = 60,
+        ?\Throwable $previous = null,
+        bool $messageIsUserFacing = true,
+        ?string $errorCode = null
+    ) {
         parent::__construct($message, 0, $previous);
         $this->retryAfter = $retryAfter;
+        $this->messageIsUserFacing = $messageIsUserFacing;
+        $this->errorCode = $errorCode;
     }
 }

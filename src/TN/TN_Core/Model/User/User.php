@@ -372,6 +372,11 @@ class User implements Persistence
     /** @param User $user we found a user - set it as active! */
     private static function setUserAsActive(User $user): void
     {
+        if ($user->inactive) {
+            static::setNoActiveUser();
+            return;
+        }
+
         $request = HTTPRequest::get();
         $user->logIPLogin();
 
@@ -397,6 +402,11 @@ class User implements Persistence
         }
         if ($otherUser instanceof User && $hasAdminRole) {
             $user = $otherUser;
+        }
+
+        if ($user->inactive) {
+            static::setNoActiveUser();
+            return;
         }
 
         self::$activeUser = $user;
@@ -593,6 +603,9 @@ class User implements Persistence
         $loginCode = LoginCode::findValidForUserAndCode($user->id, $code);
         if ($loginCode === null) {
             throw new TNException('Invalid or expired code');
+        }
+        if ($user->inactive) {
+            throw new LoginException(LoginErrorMessage::Inactive);
         }
         $loginCode->update(['used' => true]);
         $user->doLogin();

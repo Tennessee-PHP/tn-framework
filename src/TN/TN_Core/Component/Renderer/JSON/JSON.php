@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Component\Renderer\JSON;
 
+use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Component\Renderer\Renderer;
 
 class JSON extends Renderer
@@ -35,6 +36,23 @@ class JSON extends Renderer
                 'result' => 'error',
                 'message' => $message
             ]
+        ]);
+    }
+
+    /**
+     * JSON error body for {@see RateLimitExceededException} (429, Retry-After, structured retry metadata).
+     */
+    public static function rateLimitExceeded(RateLimitExceededException $e): Renderer
+    {
+        $code = $e->errorCode ?? 'rate_limit_exceeded';
+        return new JSON([
+            'httpResponseCode' => $e->httpResponseCode,
+            'data' => [
+                'result' => 'error',
+                'message' => $e->getMessage(),
+                'error' => $code,
+                'retry_after' => $e->retryAfter,
+            ],
         ]);
     }
 

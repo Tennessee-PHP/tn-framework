@@ -21,6 +21,7 @@ use TN\TN_Core\Error\Access\FullPageRoadblockException;
 use TN\TN_Core\Error\Access\UnmatchedException;
 use TN\TN_Core\Service\CsrfService;
 use TN\TN_Core\Error\LoggedError;
+use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Error\TNException;
 use TN\TN_Core\Model\CommandLog\CommandLog;
@@ -468,15 +469,22 @@ abstract class Controller
                 $e = new TNException($e->getMessage(), (int)$e->getCode(), $e);
             }
 
-            try {
-                LoggedError::log($e, $request);
-            } catch (\Exception) {
-                // do nothing
+            if (!($e instanceof RateLimitExceededException)) {
+                try {
+                    LoggedError::log($e, $request);
+                } catch (\Exception) {
+                    // do nothing
+                }
             }
 
             $this->addCorsHeadersForMethod($method);
             $rendererClass = $this->getRendererClassFromMethod($method);
-            $renderer = $rendererClass::error($e->getDisplayMessage());
+            if ($e instanceof RateLimitExceededException && is_a($rendererClass, JSON::class, true)) {
+                header('Retry-After: ' . (int) $e->retryAfter);
+                $renderer = JSON::rateLimitExceeded($e);
+            } else {
+                $renderer = $rendererClass::error($e->getDisplayMessage());
+            }
             $renderer->prepare();
             return new HTTPResponse($renderer, $e->httpResponseCode, $method);
         }

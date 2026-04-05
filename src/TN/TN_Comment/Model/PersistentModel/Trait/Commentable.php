@@ -65,11 +65,13 @@ trait Commentable
      * Add a new comment to this model
      *
      * @param int $userId User ID of the commenter
-     * @param string $content Comment content (HTML allowed)
+     * @param string $content Raw body; meaning depends on contentFormat
      * @param int|null $parentId Parent comment ID for replies (null for top-level)
+     * @param string $contentFormat Persisted format (markdown|html); extra keys are ignored if the resolved Comment model has no such properties
+     * @param array|null $mentions Optional mention metadata JSON; ignored if the model has no mentions column
      * @return Comment Created comment object
      */
-    public function addComment(int $userId, string $content, ?int $parentId = null): Comment
+    public function addComment(int $userId, string $content, ?int $parentId = null, string $contentFormat = 'markdown', ?array $mentions = null): Comment
     {
         $commentClass = Stack::resolveClassName(Comment::class);
         if ($commentClass === false) {
@@ -80,15 +82,20 @@ trait Commentable
         }
         $comment = $commentClass::getInstance();
         $commentDate = new DateTime();
-        $comment->update([
+        $row = [
             'contentType' => static::class,
             'contentId' => $this->id,
             'userId' => $userId,
             'content' => $content,
             'parentId' => $parentId,
             'createdAt' => $commentDate,
-            'updatedAt' => $commentDate
-        ]);
+            'updatedAt' => $commentDate,
+            'contentFormat' => $contentFormat,
+        ];
+        if ($mentions !== null) {
+            $row['mentions'] = $mentions;
+        }
+        $comment->update($row);
 
         // Update comment-related properties on the parent model
         $this->updateCommentStats($commentDate);

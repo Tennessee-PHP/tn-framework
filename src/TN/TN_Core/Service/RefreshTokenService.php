@@ -147,6 +147,12 @@ class RefreshTokenService
             return null;
         }
 
+        if ($user->inactive) {
+            UserRefreshToken::revokeAllForUser($user->id);
+            self::clearRefreshCookie();
+            return null;
+        }
+
         // One-time use refresh token: revoke old row, issue new row.
         $existing->revoke();
         self::issueForUser($user, $existing->twoFaVerifiedAt, $existing->csrfSecret);
