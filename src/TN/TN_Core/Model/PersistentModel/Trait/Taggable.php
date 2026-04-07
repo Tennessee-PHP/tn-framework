@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Model\PersistentModel\Trait;
 
+use TN\TN_Core\Attribute\Impersistent;
 use TN\TN_CMS\Model\Tag\Tag;
 use TN\TN_CMS\Model\Tag\TaggedContent;
 
@@ -18,6 +19,7 @@ trait Taggable
      * 
      * @return Tag[] Array of tag objects
      */
+    #[Impersistent]
     private ?array $cachedTags = null;
     
     public function getTags(): array
