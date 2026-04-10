@@ -459,7 +459,8 @@ abstract class Controller
                 return new HTTPResponse($renderer, 404, $method);
             }
 
-            return new HTTPResponse($renderer, 200, $method);
+            $status = $renderer->httpResponseCode > 0 ? $renderer->httpResponseCode : 200;
+            return new HTTPResponse($renderer, $status, $method);
         } catch (ResourceNotFoundException $e) {
             throw $e;
         } catch (\TN\TN_Core\Error\Access\AccessException $e) {
