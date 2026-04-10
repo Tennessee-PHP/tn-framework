@@ -16,10 +16,6 @@ trait PersistentProperties
 {
     protected function loadPropertyValue(string $property, mixed $value): mixed
     {
-        if ($value === null) {
-            return null;
-        }
-
         // get a representation of the reflection property $property on $this
         try {
             $reflectionProperty = new \ReflectionProperty($this, $property);
@@ -27,15 +23,25 @@ trait PersistentProperties
             return $value;
         }
 
+        // get the type of the reflection property; remove the ? if it is nullable
+        $type = $reflectionProperty->getType()?->getName();
+        $type = str_replace('?', '', $type);
+
+        // SQL NULL or absent JSON for array-backed columns must hydrate as [] so typed
+        // `array` properties do not throw when the DB has NULL or JSON null.
+        if ($type === 'array' && $value === null) {
+            return [];
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
         // First check if property was encrypted and needs decryption
         $encryptAttributes = $reflectionProperty->getAttributes(Encrypt::class);
         if (!empty($encryptAttributes) && $value !== null) {
             $value = Encryption::getInstance()->decrypt($value);
         }
-
-        // get the type of the reflection property; remove the ? if it is nullable
-        $type = $reflectionProperty->getType()?->getName();
-        $type = str_replace('?', '', $type);
 
         // Then handle all type conversions
         if (in_array($type, ['int', 'string', 'float', 'bool'])) {
@@ -52,6 +58,9 @@ trait PersistentProperties
             // If it's a string, try to JSON decode it
             if (is_string($value)) {
                 $value = json_decode($value, true);
+            }
+            if (!is_array($value)) {
+                $value = [];
             }
         } else {
             // Check if it's an enum
