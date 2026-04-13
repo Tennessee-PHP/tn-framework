@@ -117,8 +117,8 @@ trait Commentable
         $this->numComments = $currentCount;
         $this->lastComment = $commentDate;
 
-        // Save the updated properties
-        $this->save();
+        // Persist: save() with no args does not write any columns (see PersistentModel save / MySQL saveUpdate).
+        $this->save(['numComments', 'lastComment']);
     }
 
     /**

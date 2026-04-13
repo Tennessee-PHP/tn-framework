@@ -22,6 +22,12 @@ class ValidationException extends TNException
     /** @var int how many errors are present */
     protected int $numErrors = 0;
 
+    /**
+     * When set, keys are API field names and values are user-facing messages (see {@see static::withFieldErrors()}).
+     *
+     * @var array<string, string>|null
+     */
+    protected ?array $fieldErrors = null;
 
     public int $httpResponseCode = 400;
     public bool $messageIsUserFacing = true;
@@ -38,5 +44,26 @@ class ValidationException extends TNException
             $this->message = $error;
         }
         $this->numErrors = count($this->errors);
+    }
+
+    /**
+     * @param array<string, string> $fieldKeyToMessage
+     */
+    public static function withFieldErrors(array $fieldKeyToMessage): self
+    {
+        if ($fieldKeyToMessage === []) {
+            throw new \InvalidArgumentException('field errors map must not be empty');
+        }
+        $e = new self(array_values($fieldKeyToMessage));
+        $e->fieldErrors = $fieldKeyToMessage;
+        return $e;
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    public function getFieldErrors(): ?array
+    {
+        return $this->fieldErrors;
     }
 }

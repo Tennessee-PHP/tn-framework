@@ -3,6 +3,7 @@
 namespace TN\TN_Core\Component\Renderer\JSON;
 
 use TN\TN_Core\Error\RateLimitExceededException;
+use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Component\Renderer\Renderer;
 
 class JSON extends Renderer
@@ -36,6 +37,25 @@ class JSON extends Renderer
                 'result' => 'error',
                 'message' => $message
             ]
+        ]);
+    }
+
+    /**
+     * JSON error body with optional {@see ValidationException::getFieldErrors()} map for API clients.
+     */
+    public static function validationError(ValidationException $e): Renderer
+    {
+        $payload = [
+            'result' => 'error',
+            'message' => $e->getMessage(),
+        ];
+        $fieldErrors = $e->getFieldErrors();
+        if ($fieldErrors !== null && $fieldErrors !== []) {
+            $payload['fieldErrors'] = $fieldErrors;
+        }
+        return new JSON([
+            'httpResponseCode' => $e->httpResponseCode,
+            'data' => $payload,
         ]);
     }
 

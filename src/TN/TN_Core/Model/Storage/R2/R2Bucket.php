@@ -299,6 +299,50 @@ abstract class R2Bucket
     }
 
     /**
+     * Stream an object from R2 to a local file without loading the entire object into memory.
+     *
+     * @param string $key Storage key
+     * @param string $absolutePath Writable path (parent directory must exist)
+     * @throws ValidationException When the download fails or the path is not writable
+     */
+    public function downloadObjectToLocalPath(string $key, string $absolutePath): void
+    {
+        try {
+            $event = self::startPerformanceEvent('R2', "GET {$key} (stream to disk)", ['bucket' => $this->bucketName]);
+
+            $client = $this->getClient();
+
+            $result = $client->getObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $key,
+            ]);
+
+            $event?->end();
+
+            $body = $result['Body'];
+            $stream = fopen($absolutePath, 'wb');
+            if ($stream === false) {
+                throw new ValidationException('Could not write temporary file for download');
+            }
+            try {
+                while (!$body->eof()) {
+                    $chunk = $body->read(1024 * 1024);
+                    if ($chunk === '' || $chunk === false) {
+                        break;
+                    }
+                    fwrite($stream, $chunk);
+                }
+            } finally {
+                fclose($stream);
+            }
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ValidationException('Failed to download file from R2 storage: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Download file contents from R2 bucket by key
      * 
      * @param string $key File key/path in bucket

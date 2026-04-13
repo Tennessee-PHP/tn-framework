@@ -67,7 +67,11 @@ trait PersistentProperties
             try {
                 $reflectionClass = new \ReflectionClass($type);
                 if ($reflectionClass->isEnum()) {
-                    $value = $type::from($value);
+                    if (is_object($value) && is_a($value, $type, true)) {
+                        // Already the correct enum (e.g. Factory::getInstance with enum props)
+                    } else {
+                        $value = $type::from($value);
+                    }
                 }
             } catch (\ReflectionException) {
                 // If we can't reflect the type, just keep the value as is

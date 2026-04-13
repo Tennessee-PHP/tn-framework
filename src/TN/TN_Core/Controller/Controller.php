@@ -24,6 +24,7 @@ use TN\TN_Core\Error\LoggedError;
 use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Error\TNException;
+use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\CommandLog\CommandLog;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Request\Command;
@@ -483,6 +484,12 @@ abstract class Controller
             if ($e instanceof RateLimitExceededException && is_a($rendererClass, JSON::class, true)) {
                 header('Retry-After: ' . (int) $e->retryAfter);
                 $renderer = JSON::rateLimitExceeded($e);
+            } elseif (
+                $e instanceof ValidationException
+                && $e->getFieldErrors() !== null
+                && is_a($rendererClass, JSON::class, true)
+            ) {
+                $renderer = JSON::validationError($e);
             } else {
                 $renderer = $rendererClass::error($e->getDisplayMessage());
             }
