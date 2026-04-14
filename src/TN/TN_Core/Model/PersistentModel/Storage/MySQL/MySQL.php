@@ -239,6 +239,54 @@ trait MySQL
     }
 
     /**
+     * Count matching rows grouped by one or more base-table properties.
+     *
+     * @param string[] $groupByProperties
+     * @return array<int, array<string, mixed>>
+     * @throws DBException
+     */
+    public static function countGroupedStorage(SearchArguments $search, array $groupByProperties, bool $absoluteLatest = false): array
+    {
+        if ($groupByProperties === []) {
+            return [];
+        }
+
+        $search->limit = null;
+        $select = new MySQLSelect(
+            table: self::getTableName(),
+            className: static::class,
+            selectType: MySQLSelectType::CountGrouped,
+            search: $search,
+            groupByProperties: $groupByProperties
+        );
+
+        try {
+            $event = self::startPerformanceEvent('MySQL', $select->query, [
+                'params' => $select->params,
+                'groupByProperties' => $groupByProperties,
+            ]);
+
+            $db = DB::getInstance($_ENV['MYSQL_DB'], $absoluteLatest);
+            $stmt = $db->prepare($select->query);
+
+            if (MYSQL_DEBUG_MODE) {
+                echo $select->query . PHP_EOL;
+            }
+
+            if (!$stmt->execute($select->params)) {
+                throw new DBException('Failed to execute grouped count query');
+            }
+
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $event?->end();
+        } catch (\PDOException $e) {
+            throw new DBException($e->getMessage());
+        }
+
+        return is_array($result) ? $result : [];
+    }
+
+    /**
      * @throws DBException
      */
     public static function countAndTotalStorage(SearchArguments $search, string $propertyToTotal, bool $absoluteLatest = false): CountAndTotalResult

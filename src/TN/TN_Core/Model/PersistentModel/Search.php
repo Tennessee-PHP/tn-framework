@@ -39,6 +39,17 @@ trait Search
         return $count;
     }
 
+    /**
+     * Count matching rows grouped by one or more base-table properties.
+     *
+     * @param string[] $groupByProperties Base-table property names to group by.
+     * @return array<int, array<string, mixed>>
+     */
+    public static function countGrouped(SearchArguments $search, array $groupByProperties, bool $absoluteLatest = false): array
+    {
+        return static::countGroupedStorage($search, $groupByProperties, $absoluteLatest);
+    }
+
     public static function readAll(): array
     {
         return static::search(new SearchArguments());

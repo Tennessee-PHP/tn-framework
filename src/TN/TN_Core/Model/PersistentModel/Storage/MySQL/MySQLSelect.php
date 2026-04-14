@@ -30,7 +30,8 @@ class MySQLSelect
         public MySQLSelectType $selectType,
         public SearchArguments $search,
         public ?string         $sumProperty = null,
-        public ?array          $distinctSelectProperties = null
+        public ?array          $distinctSelectProperties = null,
+        public ?array          $groupByProperties = null
     ) {
         $this->className = Stack::resolveClassName($className);
         $this->foreignTables = [];
@@ -43,6 +44,7 @@ class MySQLSelect
         $this->query .= match ($selectType) {
             MySQLSelectType::Objects => $this->buildObjectsSelect($table, $search, $foreignTablesList),
             MySQLSelectType::Count => "COUNT(DISTINCT `{$table}`.`id`)",
+            MySQLSelectType::CountGrouped => $this->buildCountGroupedSelect($table),
             MySQLSelectType::CountAndSum => "COUNT(DISTINCT `{$table}`.`id`) as count, SUM(`{$table}`.`{$sumProperty}`) as sum",
             MySQLSelectType::Sum => "SUM(`{$table}`.*)"
         };
@@ -61,6 +63,16 @@ class MySQLSelect
                     $this->query .= ' AND ';
                 }
                 $this->addCondition($condition);
+            }
+        }
+
+        if ($selectType === MySQLSelectType::CountGrouped && !empty($this->groupByProperties)) {
+            $this->query .= ' GROUP BY ';
+            foreach ($this->groupByProperties as $i => $property) {
+                if ($i > 0) {
+                    $this->query .= ', ';
+                }
+                $this->query .= "`{$table}`.`{$property}`";
             }
         }
 
@@ -144,6 +156,21 @@ class MySQLSelect
             }
         }
         return $select;
+    }
+
+    private function buildCountGroupedSelect(string $table): string
+    {
+        if ($this->groupByProperties === null || $this->groupByProperties === []) {
+            throw new \InvalidArgumentException('CountGrouped select requires groupByProperties');
+        }
+
+        $selectParts = array_map(
+            static fn(string $property): string => "`{$table}`.`{$property}` AS `{$property}`",
+            $this->groupByProperties
+        );
+        $selectParts[] = "COUNT(DISTINCT `{$table}`.`id`) AS `count`";
+
+        return implode(', ', $selectParts);
     }
 
     private function addClassToForeignTables(string $class): void
