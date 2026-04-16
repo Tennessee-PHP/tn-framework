@@ -89,7 +89,7 @@ class UserToken implements Persistence
     ): UserToken
     {
         $now = Time::getNow();
-        $expiresTs = $now + User::LOGIN_EXPIRES;
+        $expiresTs = $now + User::getAccessTokenTtl();
         $tokenString = bin2hex(random_bytes(64));
         $validTwoFaTs = null;
         if ($twoFaVerifiedAt !== null && ($twoFaVerifiedAt + Time::ONE_MONTH) > $now) {

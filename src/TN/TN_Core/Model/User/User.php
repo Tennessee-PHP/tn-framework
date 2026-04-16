@@ -68,8 +68,17 @@ class User implements Persistence
      * constants
      */
 
-    /** @var int how long should a login last */
-    const int LOGIN_EXPIRES = Time::ONE_MONTH * 6;
+    /** Default access-token lifetime in seconds (Bearer / user_tokens row). Override with AUTH_ACCESS_TOKEN_TTL. */
+    private const int DEFAULT_ACCESS_TOKEN_TTL = 3600;
+
+    /**
+     * Access-token TTL for session-style auth (short-lived access token + refresh cookie).
+     */
+    public static function getAccessTokenTtl(): int
+    {
+        $ttl = (int) ($_ENV['AUTH_ACCESS_TOKEN_TTL'] ?? self::DEFAULT_ACCESS_TOKEN_TTL);
+        return $ttl > 0 ? $ttl : self::DEFAULT_ACCESS_TOKEN_TTL;
+    }
 
     /** @var int how many different IP addresses a user can use prior to being locked */
     const int IP_LIMIT = 8;
@@ -425,7 +434,7 @@ class User implements Persistence
         $disableLegacyTokenCookie = trim((string) ($_ENV['AUTH_DISABLE_LEGACY_TOKEN_COOKIE'] ?? '0')) === '1';
         if ((!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) && !$disableLegacyTokenCookie) {
             $request->setCookie('TN_token', $user->token, [
-                'expires' => Time::getNow() + self::LOGIN_EXPIRES,
+                'expires' => Time::getNow() + self::getAccessTokenTtl(),
                 'secure' => $_ENV['ENV'] !== 'development',
                 'domain' => $_ENV['COOKIE_DOMAIN'],
                 'path' => '/',
@@ -693,7 +702,7 @@ class User implements Persistence
             $loginAsUserToken = UserToken::createForUser($otherUser);
             if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
                 $request->setCookie('TN_LoginAs_token', $loginAsUserToken->token, [
-                    'expires' => Time::getNow() + self::LOGIN_EXPIRES,
+                    'expires' => Time::getNow() + self::getAccessTokenTtl(),
                     'secure' => $_ENV['ENV'] !== 'development',
                     'domain' => $_ENV['COOKIE_DOMAIN'],
                     'path' => '/',
@@ -715,7 +724,7 @@ class User implements Persistence
         $request = HTTPRequest::get();
         $request->setSession('TN_LoginAs_User_Id', null);
         $request->setCookie('TN_LoginAs_token', '', [
-            'expires' => Time::getNow() + self::LOGIN_EXPIRES,
+            'expires' => Time::getNow() + self::getAccessTokenTtl(),
             'secure' => true,
             'domain' => $_ENV['COOKIE_DOMAIN'],
             'httponly' => true,
@@ -810,7 +819,7 @@ class User implements Persistence
         $request->setSession('TN_LoggedIn_User_Id', null);
         if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
             $request->setCookie('TN_token', '', [
-                'expires' => Time::getNow() + self::LOGIN_EXPIRES,
+                'expires' => Time::getNow() + self::getAccessTokenTtl(),
                 'secure' => true,
                 'domain' => $_ENV['COOKIE_DOMAIN'],
                 'httponly' => true,

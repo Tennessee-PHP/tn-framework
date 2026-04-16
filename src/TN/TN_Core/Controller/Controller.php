@@ -25,6 +25,7 @@ use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Error\TNException;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\CORS;
 use TN\TN_Core\Model\CommandLog\CommandLog;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Request\Command;
@@ -508,13 +509,9 @@ abstract class Controller
         foreach ($method->getAttributes() as $attribute) {
             $attributeName = $attribute->getName();
             if ($attributeName === ReflectOrigin::class) {
-                $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-                if ($origin !== '') {
-                    header("Access-Control-Allow-Origin: $origin");
-                }
+                CORS::applyReflectedOriginHeaders();
             } elseif ($attributeName === AllowOrigin::class) {
-                $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-                header("Access-Control-Allow-Origin: $origin");
+                CORS::applyCorsHeaders();
             } elseif ($attributeName === AllowCredentials::class) {
                 header('Access-Control-Allow-Credentials: true');
             }

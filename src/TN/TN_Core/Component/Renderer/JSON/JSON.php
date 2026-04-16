@@ -5,6 +5,8 @@ namespace TN\TN_Core\Component\Renderer\JSON;
 use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Component\Renderer\Renderer;
+use TN\TN_Core\Model\Performance\PerformanceDisplayMetrics;
+use TN\TN_Core\Model\Performance\PerformanceLog;
 
 class JSON extends Renderer
 {
@@ -23,7 +25,20 @@ class JSON extends Renderer
      */
     public function render(): string
     {
-        return json_encode($this->data);
+        PerformanceLog::endRequest();
+
+        $payload = $this->data;
+        if (
+            is_array($payload)
+            && PerformanceLog::shouldRecord()
+        ) {
+            $raw = PerformanceLog::getCurrentMetrics();
+            if ($raw !== null) {
+                $payload['_performanceMetrics'] = PerformanceDisplayMetrics::fromRaw($raw);
+            }
+        }
+
+        return json_encode($payload);
     }
 
     /**
