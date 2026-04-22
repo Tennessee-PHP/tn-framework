@@ -247,6 +247,29 @@ abstract class R2Bucket
     }
 
     /**
+     * Server-side copy within the same bucket (e.g. pending → final key).
+     */
+    public function copyObjectInBucket(string $sourceKey, string $destinationKey): void
+    {
+        try {
+            $event = self::startPerformanceEvent('R2', "COPY {$sourceKey} → {$destinationKey}", ['bucket' => $this->bucketName]);
+
+            $client = $this->getClient();
+
+            $client->copyObject([
+                'Bucket' => $this->bucketName,
+                'CopySource' => $this->bucketName . '/' . $sourceKey,
+                'Key' => $destinationKey,
+                'MetadataDirective' => 'COPY',
+            ]);
+
+            $event?->end();
+        } catch (\Exception $e) {
+            throw new ValidationException('Failed to copy file in R2 storage: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Check if a file exists in the R2 bucket
      * 
      * @param string $key File key/path in bucket

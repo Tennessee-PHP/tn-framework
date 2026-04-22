@@ -3,4 +3,4 @@
 
 <p>Please click <a href="{$BASE_URL}reset-password?key={$key|escape:url}">THIS LINK</a> to reset your password.</p>
 
-<p>Thanks for being part of {$SITE_NAME} and we hope you have an awesome day.</p>
+<p>Thanks for being a part of {$SITE_NAME}!</p>
