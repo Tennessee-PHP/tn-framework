@@ -181,6 +181,16 @@ class TemplateEngine extends Smarty
             $data['envList'][$env] = $_ENV[$env];
         }
 
+        $frontendUrl = $_ENV['FRONTEND_URL'] ?? '';
+        $data['FRONTEND_URL'] = $frontendUrl;
+        $data['envList']['FRONTEND_URL'] = $frontendUrl;
+
+        $discordInvite = (isset($_ENV['DISCORD_INVITE_URL']) && $_ENV['DISCORD_INVITE_URL'] !== '')
+            ? $_ENV['DISCORD_INVITE_URL']
+            : 'https://discord.gg/TeDkefn';
+        $data['DISCORD_INVITE_URL'] = $discordInvite;
+        $data['envList']['DISCORD_INVITE_URL'] = $discordInvite;
+
         $request = HTTPRequest::get();
         $data['csrfToken'] = $request ? CsrfService::getCsrfSecretForRequest($request) : null;
 

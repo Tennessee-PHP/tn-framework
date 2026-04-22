@@ -115,10 +115,18 @@ class Email implements Persistence
             return true;
         }
 
-        $transport = (new \Swift_SmtpTransport($_ENV['AWS_SES_HOST'], $_ENV['AWS_SES_PORT']))
-            ->setUsername($_ENV['AWS_SES_USERNAME'])
-            ->setPassword($_ENV['AWS_SES_PASSWORD'])
-            ->setEncryption("tls");
+        $smtpHost = $_ENV['SMTP_HOST'] ?? $_ENV['AWS_SES_HOST'];
+        $smtpPortRaw = $_ENV['SMTP_PORT'] ?? $_ENV['AWS_SES_PORT'];
+        $smtpUser = $_ENV['SMTP_USERNAME'] ?? $_ENV['AWS_SES_USERNAME'];
+        $smtpPass = $_ENV['SMTP_PASSWORD'] ?? $_ENV['AWS_SES_PASSWORD'];
+        $port = is_numeric($smtpPortRaw) ? (int) $smtpPortRaw : 587;
+        // 465 = implicit TLS (ssl); 587 = STARTTLS (tls). Override with SMTP_ENCRYPTION if set non-empty.
+        $encryption = (isset($_ENV['SMTP_ENCRYPTION']) && $_ENV['SMTP_ENCRYPTION'] !== '')
+            ? $_ENV['SMTP_ENCRYPTION']
+            : (($port === 465) ? 'ssl' : 'tls');
+        $transport = (new \Swift_SmtpTransport($smtpHost, $port, $encryption))
+            ->setUsername($smtpUser)
+            ->setPassword($smtpPass);
         $mailer = new \Swift_Mailer($transport);
         $message = new \Swift_Message();
         $message->setSubject(($_ENV['ENV'] !== 'production' ? (strtoupper($_ENV['ENV']) . ': ') : '') . $this->subject)
