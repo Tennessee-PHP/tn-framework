@@ -65,6 +65,14 @@ class HTTPRequest extends Request
     private ?string $testRequestBody = null;
 
     /**
+     * Raw `php://input` can only be read once per request; multiple {@see FromJSONBody} properties
+     * and helpers like {@see getAuthToken()} would otherwise see an empty string after the first read.
+     */
+    private bool $requestBodyRead = false;
+
+    private string $cachedRequestBody = '';
+
+    /**
      * @var string|null Source of auth token when getAuthToken() returned non-null: 'body', 'query', 'cookie', 'header'
      */
     private ?string $authTokenSource = null;
@@ -123,7 +131,11 @@ class HTTPRequest extends Request
             return $this->testRequestBody;
         }
 
-        return file_get_contents('php://input');
+        if (!$this->requestBodyRead) {
+            $this->cachedRequestBody = file_get_contents('php://input') ?: '';
+            $this->requestBodyRead = true;
+        }
+        return $this->cachedRequestBody;
     }
 
     public function getJSONRequestBody(): ?array

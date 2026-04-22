@@ -117,8 +117,10 @@ class TaggedContent implements Persistence
             new SearchComparison('`contentClass`', '=', $contentClass),
             new SearchComparison('`contentId`', '=', $contentId)
         ]);
-        
-        $taggedContents = self::search($searchArgs);
+
+        // Must bypass Redis model search cache: it can return a stale [] right after setTags/inserts in
+        // another request, so the park GET would omit tags even though `cms_tagged_content` is correct.
+        $taggedContents = self::search($searchArgs, true);
         
         // Bulk load all tags at once instead of N+1 queries
         $tagIds = [];

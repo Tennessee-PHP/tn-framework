@@ -19,27 +19,36 @@ trait Taggable
      * 
      * @return Tag[] Array of tag objects
      */
+    /**
+     * Loaded tag list (may be empty). Not loaded until first {@see getTags()} in this request / instance.
+     */
     #[Impersistent]
     private ?array $cachedTags = null;
-    
+
+    /**
+     * Distinguish "not loaded" from "loaded, zero tags". A stale empty array in {@see $cachedTags} must
+     * not short-circuit (e.g. after tags are later saved) — see NE6 park tags: Redis object cache and [].
+     */
+    #[Impersistent]
+    private bool $tagAssociationsResolved = false;
+
     public function getTags(): array
     {
-        // Return cached tags if available
-        if ($this->cachedTags !== null) {
+        if ($this->tagAssociationsResolved) {
             return $this->cachedTags;
         }
-        
+
         $taggedContents = TaggedContent::getFromContentItem(static::class, $this->id);
         $tags = [];
-        
+
         foreach ($taggedContents as $taggedContent) {
             $tags[] = $taggedContent->tag;
         }
-        
-        // Cache the tags for subsequent calls
+
         $this->cachedTags = $tags;
-        
-        return $tags;
+        $this->tagAssociationsResolved = true;
+
+        return $this->cachedTags;
     }
 
     /**
@@ -54,6 +63,7 @@ trait Taggable
         $result = TaggedContent::addTag(static::class, $this->id, $tag, $primary);
         // Clear cache since tags have changed
         $this->cachedTags = null;
+        $this->tagAssociationsResolved = false;
         return $result;
     }
 
@@ -68,6 +78,7 @@ trait Taggable
         $result = TaggedContent::removeTag(static::class, $this->id, $tag);
         // Clear cache since tags have changed
         $this->cachedTags = null;
+        $this->tagAssociationsResolved = false;
         return $result;
     }
 
@@ -83,6 +94,7 @@ trait Taggable
         $result = TaggedContent::setTags(static::class, $this->id, [], $tags, $eraseExisting);
         // Clear cache since tags have changed
         $this->cachedTags = null;
+        $this->tagAssociationsResolved = false;
         return $result;
     }
 }
