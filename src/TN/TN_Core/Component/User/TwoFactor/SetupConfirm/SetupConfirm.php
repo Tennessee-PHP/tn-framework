@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\User\TwoFactor\SetupConfirm;
 
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Service\TwoFactorService;
@@ -26,7 +27,8 @@ class SetupConfirm extends JSON
         $setupToken = isset($jsonBody['setupToken']) ? trim((string)$jsonBody['setupToken']) : '';
         $code = isset($jsonBody['code']) ? trim((string)$jsonBody['code']) : '';
 
-        $payload = TwoFactorService::consumeSetupPayload($setupToken);
+        $tf = Stack::resolveClassName(TwoFactorService::class) ?: TwoFactorService::class;
+        $payload = $tf::consumeSetupPayload($setupToken);
 
         if ($payload === null || $payload['userId'] !== $user->id) {
             throw new ValidationException('Setup expired or not started. Please start setup again.');
@@ -36,7 +38,7 @@ class SetupConfirm extends JSON
             throw new ValidationException('Code is required');
         }
 
-        if (!TwoFactorService::verifyCodeForSecret($payload['secret'], $code)) {
+        if (!($tf::verifyCodeForSecret($payload['secret'], $code))) {
             throw new ValidationException('Invalid or expired code');
         }
 

@@ -9,7 +9,7 @@ use TN\TN_Core\Model\User\UserToken;
 
 /**
  * TOTP two-factor authentication: verify codes, enrol users, build otpauth URIs.
- * Issuer is read from ENV (e.g. TOTP_ISSUER); no app name in the framework.
+ * Issuer: `TOTP_ISSUER`, else `SITE_NAME`, else {@see getDefaultTotpIssuer()} (override in an app package for product branding).
  */
 class TwoFactorService
 {
@@ -83,14 +83,22 @@ class TwoFactorService
     }
 
     /**
-     * Build otpauth URI for QR and manual entry. Issuer from ENV (TOTP_ISSUER or SITE_NAME), else "New Element".
+     * Neutral issuer when TOTP_ISSUER and SITE_NAME are unset. Override in a higher package for a product display name.
+     */
+    protected static function getDefaultTotpIssuer(): string
+    {
+        return 'TOTP';
+    }
+
+    /**
+     * Build otpauth URI for QR and manual entry. Issuer from ENV (TOTP_ISSUER or SITE_NAME), else {@see getDefaultTotpIssuer()}.
      * Holder uses a leading space so the otpauth path decodes to "{issuer}: {account}" for authenticator display.
      */
     public static function getOtpAuthUri(User $user, string $secret, ?string $label = null): string
     {
         $issuer = $_ENV['TOTP_ISSUER'] ?? $_ENV['SITE_NAME'] ?? '';
         if ($issuer === '') {
-            $issuer = 'New Element';
+            $issuer = static::getDefaultTotpIssuer();
         }
         if ($label !== null) {
             $holder = $label;
@@ -107,7 +115,7 @@ class TwoFactorService
     public static function prepareEnrolment(User $user): array
     {
         $secret = self::generateSecret();
-        $otpauthUri = self::getOtpAuthUri($user, $secret);
+        $otpauthUri = static::getOtpAuthUri($user, $secret);
         return [
             'secret' => $secret,
             'otpauthUri' => $otpauthUri,
@@ -119,7 +127,7 @@ class TwoFactorService
      */
     public static function enrolUser(User $user): array
     {
-        $data = self::prepareEnrolment($user);
+        $data = static::prepareEnrolment($user);
         $user->update(['totpSecret' => $data['secret']]);
         return $data;
     }

@@ -27,7 +27,7 @@ trait Taggable
 
     /**
      * Distinguish "not loaded" from "loaded, zero tags". A stale empty array in {@see $cachedTags} must
-     * not short-circuit (e.g. after tags are later saved) — see NE6 park tags: Redis object cache and [].
+     * not short-circuit (e.g. after tags are later saved) — e.g. when object cache and an empty in-memory list disagree.
      */
     #[Impersistent]
     private bool $tagAssociationsResolved = false;

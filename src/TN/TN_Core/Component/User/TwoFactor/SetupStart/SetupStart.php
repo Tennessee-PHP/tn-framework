@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\User\TwoFactor\SetupStart;
 
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Service\TwoFactorService;
 
@@ -24,8 +25,9 @@ class SetupStart extends JSON
             throw new ValidationException('Two-factor is already set up for this account');
         }
 
-        $data = TwoFactorService::prepareEnrolment($user);
-        $setupToken = TwoFactorService::storeSetupPayload($user->id, $data['secret']);
+        $tf = Stack::resolveClassName(TwoFactorService::class) ?: TwoFactorService::class;
+        $data = $tf::prepareEnrolment($user);
+        $setupToken = $tf::storeSetupPayload($user->id, $data['secret']);
 
         $this->data = [
             'result' => 'success',

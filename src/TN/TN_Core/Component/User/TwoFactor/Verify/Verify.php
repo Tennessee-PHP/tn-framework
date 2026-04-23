@@ -4,6 +4,7 @@ namespace TN\TN_Core\Component\User\TwoFactor\Verify;
 
 use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\User\User;
 use TN\TN_Core\Model\User\UserToken;
@@ -51,7 +52,8 @@ class Verify extends JSON
             throw new ValidationException('User not found');
         }
 
-        if (!TwoFactorService::verifyAndUpgradeToken($userForVerify, $userToken, $code)) {
+        $tf = Stack::resolveClassName(TwoFactorService::class) ?: TwoFactorService::class;
+        if (!($tf::verifyAndUpgradeToken($userForVerify, $userToken, $code))) {
             throw new ValidationException('Invalid or expired code');
         }
         RefreshTokenService::syncTwoFactorTrustFromAccessToken($userToken);
