@@ -157,7 +157,7 @@ class Article extends Content implements Persistence
             $query = "SELECT " .
                 ($count ? "count(DISTINCT a.`id`)" : "DISTINCT a.`id`, a.`publishedTs`, a.`weight` ") .
                 "FROM `{$table}` as a, {$tagsTable} as t, {$taggedContentsTable} as c";
-            $wheres[] = "t.`text` LIKE ?";
+            $wheres[] = "t.`text` = ?";
             $values[] = $tag;
             $wheres[] = "t.`id` = c.`tagId`";
             $wheres[] = "c.`contentClass` = ?";
@@ -197,10 +197,15 @@ class Article extends Content implements Persistence
             return (int)$result[0];
         }
 
-        if ($sortProperty !== null) {
+        if ($tag && $sortProperty === null) {
+            $now = Time::getNow();
+            $sortKey = '(' . self::sqlExpressionListSortTimeFactor($now, 'a.`publishedTs`') . " + a.`weight`)";
+            $query .= " ORDER BY ({$sortKey}) DESC, a.`publishedTs` DESC, a.`id` DESC"
+                . " LIMIT " . (int) $start . ", " . (int) $num;
+        } elseif ($sortProperty !== null) {
             $query .= " ORDER BY ";
             $query .= "`{$sortProperty}` " . ($sortDirection === SORT_DESC ? "DESC" : "ASC");
-            $query .= " LIMIT {$start}, {$num}";
+            $query .= " LIMIT " . (int) $start . ", " . (int) $num;
         }
 
         $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values]);
@@ -208,29 +213,30 @@ class Article extends Content implements Persistence
         $stmt->execute($values);
         $event?->end();
         $articles = [];
-        $sortFactors = [];
-        $timestamps = [];
         $ids = [];
-        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
-            $ids[] = $item['id'];
-            if ($sortProperty === null) {
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($tag && $sortProperty === null) {
+            $pageIds = array_map(fn (array $r) => (int) $r['id'], $rows);
+        } elseif ($sortProperty !== null) {
+            $pageIds = array_map(fn (array $r) => (int) $r['id'], $rows);
+        } else {
+            $sortFactors = [];
+            $timestamps = [];
+            foreach ($rows as $item) {
+                $ids[] = $item['id'];
                 $sortFactors[] = self::getSortFactor($item['weight'], $item['publishedTs'], $item['id']);
                 $timestamps[] = $item['publishedTs'];
             }
-        }
-
-        if ($sortProperty === null) {
             array_multisort($sortFactors, SORT_DESC, $timestamps, SORT_DESC, $ids);
-        }
-
-        $pageIds = [];
-        foreach ($ids as $i => $id) {
-            if ($sortProperty === null && $i < $start) {
-                continue;
-            }
-            $pageIds[] = $id;
-            if (count($pageIds) >= $num) {
-                break;
+            $pageIds = [];
+            foreach ($ids as $i => $id) {
+                if ($i < $start) {
+                    continue;
+                }
+                $pageIds[] = $id;
+                if (count($pageIds) >= $num) {
+                    break;
+                }
             }
         }
 
@@ -240,18 +246,7 @@ class Article extends Content implements Persistence
 
         $articlesById = static::readFromIds($pageIds);
 
-        $tagCountsByContentId = [];
-        $taggedContents = TaggedContent::search(new SearchArguments([
-            new SearchComparison('`contentClass`', '=', get_called_class()),
-            new SearchComparison('`contentId`', 'IN', $pageIds)
-        ]));
-        foreach ($taggedContents as $taggedContent) {
-            $contentId = (string)$taggedContent->contentId;
-            if (!isset($tagCountsByContentId[$contentId])) {
-                $tagCountsByContentId[$contentId] = 0;
-            }
-            $tagCountsByContentId[$contentId]++;
-        }
+        $tagCountsByContentId = TaggedContent::countTagRowsByContentIds(get_called_class(), $pageIds);
 
         $authorIds = [];
         foreach ($articlesById as $article) {
@@ -288,28 +283,56 @@ class Article extends Content implements Persistence
      * @param int $ts
      * @return float
      */
+    /**
+     * Recency/weight time-scale boundaries for default article list ordering (getArticles),
+     * shared by PHP and MySQL list-sort.
+     *
+     * @return int[] length 11; indices 0..9 are thresholds, index 10 is 0
+     */
+    private static function getListSortTimeScales(): array
+    {
+        return [
+            Time::ONE_YEAR * 10,
+            Time::ONE_YEAR * 2,
+            Time::ONE_YEAR,
+            Time::ONE_YEAR * 0.25,
+            Time::ONE_WEEK * 4,
+            Time::ONE_WEEK,
+            Time::ONE_DAY * 3,
+            Time::ONE_DAY,
+            Time::ONE_HOUR * 5,
+            Time::ONE_HOUR,
+            0,
+        ];
+    }
+
+    /**
+     * MySQL expression matching calculateTimeFactor() for a publishedTs column reference.
+     */
+    private static function sqlExpressionListSortTimeFactor(int $now, string $publishedTsRef): string
+    {
+        $s = self::getListSortTimeScales();
+        $d = "({$now} - {$publishedTsRef})";
+        $parts = [];
+        $parts[] = "WHEN {$d} >= {$s[0]} THEN 0.0";
+        $parts[] = "WHEN {$d} < {$s[9]} THEN 10.0";
+        for ($i = 1; $i <= 9; $i += 1) {
+            $parts[] = "WHEN {$d} >= {$s[$i]} AND {$d} < {$s[$i - 1]} THEN "
+                . "{$i}.0 + (({$d} - {$s[$i - 1]}) * 1.0 / ({$s[$i]} - {$s[$i - 1]}))";
+        }
+        return 'CASE ' . implode(' ', $parts) . ' ELSE 0.0 END';
+    }
+
     private static function calculateTimeFactor(int $ts): float
     {
         $diff = Time::getNow() - $ts;
-        $tsScale = [
-            Time::ONE_YEAR * 10, // 0
-            Time::ONE_YEAR * 2, // 1
-            Time::ONE_YEAR, // 2
-            Time::ONE_YEAR * 0.25, // 3
-            Time::ONE_WEEK * 4, // 4
-            Time::ONE_WEEK, // 5
-            Time::ONE_DAY * 3, // 6
-            Time::ONE_DAY, // 7
-            Time::ONE_HOUR * 5, // 8
-            Time::ONE_HOUR, // 9
-            0, // 10
-        ];
+        $tsScale = self::getListSortTimeScales();
         $i = 0;
         while ($i < count($tsScale) - 1 && $diff < $tsScale[$i]) {
             $i += 1;
         }
-        if (in_array($i, [0, 10])) {
-            $timeFactor = $i;
+        if (in_array($i, [0, 10], true)) {
+            $timeFactor = (float) $i;
         } else {
             $timeFactor = $i + (
                 ($diff - $tsScale[$i - 1]) / ($tsScale[$i] - $tsScale[$i - 1])

@@ -237,4 +237,36 @@ class TaggedContent implements Persistence
         return false;
     }
 
+    /**
+     * Count tag rows per content item in one query (replaces N hydrated TaggedContent rows for numTags).
+     *
+     * @param class-string $contentClass
+     * @param list<int> $contentIds
+     * @return array<string, int> string contentId => row count
+     */
+    public static function countTagRowsByContentIds(string $contentClass, array $contentIds): array
+    {
+        if ($contentIds === []) {
+            return [];
+        }
+        $contentIds = array_values(array_unique(array_map(static fn (int $id): string => (string) $id, $contentIds)));
+        $placeholders = implode(',', array_fill(0, count($contentIds), '?'));
+        $table = self::getTableName();
+        $query = "SELECT c.`contentId`, COUNT(*) AS `cnt` FROM `{$table}` c
+            WHERE c.`contentClass` = ? AND c.`contentId` IN ({$placeholders})
+            GROUP BY c.`contentId`";
+        $db = DB::getInstance($_ENV['MYSQL_DB']);
+        $event = self::startPerformanceEvent('MySQL', $query, [
+            'params' => array_merge([$contentClass], $contentIds),
+        ]);
+        $stmt = $db->prepare($query);
+        $stmt->execute(array_merge([$contentClass], $contentIds));
+        $event?->end();
+        $out = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $out[(string) $row['contentId']] = (int) $row['cnt'];
+        }
+        return $out;
+    }
+
 }
