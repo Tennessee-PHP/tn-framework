@@ -690,7 +690,7 @@ class PageEntry implements Persistence
     }
 
     /**
-     * Search for page entries by path using LIKE matching
+     * Search for page entries by path using LIKE substring matching (also matches pasted full URL/path segments).
      * @param string $pathQuery The path to search for
      * @return array Array of PageEntry objects that match the path
      */
@@ -708,9 +708,10 @@ class PageEntry implements Persistence
         // Remove leading slash if present
         $pathQuery = ltrim($pathQuery, '/');
 
-        // Use LIKE with % for prefix matching
+        // Substring match so e.g. "draft-tracker" finds "rookieguide/draft-tracker" (featured-content picker)
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $pathQuery);
         $stmt = $db->prepare("SELECT * FROM {$table} WHERE `path` LIKE ? ORDER BY LENGTH(`path`) ASC");
-        $stmt->execute([$pathQuery . '%']);
+        $stmt->execute(['%' . $escaped . '%']);
 
         $results = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
