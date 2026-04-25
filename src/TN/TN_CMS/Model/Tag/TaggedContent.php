@@ -2,10 +2,10 @@
 
 namespace TN\TN_CMS\Model\Tag;
 
-use PDO;
 use TN\TN_CMS\Model\PageEntry;
 use TN\TN_Core\Attribute\Cache;
 use TN\TN_Core\Attribute\Impersistent;
+use TN\TN_Core\Attribute\MySQL\Index;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Relationships\ParentId;
 use TN\TN_Core\Attribute\Relationships\ParentObject;
@@ -13,8 +13,6 @@ use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
-use TN\TN_Core\Model\Storage\DB;
-use TN\TN_Core\Trait\PerformanceRecorder;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
 
@@ -24,11 +22,13 @@ class TaggedContent implements Persistence
 {
     use MySQL;
     use PersistentModel;
-    use PerformanceRecorder;
 
+    #[Index('idx_tagged_content_class_content_tag')]
     public string $contentClass = '';
+    #[Index('idx_tagged_content_class_content_tag')]
     public string $contentId = '';
     #[ParentId]
+    #[Index('idx_tagged_content_class_content_tag')]
     public int $tagId = 0;
     public bool $primary = false;
     #[ParentObject]
@@ -86,23 +86,11 @@ class TaggedContent implements Persistence
 
     public static function contentItemHasTag(string $contentClass, string $contentId, Tag $tag): bool
     {
-        $db = DB::getInstance($_ENV['MYSQL_DB']);
-        $table = self::getTableName();
-        $query = "
-            SELECT *
-            FROM
-                {$table} as c
-            WHERE
-                c.contentClass = ?
-                AND c.contentId = ?
-                AND c.tagId = ?
-                ";
-        $event = self::startPerformanceEvent('MySQL', $query, ['params' => [$contentClass, $contentId, $tag->id]]);
-        $stmt = $db->prepare($query);
-        $stmt->execute([$contentClass, $contentId, $tag->id]);
-        $event?->end();
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        return count($results) > 0;
+        return self::searchOne(new SearchArguments([
+            new SearchComparison('`contentClass`', '=', $contentClass),
+            new SearchComparison('`contentId`', '=', $contentId),
+            new SearchComparison('`tagId`', '=', $tag->id),
+        ]), true) !== null;
     }
 
     /**
@@ -250,21 +238,13 @@ class TaggedContent implements Persistence
             return [];
         }
         $contentIds = array_values(array_unique(array_map(static fn (int $id): string => (string) $id, $contentIds)));
-        $placeholders = implode(',', array_fill(0, count($contentIds), '?'));
-        $table = self::getTableName();
-        $query = "SELECT c.`contentId`, COUNT(*) AS `cnt` FROM `{$table}` c
-            WHERE c.`contentClass` = ? AND c.`contentId` IN ({$placeholders})
-            GROUP BY c.`contentId`";
-        $db = DB::getInstance($_ENV['MYSQL_DB']);
-        $event = self::startPerformanceEvent('MySQL', $query, [
-            'params' => array_merge([$contentClass], $contentIds),
-        ]);
-        $stmt = $db->prepare($query);
-        $stmt->execute(array_merge([$contentClass], $contentIds));
-        $event?->end();
         $out = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $out[(string) $row['contentId']] = (int) $row['cnt'];
+        $rows = self::countGrouped(new SearchArguments([
+            new SearchComparison('`contentClass`', '=', $contentClass),
+            new SearchComparison('`contentId`', 'IN', $contentIds),
+        ]), ['contentId']);
+        foreach ($rows as $row) {
+            $out[(string) $row['contentId']] = (int) ($row['count'] ?? 0);
         }
         return $out;
     }
