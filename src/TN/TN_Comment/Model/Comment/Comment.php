@@ -3,6 +3,7 @@
 namespace TN\TN_Comment\Model\Comment;
 
 use DateTime;
+use TN\TN_Core\Attribute\NoCacheInvalidation;
 use TN\TN_Core\Attribute\MySQL\ColumnType;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\Impersistent;
@@ -34,8 +35,11 @@ class Comment implements Persistence
     public string $contentType;
     public int $contentId;
     #[ForeignKey(User::class)] public int $userId;
-    #[ColumnType('mediumtext')] public string $content;
+    #[ColumnType('mediumtext')]
+    #[NoCacheInvalidation]
+    public string $content;
     public DateTime $createdAt;
+    #[NoCacheInvalidation]
     public DateTime $updatedAt;
     public ?int $parentId = null;
 
