@@ -16,8 +16,11 @@ use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQLPrune;
 use TN\TN_Core\Model\Time\Time;
 
 /**
- * an email message sent to someone
+ * An email message sent to someone.
  *
+ * Outbound SMTP: skipped when `ENV` is not `production`, or when `MAIL_OUTBOUND_ENABLED` is a
+ * falsy value (`0`, `false`, `off`, `no`, empty). When unset, outbound mail is allowed in
+ * production (subject to `ENV`).
  */
 #[TableName('emails')]
 class Email implements Persistence
@@ -108,10 +111,29 @@ class Email implements Persistence
         }
     }
 
+    /**
+     * Whether the framework may open an SMTP connection in this process (production only,
+     * and not when `MAIL_OUTBOUND_ENABLED` is off).
+     */
+    private static function isMailOutboundSmtpEnabled(): bool
+    {
+        $raw = $_ENV['MAIL_OUTBOUND_ENABLED'] ?? '1';
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            $raw = '1';
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
+    }
+
     /** @return bool send the email */
     public function send(): bool
     {
-        if (!in_array($_ENV['ENV'], ['production'])) {
+        if (!in_array($_ENV['ENV'] ?? '', ['production'], true)) {
+            return true;
+        }
+
+        if (!self::isMailOutboundSmtpEnabled()) {
             return true;
         }
 
