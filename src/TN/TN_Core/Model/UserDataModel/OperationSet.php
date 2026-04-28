@@ -27,11 +27,12 @@ class OperationSet
 
     /**
      * @param array $operations
+     * @param array|null $records Records to return even when an update is a no-op
      * @return OperationSet
      */
-    protected static function getFromOperations(array $operations): OperationSet
+    protected static function getFromOperations(array $operations, ?array $records = null): OperationSet
     {
-        return new self($operations);
+        return new self($operations, records: $records);
     }
 
     /**
@@ -243,7 +244,10 @@ class OperationSet
         $ids = [];
         $dataById = [];
         foreach ($data as $item) {
-            $id = $item['id'] ?? $item['uuId'];
+            $id = $item['id'] ?? $item['uuId'] ?? null;
+            if ($id === null) {
+                continue;
+            }
             unset($item['id']);
             unset($item['uuid']);
             unset($item['uuId']);
@@ -252,13 +256,22 @@ class OperationSet
         }
 
         $ops = [];
+        $records = [];
         $user = self::getUser();
         $originTs = Time::getNow();
         foreach (self::readRecords($class, $ids) as $record) {
-            $updateData = $dataById[$record->id] ?? $dataById[$record->uuId];
-            $ops[] = $record->updateUserData($user, $originTs, $updateData, $fromClient, false);
+            $updateData = $dataById[$record->id] ?? $dataById[$record->uuId] ?? null;
+            if ($updateData === null) {
+                continue;
+            }
+
+            $operation = $record->updateUserData($user, $originTs, $updateData, $fromClient, false);
+            if ($operation instanceof Operation) {
+                $ops[] = $operation;
+            }
+            $records[] = $record;
         }
-        return self::getFromOperations($ops);
+        return self::getFromOperations($ops, $records);
     }
 
     /**
@@ -269,7 +282,8 @@ class OperationSet
      */
     protected static function readRecords(string $class, array $ids): array
     {
-        return empty($ids) ? [] : $class::readFromIdsOrUuIdsForUser(self::getUser()->id, $ids);
+        // Write operations must diff against MySQL, not a potentially stale object cache.
+        return empty($ids) ? [] : $class::readFromIdsOrUuIdsForUser(self::getUser()->id, $ids, true);
     }
 
     /**
@@ -278,15 +292,27 @@ class OperationSet
      * @param int|null $lastSyncTs
      * @param array|null $classes
      */
-    protected function __construct(array $operations, ?int $lastSyncTs = 0, ?array $classes = null)
+    protected function __construct(array $operations, ?int $lastSyncTs = 0, ?array $classes = null, ?array $records = null)
     {
         $this->lastSyncTs = $lastSyncTs;
         $this->classes = $classes;
-        $this->operations = $operations;
-        $this->records = [];
+        $this->operations = array_values(array_filter(
+            $operations,
+            fn($operation): bool => $operation instanceof Operation
+        ));
+        $this->records = $records === null
+            ? []
+            : array_values(array_filter(
+                $records,
+                fn($record): bool => $record instanceof UserDataModel
+            ));
         $this->recTs = Time::getNow();
-        foreach ($operations as $operation) {
-            $this->records[] = $operation->record;
+        if ($records === null) {
+            foreach ($this->operations as $operation) {
+                if ($operation->record instanceof UserDataModel) {
+                    $this->records[] = $operation->record;
+                }
+            }
         }
     }
 
