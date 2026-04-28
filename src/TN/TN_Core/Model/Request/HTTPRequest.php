@@ -5,6 +5,10 @@ namespace TN\TN_Core\Model\Request;
 use TN\TN_Billing\Model\Subscription\Content\Content;
 use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\ContentOwnersOnly;
+use TN\TN_Core\Attribute\Route\AllowCredentials;
+use TN\TN_Core\Attribute\Route\AllowOrigin;
+use TN\TN_Core\Attribute\Route\ReflectOrigin;
+use TN\TN_Core\Attribute\Route\RequestMatcher;
 use TN\TN_Core\Component\Renderer\Text\Text;
 use TN\TN_Core\Controller\Controller;
 use TN\TN_Core\Error\Access\AccessForbiddenException;
@@ -363,7 +367,7 @@ class HTTPRequest extends Request
         $response = null;
 
         if ($this->method === 'OPTIONS') {
-            CORS::applyCorsHeaders();
+            $this->applyPreflightCorsHeaders();
             header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
             header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
             header('Access-Control-Max-Age: 86400');
@@ -426,5 +430,60 @@ class HTTPRequest extends Request
     {
         header('Location: ' . $url);
         exit;
+    }
+
+    private function applyPreflightCorsHeaders(): void
+    {
+        $method = $this->findPreflightRouteMethod();
+        if (!$method) {
+            CORS::applyCorsHeaders();
+            return;
+        }
+
+        foreach ($method->getAttributes() as $attribute) {
+            $attributeName = $attribute->getName();
+            if ($attributeName === ReflectOrigin::class) {
+                CORS::applyReflectedOriginHeaders();
+                return;
+            }
+            if ($attributeName === AllowOrigin::class) {
+                CORS::applyCorsHeaders();
+                return;
+            }
+            if ($attributeName === AllowCredentials::class) {
+                header('Access-Control-Allow-Credentials: true');
+            }
+        }
+
+        CORS::applyCorsHeaders();
+    }
+
+    private function findPreflightRouteMethod(): ?\ReflectionMethod
+    {
+        $requestedMethod = strtoupper((string)($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_METHOD'] ?? ''));
+
+        foreach (Stack::getChildClasses(Controller::class) as $controllerClassName) {
+            $reflection = new \ReflectionClass($controllerClassName);
+            foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+                foreach ($method->getAttributes(RequestMatcher::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                    $matcher = $attribute->newInstance();
+                    if (!isset($matcher->path)) {
+                        continue;
+                    }
+
+                    $routeMethod = $matcher->method ?? null;
+                    if ($requestedMethod !== '' && $routeMethod !== null && strtoupper($routeMethod) !== $requestedMethod) {
+                        continue;
+                    }
+
+                    $pathOnlyMatcher = new RequestMatcher($matcher->path);
+                    if ($pathOnlyMatcher->matches($this)) {
+                        return $method;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 }
