@@ -31,6 +31,7 @@ class UserToken implements Persistence
     public int $expiresTs;
     public ?int $twoFaVerifiedAt = null;
     public ?string $csrfSecret = null;
+    protected static array $validByTokenCache = [];
 
     /**
      * Find one valid (non-expired) token for a user, or null if none.
@@ -64,6 +65,18 @@ class UserToken implements Persistence
         if (empty($token)) {
             return null;
         }
+
+        if (array_key_exists($token, self::$validByTokenCache)) {
+            $cachedToken = self::$validByTokenCache[$token];
+            if ($cachedToken instanceof self && $cachedToken->expiresTs > Time::getNow()) {
+                return $cachedToken;
+            }
+            if ($cachedToken === null) {
+                return null;
+            }
+            unset(self::$validByTokenCache[$token]);
+        }
+
         $now = Time::getNow();
         $results = self::search(new SearchArguments(
             conditions: [
@@ -74,7 +87,8 @@ class UserToken implements Persistence
             ],
             limit: new SearchLimit(0, 1)
         ));
-        return $results !== [] ? $results[0] : null;
+        self::$validByTokenCache[$token] = $results !== [] ? $results[0] : null;
+        return self::$validByTokenCache[$token];
     }
 
     /**
@@ -104,6 +118,7 @@ class UserToken implements Persistence
         $ut->twoFaVerifiedAt = $validTwoFaTs;
         $ut->csrfSecret = $validTwoFaTs !== null ? $csrfSecret : null;
         $ut->save();
+        self::$validByTokenCache[$tokenString] = $ut;
 
         return $ut;
     }
@@ -132,6 +147,7 @@ class UserToken implements Persistence
         $table = self::getTableName();
         $stmt = $db->prepare("DELETE FROM `{$table}` WHERE `token` = ?");
         $stmt->execute([$token]);
+        unset(self::$validByTokenCache[$token]);
     }
 
     /**
@@ -143,5 +159,11 @@ class UserToken implements Persistence
         $table = self::getTableName();
         $stmt = $db->prepare("DELETE FROM `{$table}` WHERE `userId` = ?");
         $stmt->execute([$userId]);
+
+        foreach (self::$validByTokenCache as $token => $userToken) {
+            if ($userToken instanceof self && $userToken->userId === $userId) {
+                unset(self::$validByTokenCache[$token]);
+            }
+        }
     }
 }

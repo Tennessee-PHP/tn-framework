@@ -50,24 +50,17 @@ class TagEditor extends HTMLComponent
         if ($this->contentId == null) {
             throw new ValidationException('Cannot save tags with a contentId of null');
         }
-        TaggedContent::batchErase($this->taggedContents);
-        $this->taggedContents = [];
-        foreach ($data as $tagData) {
-            $text = $tagData['text'];
-            $tag = Tag::getExactTag($text, true);
-            $taggedContent = TaggedContent::getInstance();
-            $taggedContent->update([
-                'contentClass' => $this->contentClass,
-                'contentId' => $this->contentId,
-                'tagId' => $tag->id,
-                'primary' => (bool)($tagData['primary'] ?? false)
-            ]);
-            $this->taggedContents[] = $taggedContent;
+
+        $finalTagData = $this->getTagDataWithAuthor($data);
+        if ($this->tagDataMatchesExistingTags($finalTagData)) {
+            return;
         }
 
-        // always add the author's name as a tag
-        if (property_exists($this->content, 'authorName')) {
-            $tag = Tag::getExactTag($this->content->authorName, true);
+        TaggedContent::batchErase($this->taggedContents);
+        $this->taggedContents = [];
+        foreach ($finalTagData as $tagData) {
+            $text = $tagData['text'];
+            $tag = Tag::getExactTag($text, true);
             $taggedContent = TaggedContent::getInstance();
             $taggedContent->update([
                 'contentClass' => $this->contentClass,
@@ -83,6 +76,66 @@ class TagEditor extends HTMLComponent
         $pageEntry?->update([
             'numTags' => count($this->taggedContents)
         ]);
+    }
+
+    /**
+     * @param mixed $data
+     * @return array<int, array{text: string, primary: bool}>
+     */
+    protected function getTagDataWithAuthor(mixed $data): array
+    {
+        $tagData = is_array($data) ? array_values($data) : [];
+        $lastPrimary = false;
+        foreach ($tagData as $index => $tag) {
+            $tagData[$index] = [
+                'text' => (string)($tag['text'] ?? ''),
+                'primary' => (bool)($tag['primary'] ?? false)
+            ];
+            $lastPrimary = $tagData[$index]['primary'];
+        }
+
+        // Always add the author's name as a tag, preserving the existing primary behavior.
+        if (property_exists($this->content, 'authorName')) {
+            $tagData[] = [
+                'text' => (string)$this->content->authorName,
+                'primary' => $lastPrimary
+            ];
+        }
+
+        return $tagData;
+    }
+
+    /**
+     * @param array<int, array{text: string, primary: bool}> $tagData
+     * @return bool
+     */
+    protected function tagDataMatchesExistingTags(array $tagData): bool
+    {
+        if (count($this->taggedContents) !== count($tagData)) {
+            return false;
+        }
+
+        $existing = [];
+        foreach ($this->taggedContents as $taggedContent) {
+            if (!isset($taggedContent->tag)) {
+                return false;
+            }
+            $existing[] = $this->tagComparisonKey($taggedContent->tag->text, $taggedContent->primary);
+        }
+
+        $requested = [];
+        foreach ($tagData as $tag) {
+            $requested[] = $this->tagComparisonKey($tag['text'], $tag['primary']);
+        }
+
+        sort($existing);
+        sort($requested);
+        return $existing === $requested;
+    }
+
+    protected function tagComparisonKey(string $text, bool $primary): string
+    {
+        return strtolower($text) . '|' . ($primary ? '1' : '0');
     }
 
     public function prepare(): void {}
