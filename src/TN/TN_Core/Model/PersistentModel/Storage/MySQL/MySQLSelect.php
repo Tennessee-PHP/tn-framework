@@ -80,7 +80,8 @@ class MySQLSelect
             $useOrderBy = true;
             if ($selectType !== MySQLSelectType::Objects) {
                 foreach ($search->sorters as $sorter) {
-                    if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+                    if ($sorter->orderBySqlExpression !== null
+                        || ($sorter->class !== null && isset($this->foreignTables[$sorter->class]))) {
                         $useOrderBy = false;
                         break;
                     }
@@ -149,7 +150,9 @@ class MySQLSelect
         $select = "DISTINCT `{$table}`.*";
         if (!empty($search->sorters)) {
             foreach ($search->sorters as $i => $sorter) {
-                if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+                if ($sorter->orderBySqlExpression !== null) {
+                    $select .= ", ({$sorter->orderBySqlExpression}) AS `_order_{$i}`";
+                } elseif ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
                     $ft = $this->foreignTables[$sorter->class];
                     $select .= ", `{$ft}`.`{$sorter->property}` AS `_order_{$i}`";
                 }
@@ -188,7 +191,9 @@ class MySQLSelect
 
     private function addSorter(SearchSorter $sorter, int $index): void
     {
-        if ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
+        if ($sorter->orderBySqlExpression !== null) {
+            $this->query .= "`_order_{$index}` ";
+        } elseif ($sorter->class !== null && isset($this->foreignTables[$sorter->class])) {
             $this->query .= "`_order_{$index}` ";
         } else {
             $this->query .= "`{$this->table}`.`{$sorter->property}` ";
