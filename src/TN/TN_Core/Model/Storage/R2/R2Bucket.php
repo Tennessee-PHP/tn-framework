@@ -77,8 +77,42 @@ abstract class R2Bucket
             $event?->end();
             return $result;
         } catch (\Exception $e) {
-            throw new ValidationException('Failed to upload file to R2 storage: ' . $e->getMessage());
+            throw new ValidationException(
+                'Failed to upload file to R2 storage: ' . $e->getMessage()
+                . ' [diagnostics: ' . $this->describeUploadSourceForDebug($filePath, $key, $contentType) . ']'
+            );
         }
+    }
+
+    /**
+     * Explain the local source file state when the SDK cannot read SourceFile.
+     */
+    private function describeUploadSourceForDebug(string $filePath, string $key, ?string $contentType): string
+    {
+        $exists = file_exists($filePath);
+        $isFile = is_file($filePath);
+        $readable = is_readable($filePath);
+        $size = $exists ? filesize($filePath) : false;
+        $realpath = realpath($filePath);
+        $handle = @fopen($filePath, 'rb');
+        $fopenOk = $handle !== false;
+        if ($handle !== false) {
+            fclose($handle);
+        }
+
+        return implode(', ', [
+            'bucket=' . $this->bucketName,
+            'key=' . $key,
+            'contentType=' . ($contentType ?? 'auto'),
+            'sourcePath=' . $filePath,
+            'realpath=' . ($realpath === false ? 'false' : $realpath),
+            'exists=' . ($exists ? 'yes' : 'no'),
+            'isFile=' . ($isFile ? 'yes' : 'no'),
+            'readable=' . ($readable ? 'yes' : 'no'),
+            'size=' . ($size === false ? 'unknown' : (string) $size),
+            'fopenRb=' . ($fopenOk ? 'yes' : 'no'),
+            'cwd=' . getcwd(),
+        ]);
     }
 
     /**
