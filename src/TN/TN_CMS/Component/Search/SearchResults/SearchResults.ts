@@ -58,7 +58,7 @@ export default class SearchResults extends HTMLComponent {
     protected setReloading(reloading: Boolean): void {
         this.$element.find('.component-loading').toggleClass('d-none', !reloading);
         if (reloading) {
-            this.$element.find('.list-group').remove();
+            this.$element.find('.search-results').empty();
         }
     }
 
@@ -69,6 +69,9 @@ export default class SearchResults extends HTMLComponent {
             $a = $a.closest('a');
         }
         const pageEntryId: number = _.parseInt($a.data('page-entry-id'));
+        if (!pageEntryId) {
+            return;
+        }
         axios.post(this.$element.data('result-selected-url'), {
             search: this.search,
             pageEntryId: pageEntryId
@@ -85,7 +88,7 @@ export default class SearchResults extends HTMLComponent {
         }
         let searchInputValue: string = (<string>this.$searchInput.val()).trim();
         if (searchInputValue.length < 3) {
-            this.$element.find('.list-group').remove();
+            this.$element.find('.search-results').empty();
             return;
         }
         if (this.$element.data('search') === searchInputValue) {
