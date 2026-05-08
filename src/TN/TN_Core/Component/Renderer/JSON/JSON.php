@@ -34,7 +34,12 @@ class JSON extends Renderer
         ) {
             $raw = PerformanceLog::getCurrentMetrics();
             if ($raw !== null) {
-                $payload['_performanceMetrics'] = PerformanceDisplayMetrics::fromRaw($raw);
+                // Adding a string key to a list makes json_encode emit a JSON object
+                // (numeric keys as properties) instead of a JSON array. Skip inline
+                // metrics for list payloads so endpoints like GET api/info stay arrays.
+                if (!array_is_list($payload)) {
+                    $payload['_performanceMetrics'] = PerformanceDisplayMetrics::fromRaw($raw);
+                }
             }
         }
 
