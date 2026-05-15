@@ -50,6 +50,23 @@ class Strlen extends Constraint
                 $this->error .= 'no more than ' . $this->max;
             }
             $this->error .= ' characters long';
+            $this->error .= ' (value ' . $this->valueSnippetForError($value) . ', length ' . $length . ')';
         }
+    }
+
+    /**
+     * Short, log-safe representation of the value that failed validation.
+     */
+    private function valueSnippetForError(mixed $value): string
+    {
+        if (!is_string($value)) {
+            $value = is_scalar($value) || $value === null ? (string) $value : json_encode($value);
+        }
+        $max = 120;
+        if (strlen($value) > $max) {
+            $value = substr($value, 0, $max - 3) . '...';
+        }
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        return $encoded !== false ? $encoded : '"[unprintable]"';
     }
 }
