@@ -400,6 +400,42 @@ abstract class R2Bucket
     }
 
     /**
+     * Stream an object from R2 to PHP stdout without loading the entire object into memory.
+     *
+     * @param string $key Storage key
+     * @throws ValidationException When the download fails
+     */
+    public function streamObjectToStdout(string $key): void
+    {
+        try {
+            $event = self::startPerformanceEvent('R2', "GET {$key} (stream to stdout)", ['bucket' => $this->bucketName]);
+
+            $client = $this->getClient();
+
+            $result = $client->getObject([
+                'Bucket' => $this->bucketName,
+                'Key' => $key,
+            ]);
+
+            $event?->end();
+
+            $body = $result['Body'];
+            while (!$body->eof()) {
+                $chunk = $body->read(1024 * 1024);
+                if ($chunk === '' || $chunk === false) {
+                    break;
+                }
+                echo $chunk;
+                flush();
+            }
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            throw new ValidationException('Failed to download file from R2 storage: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Download file contents from R2 bucket by key
      * 
      * @param string $key File key/path in bucket
