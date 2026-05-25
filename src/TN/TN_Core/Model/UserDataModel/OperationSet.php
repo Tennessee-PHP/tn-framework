@@ -488,13 +488,20 @@ class OperationSet
 
         $class::batchSaveInsert($records);
 
+        $appliedOperations = [];
         foreach ($applyOperations as $operation) {
+            if (!isset($operation->record->id)) {
+                continue;
+            }
             $operation->recordId = $operation->record->id;
             $operation->applied = true;
             $operation->appliedTs = Time::getNow();
+            $appliedOperations[] = $operation;
         }
 
-        Operation::batchSaveInsert($applyOperations);
+        if (!empty($appliedOperations)) {
+            Operation::batchSaveInsert($appliedOperations);
+        }
     }
 
     /**
