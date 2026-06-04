@@ -75,6 +75,6 @@ class EditVoucherCode extends HTMLComponent
         }
 
         $this->deactivate = (bool)$this->deactivate;
-        $this->plans = Plan::getInstances();
+        $this->plans = Plan::getPurchasableInstances();
     }
 }

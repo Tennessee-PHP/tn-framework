@@ -19,14 +19,11 @@ class SaveVoucherCode extends JSON
 
         // check to see which plans are active, add those to an array;
         $planKeys = [];
-        foreach (Plan::getInstances() as $plan) {
-            // we only care about paid plans
-            if ($plan->paid) {
-                $key = $plan->key;
-                // Add the plan key if the checkbox was checked (value matches the key or equals 1)
-                if (isset($_POST[$key]) && ($_POST[$key] === $key || $_POST[$key] === '1')) {
-                    $planKeys[] = $key;
-                }
+        foreach (Plan::getPurchasableInstances() as $plan) {
+            $key = $plan->key;
+            // Add the plan key if the checkbox was checked (value matches the key or equals 1)
+            if (isset($_POST[$key]) && ($_POST[$key] === $key || $_POST[$key] === '1')) {
+                $planKeys[] = $key;
             }
         }
 

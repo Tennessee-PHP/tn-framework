@@ -37,7 +37,7 @@ class ListGiftSubscriptions extends HTMLComponent
         $this->pagination->prepare();
         $this->giftSubscriptions = GiftSubscription::search($search);
         $this->billingCycles = BillingCycle::getEnabledInstances();
-        $this->plans = Plan::getInstances();
+        $this->plans = Plan::getPurchasableInstances();
         $this->compReasons = Stack::resolveClassName(GiftSubscription::class)::getReasonOptions();
     }
 }

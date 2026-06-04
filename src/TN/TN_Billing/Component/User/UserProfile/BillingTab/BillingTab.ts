@@ -12,6 +12,12 @@ declare const TN: any;
 
 export default class BillingTab extends HTMLComponent {
     private $cancelForm: Cash;
+    private $scheduleDowngradeForm: Cash;
+    private $cancelScheduledDowngradeForm: Cash;
+    private $scheduleDowngradeSelect: Cash;
+    private $scheduleDowngradeSubmit: Cash;
+    private $scheduleDowngradeConfirmCopy: Cash;
+    private $resumeAutoRenewForm: Cash;
     private $refundForm: Cash;
     private $refundCheckboxes: Cash;
     private $refundButtons: Cash;
@@ -34,11 +40,28 @@ export default class BillingTab extends HTMLComponent {
 
         // Original form handling
         this.$cancelForm = $('#user_plans_staffer_cancel_form');
+        this.$scheduleDowngradeForm = $('#user_plans_schedule_downgrade_form');
+        this.$cancelScheduledDowngradeForm = $('#user_plans_cancel_scheduled_downgrade_form');
+        this.$scheduleDowngradeSelect = $('#schedule_downgrade_plan_select');
+        this.$scheduleDowngradeSubmit = $('#schedule_downgrade_submit_btn');
+        this.$scheduleDowngradeConfirmCopy = $('#schedule_downgrade_confirm_copy');
+        this.$resumeAutoRenewForm = $('#user_plans_resume_autorenew_form');
         this.$refundForm = $('#user_plans_staffer_refunds_form');
         this.$refundCheckboxes = $('.refund-check');
         this.$refundButtons = $('.refund-btn');
 
         this.$cancelForm.on('submit', this.onCancelFormSubmit.bind(this));
+        if (this.$scheduleDowngradeForm.length) {
+            this.$scheduleDowngradeForm.on('submit', this.onScheduleDowngradeFormSubmit.bind(this));
+            this.$scheduleDowngradeSelect.on('change', this.updateScheduleDowngradeFormState.bind(this));
+            this.updateScheduleDowngradeFormState();
+        }
+        if (this.$cancelScheduledDowngradeForm.length) {
+            this.$cancelScheduledDowngradeForm.on('submit', this.onCancelScheduledDowngradeFormSubmit.bind(this));
+        }
+        if (this.$resumeAutoRenewForm.length) {
+            this.$resumeAutoRenewForm.on('submit', this.onResumeAutoRenewFormSubmit.bind(this));
+        }
         this.$refundForm.on('submit', this.onRefundFormSubmit.bind(this));
         this.$refundCheckboxes.on('change', this.updateRefundButtonState.bind(this));
 
@@ -72,6 +95,77 @@ export default class BillingTab extends HTMLComponent {
         this.$refundButtons.prop('disabled', !anyChecked);
     }
 
+    private updateScheduleDowngradeFormState(): void {
+        const $selected = this.$scheduleDowngradeSelect.find('option:selected');
+        const planKey = ($selected.val() as string) || '';
+        const price = parseFloat(($selected.attr('data-price') as string) || '0');
+        if (!planKey) {
+            this.$scheduleDowngradeConfirmCopy.text('');
+            this.$scheduleDowngradeSubmit.prop('disabled', true);
+            return;
+        }
+        this.$scheduleDowngradeConfirmCopy.text(
+            `On your next renewal you will be charged $${price.toFixed(2)} for the ${$selected.text().split(' — ')[0]} plan.`
+        );
+        this.$scheduleDowngradeSubmit.prop('disabled', false);
+    }
+
+    private onScheduleDowngradeFormSubmit(event: Event): void {
+        event.preventDefault();
+        const data: ReloadData = this.$scheduleDowngradeForm.getFormData();
+        axios
+            .post(this.$scheduleDowngradeForm.attr('action'), data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result === 'success') {
+                    new SuccessToast(response.data.message);
+                    const modalEl = document.getElementById('scheduledowngrade_modal');
+                    if (modalEl) {
+                        const modalInstance = Modal.getInstance(modalEl) || new Modal(modalEl);
+                        modalInstance.hide();
+                    }
+                    _.delay(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response.data.message);
+            });
+    }
+
+    private onCancelScheduledDowngradeFormSubmit(event: Event): void {
+        event.preventDefault();
+        const data: ReloadData = this.$cancelScheduledDowngradeForm.getFormData();
+        axios
+            .post(this.$cancelScheduledDowngradeForm.attr('action'), data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result === 'success') {
+                    new SuccessToast(response.data.message);
+                    const modalEl = document.getElementById('cancelscheduleddowngrade_modal');
+                    if (modalEl) {
+                        const modalInstance = Modal.getInstance(modalEl) || new Modal(modalEl);
+                        modalInstance.hide();
+                    }
+                    _.delay(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response.data.message);
+            });
+    }
+
     private onCancelFormSubmit(event: Event): void {
         event.preventDefault();
         let data: ReloadData = this.$cancelForm.getFormData();
@@ -89,6 +183,35 @@ export default class BillingTab extends HTMLComponent {
                         Modal.getInstance(document.getElementById('cancelplan_modal')) ||
                         new Modal(document.getElementById('cancelplan_modal'));
                     cancelModalInstance.hide();
+                    _.delay(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response.data.message);
+            });
+    }
+
+    private onResumeAutoRenewFormSubmit(event: Event): void {
+        event.preventDefault();
+        let data: ReloadData = this.$resumeAutoRenewForm.getFormData();
+        axios
+            .post(this.$resumeAutoRenewForm.attr('action'), data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result === 'success') {
+                    new SuccessToast(response.data.message);
+                    const resumeModalEl = document.getElementById('resumeautorenew_modal');
+                    if (resumeModalEl) {
+                        const resumeModalInstance =
+                            Modal.getInstance(resumeModalEl) || new Modal(resumeModalEl);
+                        resumeModalInstance.hide();
+                    }
                     _.delay(() => {
                         window.location.reload();
                     }, 2000);

@@ -4,9 +4,12 @@ namespace TN\TN_Billing\Controller;
 
 use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Billing\Model\Subscription\Subscription as SubscriptionModel;
+use TN\TN_Billing\Service\PlanChangeAutoDowngradeService;
+use TN\TN_Billing\Service\PlanChangeBackfillService;
 use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Command\Schedule;
 use TN\TN_Core\Attribute\Command\TimeLimit;
+use TN\TN_Core\Model\Request\Command;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\UsersOnly;
 use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Core\Attribute\Route\Component;
@@ -24,6 +27,51 @@ class SubscriptionController extends Controller
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\Subscription\CancelSubscription::class)]
     public function cancelSubscription(): void {}
+
+    #[Path('staff/users/user/:userId/plans/resume-subscription')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\ResumeSubscription::class)]
+    public function resumeSubscription(): void {}
+
+    #[Path('staff/users/user/:userId/plans/schedule-downgrade')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\ScheduleDowngrade::class)]
+    public function scheduleDowngrade(): void {}
+
+    #[Path('staff/users/user/:userId/plans/cancel-scheduled-downgrade')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\CancelScheduledDowngrade::class)]
+    public function cancelScheduledDowngrade(): void {}
+
+    #[TimeLimit(7200)]
+    #[CommandName('billing/schedule-hof-goat-downgrades')]
+    public function scheduleHofGoatDowngrades(): ?string
+    {
+        $dryRun = in_array('--dry-run', Command::get()->args, true);
+        echo 'Scheduling HOF/GOAT tier downgrades (dry run: ' . ($dryRun ? 'yes' : 'no') . ')' . PHP_EOL;
+        echo '  level30 (HOF) → level20 (ELITE)' . PHP_EOL;
+        echo '  level40 (GOAT) → level35 (All-Access)' . PHP_EOL;
+
+        $stats = PlanChangeAutoDowngradeService::run($dryRun);
+
+        echo json_encode($stats, JSON_PRETTY_PRINT) . PHP_EOL;
+
+        return json_encode($stats);
+    }
+
+    #[TimeLimit(7200)]
+    #[CommandName('billing/backfill-plan-changes')]
+    public function backfillPlanChanges(): ?string
+    {
+        $recomputeAnalytics = !in_array('--no-analytics', Command::get()->args, true);
+        echo 'Starting plan change backfill (recompute analytics: ' . ($recomputeAnalytics ? 'yes' : 'no') . ')' . PHP_EOL;
+
+        $stats = PlanChangeBackfillService::run($recomputeAnalytics);
+
+        echo json_encode($stats, JSON_PRETTY_PRINT) . PHP_EOL;
+
+        return json_encode($stats);
+    }
 
     #[Schedule('10 2 * * *')]
     #[TimeLimit(600)]

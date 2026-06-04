@@ -21,8 +21,10 @@ use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsActiveEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsChurnEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsEndedEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsLifetimeValueEntry;
+use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsDowngradeEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsNewEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsRenewalEntry;
+use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsUpgradeEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsStalledEntry;
 use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
 
@@ -75,6 +77,8 @@ class AnalyticsController extends Controller
             SubscriptionsLifetimeValueEntry::updateDayReports($ts);
             UsersRegistrationsEntry::updateDayReports($ts);
             SubscriptionsNewEntry::updateDayReports($ts);
+            SubscriptionsUpgradeEntry::updateDayReports($ts);
+            SubscriptionsDowngradeEntry::updateDayReports($ts);
             SubscriptionsRenewalEntry::updateDayReports($ts);
             SubscriptionsStalledEntry::updateDayReports($ts);
             SubscriptionsEndedEntry::updateDayReports($ts);

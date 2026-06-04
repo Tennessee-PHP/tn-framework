@@ -32,6 +32,27 @@ abstract class Plan
     /** @var string a description for the plan */
     protected string $description;
 
+    /** @var bool whether the plan is available for new purchases */
+    protected bool $purchasable = true;
+
+    /** @return bool whether the plan is available for new purchases */
+    public function isPurchasable(): bool
+    {
+        return $this->purchasable;
+    }
+
+    /** @return Plan[] paid plans available for new purchases */
+    public static function getPurchasableInstances(): array
+    {
+        $purchasable = [];
+        foreach (self::getInstances() as $plan) {
+            if ($plan->paid && $plan->purchasable) {
+                $purchasable[] = $plan;
+            }
+        }
+        return $purchasable;
+    }
+
     /**
      * gets the lowest level plan with >= level
      * @param int $level

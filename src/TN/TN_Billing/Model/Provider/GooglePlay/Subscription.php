@@ -9,10 +9,12 @@ use TN\TN_Billing\Model\Subscription\BillingCycle\BillingCycle;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Subscription as TNSubscription;
 use TN\TN_Billing\Model\Transaction\GooglePlay\Transaction;
+use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Model\User\User;
@@ -158,6 +160,15 @@ class Subscription implements Persistence
             'lastTransactionAmount' => $amount,
             'numTransactions' => $tnSub->numTransactions + 1
         ]);
+
+        $userClass = Stack::resolveClassName(User::class);
+        if ($userClass === false) {
+            return;
+        }
+        $user = $userClass::readFromId($this->userId);
+        if ($user instanceof User) {
+            $user->transactionSuccessful($transaction, $tnSub);
+        }
     }
 
     /** @return Plan|false returns a plan from the productId */
@@ -207,6 +218,20 @@ class Subscription implements Persistence
 
         // yes? if the new end date is greater than the existing one, let's add a new transaction and extend it
         if ($tnSub instanceof TNSubscription) {
+            $newPlan = $this->getPlan();
+            $currentPlan = $tnSub->getPlan();
+            if (
+                $newPlan instanceof Plan
+                && $currentPlan instanceof Plan
+                && $newPlan->level > $currentPlan->level
+            ) {
+                PlanChangeService::deleteScheduledDowngradeIfPresent($tnSub);
+                $tnSub->update(['planKey' => $newPlan->key]);
+                PlanChangeService::recordUpgrade($tnSub, $currentPlan, $newPlan);
+            } elseif ($newPlan instanceof Plan && $tnSub->planKey !== $newPlan->key) {
+                $tnSub->update(['planKey' => $newPlan->key]);
+            }
+
             $newEndTs = round($response->getExpiryTimeMillis() / 1000);
             if ($newEndTs > $tnSub->endTs) {
                 $tnSub->update([
@@ -221,8 +246,6 @@ class Subscription implements Persistence
                 $tnSub->update(['endReason' => 'user-cancelled']);
             } else if ($cancelReason === 1) {
                 $tnSub->update(['endReason' => 'payment-failed']);
-            } else if ($cancelReason === 2) {
-                $tnSub->update(['endReason' => 'upgraded']);
             }
         } else {
             // no? ok then. so create a new one with a single transaction.
@@ -244,9 +267,12 @@ class Subscription implements Persistence
             $this->addTransaction($tnSub, $response);
         }
 
-        $user = User::readFromId($this->userId);
-        if ($user instanceof User) {
-            $user->subscriptionsChanged();
+        $userClass = Stack::resolveClassName(User::class);
+        if ($userClass !== false) {
+            $user = $userClass::readFromId($this->userId);
+            if ($user instanceof User) {
+                $user->subscriptionsChanged();
+            }
         }
 
         // let's acknowledge it

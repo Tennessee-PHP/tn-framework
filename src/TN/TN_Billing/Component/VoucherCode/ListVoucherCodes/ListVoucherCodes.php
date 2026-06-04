@@ -19,7 +19,7 @@ class ListVoucherCodes extends HTMLComponent
     public int $time;
     public ?Plan $level10;
     public ?Plan $level20;
-    public ?Plan $level30;
+    public ?Plan $level35;
 
     public function prepare(): void
     {
@@ -27,6 +27,6 @@ class ListVoucherCodes extends HTMLComponent
         $this->time = Time::getNow();
         $this->level10 = Plan::getInstanceByKey('level10');
         $this->level20 = Plan::getInstanceByKey('level20');
-        $this->level30 = Plan::getInstanceByKey('level30');
+        $this->level35 = Plan::getInstanceByKey('level35');
     }
 }

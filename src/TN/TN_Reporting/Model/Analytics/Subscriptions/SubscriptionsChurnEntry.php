@@ -65,7 +65,7 @@ class SubscriptionsChurnEntry extends AnalyticsEntry
             $this->gatewayKey ?? ''
         );
 
-        // endedCount (for churn, less upgraded subscriptions)
+        // endedCount (upgrades are tracked separately via subscription_plan_changes)
         $data['endedCount'] = Subscription::countAndTotalByType(
             'ended',
             $churnStartTs,
@@ -73,14 +73,6 @@ class SubscriptionsChurnEntry extends AnalyticsEntry
             $this->planKey ?? '',
             $this->billingCycleKey ?? '',
             $this->gatewayKey ?? ''
-        )->count - Subscription::countAndTotalByType(
-            'ended',
-            $churnStartTs,
-            $churnEndTs,
-            $this->planKey ?? '',
-            $this->billingCycleKey ?? '',
-            $this->gatewayKey ?? '',
-            'upgraded'
         )->count;
 
         // endedUserCancelledCount

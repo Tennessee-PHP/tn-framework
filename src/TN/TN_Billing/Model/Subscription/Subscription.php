@@ -10,6 +10,7 @@ use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Billing\Model\VoucherCode;
+use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Billing\Trait\GetBillingCycle;
 use TN\TN_Billing\Trait\GetGateway;
 use TN\TN_Billing\Trait\GetPlan;
@@ -476,17 +477,27 @@ class Subscription implements Persistence
             return;
         }
 
-        // get what the price will be
-        $price = $this->getPlan()->getPrice($this->getBillingCycle())->price;
+        $planName = $this->getPlan()->name;
+        $scheduledDowngrade = PlanChangeService::getScheduledDowngrade($this);
+        if (
+            $scheduledDowngrade instanceof PlanChange
+            && $scheduledDowngrade->effectiveTs === $this->nextTransactionTs
+        ) {
+            $toPlan = Plan::getInstanceByKey($scheduledDowngrade->toPlanKey);
+            if ($toPlan instanceof Plan) {
+                $planName = $toPlan->name;
+                $price = PlanChangeService::computePlanRenewalAmount($this, $toPlan);
+            } else {
+                $price = $this->nextTransactionAmount;
+            }
+        } elseif ($this->nextTransactionAmount > 0) {
+            $price = $this->nextTransactionAmount;
+        } else {
+            $price = PlanChangeService::computePlanRenewalAmount($this, $this->getPlan());
+        }
+
         $user = $this->getUser();
         $customer = Customer::getFromUser($this->getUser());
-
-        if ($this->voucherCodeId > 0) {
-            $voucherCode = VoucherCode::readFromId($this->voucherCodeId);
-            if ($voucherCode instanceof VoucherCode && $voucherCode->numTransactions === 0) {
-                $price = $voucherCode->applyToPrice($price);
-            }
-        }
 
         // send the email to notify them
         $res = Email::sendFromTemplate(
@@ -496,7 +507,7 @@ class Subscription implements Persistence
             [
                 'subscription' => $this,
                 'username' => $user->username,
-                'planName' => $this->getPlan()->name,
+                'planName' => $planName,
                 'billingCycleName' => $this->getBillingCycle()->name,
                 'price' => $price
             ]
@@ -640,14 +651,19 @@ class Subscription implements Persistence
 
         $plan = $this->getPlan();
         $billingCycle = $this->getBillingCycle();
-        $price = $this->nextTransactionAmount;
-        if ($price == 0) {
-            $price = $plan->getPrice($billingCycle)->price;
-            if ($this->voucherCodeId > 0) {
-                $voucherCode = VoucherCode::readFromId($this->voucherCodeId);
-                if ($voucherCode instanceof VoucherCode && $voucherCode->numTransactions === 0) {
-                    $price = $voucherCode->applyToPrice($price);
-                }
+        $scheduledDowngrade = PlanChangeService::getScheduledDowngrade($this);
+        $downgradeToPlan = null;
+        if ($scheduledDowngrade instanceof PlanChange) {
+            $downgradeToPlan = Plan::getInstanceByKey($scheduledDowngrade->toPlanKey);
+        }
+
+        if ($downgradeToPlan instanceof Plan) {
+            $price = PlanChangeService::computePlanRenewalAmount($this, $downgradeToPlan);
+            $plan = $downgradeToPlan;
+        } else {
+            $price = $this->nextTransactionAmount;
+            if ($price == 0) {
+                $price = PlanChangeService::computePlanRenewalAmount($this, $plan);
             }
         }
 
@@ -716,15 +732,26 @@ class Subscription implements Persistence
         }
 
         // on success, update here, and email
+        $appliedDowngrade = false;
+        $updateData = [
+            'nextTransactionTs' => $billingCycle->getNextTs(Time::getNow()),
+            'upcomingTransactionLastNotified' => 0,
+            'nextTransactionAmount' => 0.00,
+        ];
+        if ($scheduledDowngrade instanceof PlanChange && $downgradeToPlan instanceof Plan) {
+            $updateData['planKey'] = $downgradeToPlan->key;
+            $appliedDowngrade = true;
+        }
+
         try {
-            $this->update([
-                'nextTransactionTs' => $billingCycle->getNextTs(Time::getNow()),
-                'upcomingTransactionLastNotified' => 0,
-                'nextTransactionAmount' => 0.00
-            ]);
+            $this->update($updateData);
         } catch (ValidationException $e) {
             $transaction->refund();
             throw new ValidationException('An error occurred while setting the subscription\'s next billing date');
+        }
+
+        if ($appliedDowngrade && $scheduledDowngrade instanceof PlanChange) {
+            PlanChangeService::markDowngradeApplied($scheduledDowngrade, $transaction);
         }
 
         // Record successful transaction FIRST before attempting to end creditable subscription
@@ -732,7 +759,7 @@ class Subscription implements Persistence
 
         if ($creditableSubscription instanceof Subscription) {
             try {
-                $creditableSubscription->upgradedToNewSubscription();
+                $creditableSubscription->end('reorganization', true);
             } catch (ValidationException $e) {
                 // Log but don't fail - some gateways (like RotoPass) can't be ended by the system
                 error_log("Could not end creditable subscription {$creditableSubscription->id}: " . $e->getMessage());
@@ -742,17 +769,42 @@ class Subscription implements Persistence
         // notify the user
         $user->subscriptionsChanged();
 
-        Email::sendFromTemplate(
-            'subscription/subscription/recurringpaymentprocessed',
-            $user->email,
-            [
-                'nextTransactionTs' => $this->nextTransactionTs,
-                'amount' => $transaction->amount,
-                'username' => $user->username,
-                'planName' => $this->getPlan()->name,
-                'billingCycleName' => $this->getBillingCycle()->name
-            ]
-        );
+        if ($appliedDowngrade) {
+            Email::sendFromTemplate(
+                'subscription/subscription/downgradeapplied',
+                $user->email,
+                [
+                    'nextTransactionTs' => $this->nextTransactionTs,
+                    'amount' => $transaction->amount,
+                    'username' => $user->username,
+                    'planName' => $this->getPlan()->name,
+                    'billingCycleName' => $this->getBillingCycle()->name,
+                ]
+            );
+        } else {
+            Email::sendFromTemplate(
+                'subscription/subscription/recurringpaymentprocessed',
+                $user->email,
+                [
+                    'nextTransactionTs' => $this->nextTransactionTs,
+                    'amount' => $transaction->amount,
+                    'username' => $user->username,
+                    'planName' => $this->getPlan()->name,
+                    'billingCycleName' => $this->getBillingCycle()->name
+                ]
+            );
+        }
+
+        if ($this->planKey === 'level35') {
+            $giftClass = Stack::resolveClassName(GiftSubscription::class);
+            if ($giftClass && method_exists($giftClass, 'issueThirdTierBundleGift')) {
+                try {
+                    $giftClass::issueThirdTierBundleGift($user);
+                } catch (ValidationException $e) {
+                    error_log('Failed to issue third-tier bundle gift after renewal: ' . $e->getMessage());
+                }
+            }
+        }
 
         return $transaction;
     }
@@ -914,23 +966,12 @@ class Subscription implements Persistence
     }
 
     /**
-     * @return void the subscription was used as a credit to purchase an upgrade so can be truncated without refund
-     * @throws ValidationException
-     */
-    public function upgradedToNewSubscription(): void
-    {
-        if ($this->endTs > 0) {
-            return;
-        }
-        $this->end('upgraded', true);
-    }
-
-    /**
      * @return void cancel the subscription (triggered by the user!)
      * @throws ValidationException
      */
     public function cancel(): void
     {
+        PlanChangeService::deleteScheduledDowngradeIfPresent($this);
         $this->end('user-cancelled');
         $user = $this->getUser();
         $user->subscriptionsChanged();
@@ -941,6 +982,63 @@ class Subscription implements Persistence
                 'planName' => $this->getPlan()->name,
                 'username' => $user->username,
                 'endTs' => $this->endTs,
+                'activeSubscription' => $this
+            ]
+        );
+    }
+
+    /**
+     * Restore auto-renew after a user self-cancelled a Braintree subscription (access period still active).
+     * @return void
+     * @throws ValidationException
+     */
+    public function resumeAutoRenew(): void
+    {
+        if (!$this->active) {
+            throw new ValidationException('Subscription is not active');
+        }
+
+        if (!$this->hasEndTs()) {
+            throw new ValidationException('Auto-renew is already enabled on this subscription');
+        }
+
+        if ($this->endTs <= Time::getNow()) {
+            throw new ValidationException('This subscription has already ended');
+        }
+
+        if ($this->endReason !== 'user-cancelled') {
+            throw new ValidationException('This subscription cannot be resumed');
+        }
+
+        if ($this->getGateway()->key !== 'braintree' || !$this->getGateway()->mutableSubscriptions) {
+            throw new ValidationException('This subscription cannot be resumed');
+        }
+
+        $user = $this->getUser();
+        if (!$user) {
+            throw new ValidationException('User not found');
+        }
+
+        $customer = Customer::getExistingFromUser($user);
+        if (!$customer || !$customer->hasValidVaultedPayment()) {
+            throw new ValidationException('Please update your payment method before turning auto-renew back on');
+        }
+
+        $nextTransactionTs = $this->endTs;
+        $this->update([
+            'endTs' => 0,
+            'endReason' => '',
+            'nextTransactionTs' => $nextTransactionTs
+        ]);
+
+        $user->subscriptionsChanged();
+        Email::sendFromTemplate(
+            'subscription/subscription/autorenewrestored',
+            $user->email,
+            [
+                'planName' => $this->getPlan()->name,
+                'username' => $user->username,
+                'nextTransactionTs' => $this->nextTransactionTs,
                 'activeSubscription' => $this
             ]
         );

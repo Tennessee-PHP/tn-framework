@@ -12,9 +12,11 @@ use TN\TN_Core\Model\Storage\Cache;
  */
 class Queue
 {
+    public const int USERS_FORM_ID = 2893687;
+
     private static $forms = [
         'schedulemaker' => 2521008,
-        'users' => 2893687,
+        'users' => self::USERS_FORM_ID,
         'ratemyteam' => 3552612,
         'ratemyteam-roadblock' => 8408341,
         'showdown-optimizer' => 8853662
@@ -83,27 +85,35 @@ class Queue
      */
     public static function isSubscriber(string $email): bool
     {
-        return false;
         $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
         return $api->get_subscriber_id($email) !== false;
     }
 
     public static function getSubscriberId(string $email): int|false
     {
-        return false;
         $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
         return $api->get_subscriber_id($email);
     }
 
+    /**
+     * Queue custom-field updates for a subscriber (processed by convertkit/send-from-queue).
+     *
+     * @param array<string, string> $fields
+     * @throws ValidationException
+     */
+    public static function queueSubscriberFieldUpdate(string $email, array $fields): void
+    {
+        self::queueRequest('update_subscriber_fields', [$email, $fields]);
+    }
+
+    /**
+     * @deprecated Use queueSubscriberFieldUpdate(); kept for callers that already have a subscriber id.
+     * @param array<string, string> $fields
+     * @throws ValidationException
+     */
     public static function updateSubscriber(int $subscriberId, array $fields): void
     {
-        return;
-
-        $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
-        $api->make_request('v3/subscribers/' . $subscriberId, 'POST', [
-            'api_secret' => $_ENV['CONVERTKIT_SECRET'],
-            'fields' => $fields
-        ]);
+        self::queueRequest('update_subscriber_by_id', [$subscriberId, $fields]);
     }
 
     /**
@@ -132,11 +142,23 @@ class Queue
      */
     public static function addTag(string $email, string $tagStr): void
     {
-        if (!isset(self::$tags[$tagStr])) {
-            trigger_error('ConvertKit tag not found', E_USER_ERROR);
+        if (ctype_digit($tagStr)) {
+            self::addTagFromId($email, (int) $tagStr);
+            return;
         }
 
-        self::addTagFromId($email, self::$tags[$tagStr]);
+        if (isset(self::$tags[$tagStr])) {
+            self::addTagFromId($email, self::$tags[$tagStr]);
+            return;
+        }
+
+        $tagId = KitV3Catalog::resolveTagIdByName($tagStr);
+        if ($tagId !== null) {
+            self::addTagFromId($email, $tagId);
+            return;
+        }
+
+        trigger_error('ConvertKit tag not found: ' . $tagStr, E_USER_ERROR);
     }
 
     /**
@@ -145,6 +167,26 @@ class Queue
     public static function addTagFromId(string $email, int $tagId): void
     {
         self::queueRequest('add_tag', [$tagId, ['email' => $email]]);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    public static function addPurchaseTag(string $email): void
+    {
+        $tagId = self::getPurchaseTagId();
+        if ($tagId !== null) {
+            self::addTagFromId($email, $tagId);
+        }
+    }
+
+    public static function getPurchaseTagId(): ?int
+    {
+        $raw = $_ENV['CONVERTKIT_PURCHASE_TAG_ID'] ?? '';
+        if ($raw === '' || !ctype_digit((string) $raw)) {
+            return null;
+        }
+        return (int) $raw;
     }
 
     /**

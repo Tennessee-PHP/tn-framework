@@ -9,6 +9,7 @@ use TN\TN_Billing\Model\Subscription\BillingCycle\BillingCycle;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Transaction\Apple\Transaction;
+use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\User\User;
 
@@ -208,7 +209,14 @@ class Receipt
                 'nextTransactionTs' => 0
             ];
 
+            $fromPlan = null;
+            $planUpgrade = false;
             if ($subscription instanceof Subscription) {
+                $fromPlan = $subscription->getPlan();
+                $planUpgrade = $fromPlan instanceof Plan && $plan->level > $fromPlan->level;
+                if ($planUpgrade) {
+                    PlanChangeService::deleteScheduledDowngradeIfPresent($subscription);
+                }
                 $update['startTs'] = min($startTs, $subscription->startTs);
                 $update['endTs'] = max($endTs, $subscription->endTs);
                 $update['numTransactions'] = $subscription->numTransactions + 1;
@@ -237,12 +245,18 @@ class Receipt
                 'success' => true
             ]);
 
+            if ($planUpgrade && $fromPlan instanceof Plan) {
+                PlanChangeService::recordUpgrade($subscription, $fromPlan, $plan, $transaction);
+            }
+
             if ($startTs > $subscription->lastTransactionTs) {
                 $update = [];
                 $update['lastTransactionTs'] = $startTs;
                 $update['lastTransactionAmount'] = $amount;
                 $subscription->update($update);
             }
+
+            $this->user->transactionSuccessful($transaction, $subscription);
 
         }
 

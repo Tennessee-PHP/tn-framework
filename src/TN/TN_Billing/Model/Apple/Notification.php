@@ -6,6 +6,7 @@ use TN\TN_Billing\Model\Subscription\BillingCycle\BillingCycle;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Transaction\Apple\Transaction;
+use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\User\User;
 
@@ -192,7 +193,13 @@ class Notification
             $plan = Plan::getInstanceByKey($parts[1]);
             $billingCycle = BillingCycle::getInstanceByKey($parts[0]);
         }
+        $fromPlan = $subscription->getPlan();
+        $planUpgrade = false;
         if ($plan instanceof Plan && $subscription->planKey !== $plan->key) {
+            $planUpgrade = $fromPlan instanceof Plan && $plan->level > $fromPlan->level;
+            if ($planUpgrade) {
+                PlanChangeService::deleteScheduledDowngradeIfPresent($subscription);
+            }
             $subscription->update([
                 'planKey' => $plan->key
             ]);
@@ -218,6 +225,10 @@ class Notification
             'receiptData' => '',
             'success' => true
         ]);
+
+        if ($planUpgrade && $fromPlan instanceof Plan && $plan instanceof Plan) {
+            PlanChangeService::recordUpgrade($subscription, $fromPlan, $plan, $transaction);
+        }
 
         // edit the dates on the subscription
         $subscription->update([

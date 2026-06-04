@@ -35,6 +35,14 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=newSubscriptions">New</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'upgradeSubscriptions'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=upgradeSubscriptions">Upgrades</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'downgradeSubscriptions'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=downgradeSubscriptions">Downgrades</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'renewalSubscriptions'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=renewalSubscriptions">Renewed</a>
             </li>

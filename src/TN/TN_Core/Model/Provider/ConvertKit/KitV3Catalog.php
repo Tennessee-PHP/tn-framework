@@ -3,127 +3,81 @@
 namespace TN\TN_Core\Model\Provider\ConvertKit;
 
 use TN\TN_Core\Model\Storage\Cache;
+use TN\TN_Core\Model\Time\Time;
 
 /**
- * Cached Kit (ConvertKit) v3 catalog data: forms and tags for validation and tag-id resolution.
- * Uses {@see Cache} (Redis) with a one-hour TTL, matching list endpoints that use the public API key.
+ * Cached Kit (ConvertKit) v3 catalog lookups for forms and tags.
  */
 class KitV3Catalog
 {
-    private const CACHE_TTL_SECONDS = 3600;
+    private const CACHE_TTL = Time::ONE_HOUR;
 
-    private const FORMS_CACHE_KEY = 'kit_v3_insider_forms_payload';
+    private const CACHE_KEY_FORMS = 'convertkit:v3:form-ids';
 
-    private const TAGS_CACHE_KEY = 'kit_v3_insider_tags_payload';
+    private const CACHE_KEY_TAGS = 'convertkit:v3:tag-name-to-id';
 
-    /**
-     * @return list<int> numeric form ids returned by GET /v3/forms
-     */
+    /** @return int[] */
     public static function getAllowedFormIds(): array
     {
-        $data = self::getFormsPayload();
-        if ($data === null) {
-            return [];
+        $cached = Cache::get(self::CACHE_KEY_FORMS);
+        if (is_array($cached)) {
+            return $cached;
         }
+
+        $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
+        $response = $api->make_request('v3/forms', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
+        $forms = is_object($response) && isset($response->forms) && is_array($response->forms)
+            ? $response->forms
+            : [];
+
         $ids = [];
-        foreach ($data['forms'] ?? [] as $form) {
-            if (isset($form['id'])) {
-                $ids[] = (int) $form['id'];
+        foreach ($forms as $form) {
+            if (isset($form->id) && is_numeric((string) $form->id)) {
+                $ids[] = (int) $form->id;
             }
         }
+
+        Cache::set(self::CACHE_KEY_FORMS, $ids, self::CACHE_TTL);
         return $ids;
     }
 
-    /**
-     * Map of lowercase trimmed tag name → numeric tag id (GET /v3/tags).
-     *
-     * @return array<string, int>
-     */
+    /** @return array<string, int> lowercase tag name => id */
     public static function getTagNameToIdMap(): array
     {
-        $data = self::getTagsPayload();
-        if ($data === null) {
-            return [];
+        $cached = Cache::get(self::CACHE_KEY_TAGS);
+        if (is_array($cached)) {
+            return $cached;
         }
+
+        $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
+        $response = $api->make_request('v3/tags', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
+        $tags = is_object($response) && isset($response->tags) && is_array($response->tags)
+            ? $response->tags
+            : [];
+
         $map = [];
-        foreach ($data['tags'] ?? [] as $tag) {
-            if (!isset($tag['id'], $tag['name'])) {
+        foreach ($tags as $tag) {
+            if (!isset($tag->id, $tag->name)) {
                 continue;
             }
-            $key = mb_strtolower(trim((string) $tag['name']), 'UTF-8');
-            if ($key !== '') {
-                $map[$key] = (int) $tag['id'];
+            $label = mb_strtolower(trim((string) $tag->name), 'UTF-8');
+            if ($label === '') {
+                continue;
             }
+            $map[$label] = (int) $tag->id;
         }
+
+        Cache::set(self::CACHE_KEY_TAGS, $map, self::CACHE_TTL);
         return $map;
     }
 
-    /**
-     * @return array{forms?: list<array<string, mixed>>}|null
-     */
-    private static function getFormsPayload(): ?array
+    public static function resolveTagIdByName(string $name): ?int
     {
-        $cached = Cache::get(self::FORMS_CACHE_KEY);
-        if (is_array($cached)) {
-            return $cached;
-        }
-        $key = (string) ($_ENV['CONVERTKIT_KEY'] ?? '');
-        if ($key === '') {
+        $label = mb_strtolower(trim($name), 'UTF-8');
+        if ($label === '') {
             return null;
         }
-        $url = 'https://api.convertkit.com/v3/forms?api_key=' . urlencode($key);
-        $decoded = self::httpGetJson($url);
-        if ($decoded === null) {
-            return null;
-        }
-        Cache::set(self::FORMS_CACHE_KEY, $decoded, self::CACHE_TTL_SECONDS);
-        return $decoded;
-    }
-
-    /**
-     * @return array{tags?: list<array<string, mixed>>}|null
-     */
-    private static function getTagsPayload(): ?array
-    {
-        $cached = Cache::get(self::TAGS_CACHE_KEY);
-        if (is_array($cached)) {
-            return $cached;
-        }
-        $key = (string) ($_ENV['CONVERTKIT_KEY'] ?? '');
-        if ($key === '') {
-            return null;
-        }
-        $url = 'https://api.convertkit.com/v3/tags?api_key=' . urlencode($key);
-        $decoded = self::httpGetJson($url);
-        if ($decoded === null) {
-            return null;
-        }
-        Cache::set(self::TAGS_CACHE_KEY, $decoded, self::CACHE_TTL_SECONDS);
-        return $decoded;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private static function httpGetJson(string $url): ?array
-    {
-        $ch = curl_init($url);
-        if ($ch === false) {
-            return null;
-        }
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
-        ]);
-        $raw = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($raw === false || $code < 200 || $code >= 300) {
-            error_log('KitV3Catalog: GET failed code=' . $code . ' url=' . $url);
-            return null;
-        }
-        $decoded = json_decode((string) $raw, true);
-        return is_array($decoded) ? $decoded : null;
+        $map = self::getTagNameToIdMap();
+        return $map[$label] ?? null;
     }
 }

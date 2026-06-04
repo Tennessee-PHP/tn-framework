@@ -8,6 +8,7 @@ use TN\TN_Billing\Model\Subscription\GiftSubscription;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Subscription\Subscription;
+use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Billing\Model\Transaction\Braintree\Transaction;
 use TN\TN_Billing\Trait\GetBillingCycle;
 use TN\TN_Billing\Trait\GetPlan;
@@ -264,6 +265,8 @@ class Cart implements Persistence
             $plan = Plan::getInstanceByKey($planKey);
             if (!($plan instanceof Plan)) {
                 $errors[] = 'Plan does not exist';
+            } elseif (!$plan->isPurchasable()) {
+                $errors[] = 'Plan is not available for purchase';
             }
             $billingCycle = BillingCycle::getInstanceByKey($billingCycleKey);
             if (!($billingCycle instanceof BillingCycle)) {
@@ -515,6 +518,20 @@ class Cart implements Persistence
         ];
 
         // setup the product
+        $braintreeUpgradeFromPlan = null;
+        $braintreeUpgradeSubscription = null;
+        if (!$this->gift && $this->creditableSubscriptionId > 0) {
+            $creditableForUpgrade = Subscription::readFromId($this->creditableSubscriptionId);
+            if (
+                $creditableForUpgrade instanceof Subscription
+                && $creditableForUpgrade->gatewayKey === 'braintree'
+                && !$creditableForUpgrade->hasEndTs()
+            ) {
+                $braintreeUpgradeSubscription = $creditableForUpgrade;
+                $braintreeUpgradeFromPlan = $creditableForUpgrade->getPlan();
+            }
+        }
+
         if ($this->gift) {
             // gift? create a gift subscription
             $product = GiftSubscription::getInstance();
@@ -528,6 +545,9 @@ class Cart implements Persistence
                 'createdTs' => Time::getNow()
             ]);
             $update['giftSubscriptionId'] = $product->id;
+        } elseif ($braintreeUpgradeSubscription instanceof Subscription) {
+            $product = $braintreeUpgradeSubscription;
+            $update['subscriptionId'] = $product->id;
         } else {
             // create the subscription and link it to the transaction (transaction should have subId or giftSubId on it!)
             $product = Subscription::getInstance();
@@ -579,24 +599,56 @@ class Cart implements Persistence
             throw new ValidationException(($transaction->errorMsg ?? 'Unknown error occurred') . '. If you\'re having trouble with payment by credit card, please try paying through your PayPal account if you have one.');
         }
 
-        // activate the product
-        $product->update([
-            'active' => true
-        ]);
+        if ($braintreeUpgradeSubscription instanceof Subscription) {
+            if (!$braintreeUpgradeFromPlan instanceof Plan) {
+                throw new ValidationException('Could not determine the current plan for this subscription upgrade');
+            }
+            $billingCycle = $this->getBillingCycle();
+            $now = Time::getNow();
+            PlanChangeService::deleteScheduledDowngradeIfPresent($product);
+            $product->update([
+                'active' => true,
+                'planKey' => $this->planKey,
+                'billingCycleKey' => $this->billingCycleKey,
+                'nextTransactionTs' => $billingCycle->getNextTs($now),
+                'upcomingTransactionLastNotified' => 0,
+                'nextTransactionAmount' => 0.00,
+            ]);
+        } else {
+            // activate the product
+            $product->update([
+                'active' => true
+            ]);
+        }
 
         // associate the transaction with the subscription
         $product->addSuccessfulTransaction($transaction);
+
+        if ($braintreeUpgradeSubscription instanceof Subscription && $braintreeUpgradeFromPlan instanceof Plan) {
+            PlanChangeService::recordUpgrade(
+                $product,
+                $braintreeUpgradeFromPlan,
+                $this->getPlan(),
+                $transaction
+            );
+        }
 
         // set the cart to checked out
         $this->update([
             'checkedOutTs' => Time::getNow()
         ]);
 
-        // cancel the creditable subscription?
         if ($this->creditableSubscriptionId > 0) {
             $creditableSubscription = Subscription::readFromId($this->creditableSubscriptionId);
-            if ($creditableSubscription instanceof Subscription) {
-                $creditableSubscription->upgradedToNewSubscription();
+            if (
+                $creditableSubscription instanceof Subscription
+                && $product->id !== $creditableSubscription->id
+            ) {
+                try {
+                    $creditableSubscription->end('reorganization', true);
+                } catch (ValidationException $e) {
+                    error_log("Could not end creditable subscription {$creditableSubscription->id}: " . $e->getMessage());
+                }
             }
         }
 
@@ -610,6 +662,17 @@ class Cart implements Persistence
         $user = $this->getUser();
         if ($voucherCode instanceof VoucherCode && $user instanceof User) {
             $user->usedVoucherCode($voucherCode);
+        }
+
+        if (!$this->gift && $this->planKey === 'level35' && $user instanceof User) {
+            $giftClass = Stack::resolveClassName(GiftSubscription::class);
+            if ($giftClass && method_exists($giftClass, 'issueThirdTierBundleGift')) {
+                try {
+                    $giftClass::issueThirdTierBundleGift($user);
+                } catch (ValidationException $e) {
+                    error_log('Failed to issue third-tier bundle gift after checkout: ' . $e->getMessage());
+                }
+            }
         }
 
         return $transaction;

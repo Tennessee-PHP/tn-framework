@@ -51,7 +51,11 @@ class Request implements Persistence
         $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
         $action = $this->action;
 
-        if ($this->action === 'add_subscriber_to_sequence') {
+        if ($action === 'update_subscriber_fields') {
+            $result = $this->requestUpdateSubscriberFields($api);
+        } elseif ($action === 'update_subscriber_by_id') {
+            $result = $this->requestUpdateSubscriberById($api);
+        } elseif ($action === 'add_subscriber_to_sequence') {
             $args = unserialize($this->serializedArguments);
             $result = $api->$action($args[0], $args[1]['email']);
         } else {
@@ -62,5 +66,38 @@ class Request implements Persistence
             'result' => serialize($result)
         ]);
         return true;
+    }
+
+    /**
+     * @param array<string, string> $fields
+     */
+    protected function requestUpdateSubscriberById(\ConvertKit_API\ConvertKit_API $api): mixed
+    {
+        [$subscriberId, $fields] = unserialize($this->serializedArguments);
+        return $api->make_request('v3/subscribers/' . (int) $subscriberId, 'POST', [
+            'api_secret' => $_ENV['CONVERTKIT_SECRET'],
+            'fields' => $fields
+        ]);
+    }
+
+    /**
+     * @param array<string, string> $fields
+     */
+    protected function requestUpdateSubscriberFields(\ConvertKit_API\ConvertKit_API $api): mixed
+    {
+        [$email, $fields] = unserialize($this->serializedArguments);
+        $subscriberId = $api->get_subscriber_id($email);
+        if ($subscriberId === false) {
+            $api->form_subscribe(Queue::USERS_FORM_ID, ['email' => $email]);
+            $subscriberId = $api->get_subscriber_id($email);
+        }
+        if ($subscriberId === false) {
+            return false;
+        }
+
+        return $api->make_request('v3/subscribers/' . $subscriberId, 'POST', [
+            'api_secret' => $_ENV['CONVERTKIT_SECRET'],
+            'fields' => $fields
+        ]);
     }
 }

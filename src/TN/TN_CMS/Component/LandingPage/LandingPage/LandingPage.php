@@ -13,6 +13,7 @@ use TN\TN_Core\Error\ResourceNotFoundException;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_CMS\Model\LandingPage as LandingPageModel;
 use TN\TN_Core\Model\User\User;
+use TN\TN_Reporting\Model\TrackedVisitor\TrackedVisitor;
 use \TN\TN_Core\Attribute\Components\Route;
 use TN\TN_Core\Attribute\Components\HTMLComponent\HeaderImage;
 use TN\TN_Billing\Component\Roadblock\Roadblock\Roadblock;
@@ -68,6 +69,11 @@ class LandingPage extends HTMLComponent
         if (!$this->landingPage) {
             throw new ResourceNotFoundException('landing page');
         }
+
+        if ($this->landingPage->convertKitTag !== '') {
+            TrackedVisitor::getInstance()->setConvertKitTag($this->landingPage->convertKitTag);
+        }
+
         $this->pageEntry = PageEntry::getPageEntryForContentItem(LandingPageModel::class, $this->landingPage->id);
         $this->userIsPageEntryAdmin = User::getActive()->hasRole('pageentries-admin');
         if ($this->userIsPageEntryAdmin) {
