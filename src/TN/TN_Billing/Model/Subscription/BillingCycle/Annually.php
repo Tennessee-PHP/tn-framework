@@ -11,7 +11,7 @@ class Annually extends BillingCycle
     protected string $key = 'annually';
     protected string $name = 'Yearly';
     protected int $numMonths = 12;
-    protected int $notifyUpcomingTransactionWithinDays = 15;
+    protected int $notifyUpcomingTransactionWithinDays = 7;
     public function getNextTs(int $ts): int
     {
         return $this->addMonths($ts, 12);
