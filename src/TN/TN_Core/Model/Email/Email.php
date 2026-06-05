@@ -67,6 +67,10 @@ class Email implements Persistence
     public static function sendFromTemplate(string $key, string $to, array $data = []): bool
     {
         $template = Template::getInstanceByKey($key);
+        if (!$template instanceof Template) {
+            error_log('Email template not found: ' . $key);
+            return false;
+        }
         try {
             $subject = $template->getSubject(array_merge(['to' => $to], $data));
             $body = $template->getBody(array_merge(['subject' => $subject, 'to' => $to], $data));

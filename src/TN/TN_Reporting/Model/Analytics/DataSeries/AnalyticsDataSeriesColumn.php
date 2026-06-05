@@ -58,6 +58,9 @@ class AnalyticsDataSeriesColumn extends DataSeriesColumn
                             }
                         }
                         break;
+                    case 'customerTypeKey':
+                        $breakdownStr = Subscription::getNewSubscriptionCustomerTypeOptions()[$part] ?? $part;
+                        break;
                 }
             }
         }

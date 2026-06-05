@@ -52,6 +52,8 @@
                                 Ended Reason
                             {elseif $select->requestKey === 'campaign'}
                                 Campaign
+                            {elseif $select->requestKey === 'customertype'}
+                                Customer type
                             {/if}
                         </label>
                         {$select->render()}

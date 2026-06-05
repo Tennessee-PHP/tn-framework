@@ -78,11 +78,14 @@ class PlanChangeAutoDowngradeService
                 }
 
                 try {
-                    PlanChangeService::scheduleDowngrade($subscription, $toPlan);
+                    PlanChangeService::scheduleDowngrade($subscription, $toPlan, sendScheduledDowngradeEmail: false);
                     $stats['scheduled']++;
                     $stats['scheduled_by_from_plan'][$fromPlanKey] = ($stats['scheduled_by_from_plan'][$fromPlanKey] ?? 0) + 1;
                     echo 'Subscription ' . $subscription->id . ': scheduled ' . $fromPlanKey . ' → ' . $toPlanKey . PHP_EOL;
                 } catch (ValidationException $e) {
+                    $stats['errors'][$subscription->id] = $e->getMessage();
+                    echo 'Subscription ' . $subscription->id . ': error — ' . $e->getMessage() . PHP_EOL;
+                } catch (\Throwable $e) {
                     $stats['errors'][$subscription->id] = $e->getMessage();
                     echo 'Subscription ' . $subscription->id . ': error — ' . $e->getMessage() . PHP_EOL;
                 }

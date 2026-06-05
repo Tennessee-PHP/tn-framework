@@ -14,41 +14,33 @@
                     {/if}
                 {/if}*}
                 {if !$hasHighestPlan || $activeSubscription->billingCycleKey !== 'annually'}
-                <div class="row d-flex justify-content-center">
-                    <div class="row col-12 mt-4 mb-1">
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mt-4 mb-1">
                         {if !$hasHighestPlan}
-                            <div class="col-12 {if $activeSubscription->billingCycleKey !== 'annually'} col-md-6 d-md-flex d-block justify-content-end my-1{/if}">
-                                <a class="btn btn-lg btn-cta user-action-btn" href="{$BASE_URL}plans">Upgrade
-                                    Plan</a>
-                            </div>
+                            <a class="btn btn-lg btn-cta user-action-btn" href="{$BASE_URL}plans">Upgrade Plan</a>
                         {/if}
                         {if $activeSubscription->billingCycleKey !== 'annually'}
-                            <div class="col-12 {if !$hasHighestPlan}col-md-6 d-md-flex d-block justify-content-start my-1{/if}">
-                                <a
-                                        class="btn smaller-btn btn-cta user-action-btn"
-                                        href="{$BASE_URL}checkout/plan/{$activeSubscription->getPlan()->key}/annually"
-                                >
-                                    Switch To Annual and Save
-                                </a>
-
-                            </div>
+                            <a
+                                    class="btn btn-lg btn-cta user-action-btn"
+                                    href="{$BASE_URL}checkout/plan/{$activeSubscription->getPlan()->key}/annually"
+                            >
+                                Switch To Annual and Save ${$switchToAnnualSavings|number_format:2}
+                            </a>
                         {/if}
                     </div>
-                    {/if}
-                    {if !$activeSubscription->endTs && $activeSubscription->planKey !== 'insider'}
-                        <div class="col-12 d-flex justify-content-center mt-4 mb-4">
-                            <button
-                                    class="btn btn-outline-danger smaller-btn user-action-btn"
-                                    type="button"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#cancelplan_modal">
-                                Cancel This Plan
-                            </button>
-                        </div>
-                    {/if}
-                    <a href="{$BASE_URL}your-subscription">Click here to learn how to get the most from your
-                        subscription.</a>
-                </div>
+                {/if}
+                {if $canShowCancelButton}
+                    <div class="d-flex flex-wrap justify-content-center gap-2 mt-4 mb-4">
+                        <button
+                                class="btn btn-outline-danger user-action-btn"
+                                type="button"
+                                data-bs-toggle="modal"
+                                data-bs-target="#cancelplan_modal">
+                            Cancel This Plan
+                        </button>
+                    </div>
+                {/if}
+                <a href="{$BASE_URL}your-subscription">Click here to learn how to get the most from your
+                    subscription.</a>
             </div>
         </div>
         {if $activeSubscriptionIsBraintree}
@@ -276,9 +268,15 @@
         </div>
     </div>
 
+    {if $canShowCancelButton}
     <div class="modal fade" id="cancelplan_modal" tabindex="-1" role="dialog" aria-labelledby="cancelPlanModalTitle"
-         aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+         aria-hidden="true"
+         data-abandon-url="{path route="TN_Billing:Subscription:abandonCancellationAttempt" userId=$user->id}"
+         data-survey-url="{path route="TN_Billing:Subscription:saveCancellationSurvey" userId=$user->id}"
+         data-accept-offer-url="{path route="TN_Billing:Subscription:acceptRetentionOffer" userId=$user->id}"
+         data-cancel-url="{path route="TN_Billing:Subscription:cancelSubscription" userId=$user->id}"
+         data-user-id="{$user->id}">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="cancelPlanModalTitle">Cancel Your Plan</h5>
@@ -286,26 +284,67 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    Are you sure? Your plan will remain active until its current
-                    expiration{if isset($activeSubscription->endTs)}
-                        {$activeSubscription->endTs|date_format:"%B %e, %Y"}
-                    {elseif isset($activeSubscription->nextTransactionTs)}
-                        {$activeSubscription->nextTransactionTs|date_format:"%B %e, %Y"}
-                    {/if}, at which point it will not renew and expire. This process does not initiate a refund of any
-                    kind.
+
+                <div class="cancellation-wizard-loading text-center py-4" style="display: none;">
+                    <div class="spinner-border" role="status"><span class="visually-hidden">Loading…</span></div>
                 </div>
-                <div class="modal-footer d-flex justify-content-center">
-                    <form id="user_plans_staffer_cancel_form" action="{path route="TN_Billing:Subscription:cancelSubscription" userId=$user->id}">
-                        <input type="hidden" name="id" value="{$user->id}">
-                        <input type="submit" class="btn btn-danger" value="Cancel my Plan">
-                    </form>
-                    <a href="{$BASE_URL}" class="btn btn-success my-3">Continue Saving Time and Winning
-                        More
-                        With Us</a>
+
+                <div class="cancellation-wizard-step" data-step="survey">
+                    <div class="modal-body">
+                        <p class="mb-3">Before you go, please tell us why you're cancelling. Your feedback helps us improve.</p>
+                        <div class="mb-3">
+                            <label for="cancellation_reason_select" class="form-label">Reason for cancelling <span class="text-danger">*</span></label>
+                            <select class="form-select" id="cancellation_reason_select" required>
+                                <option value="">Select a reason…</option>
+                                {foreach $cancellationReasonOptions as $code => $label}
+                                    <option value="{$code|escape}">{$label|escape}</option>
+                                {/foreach}
+                            </select>
+                            <div class="invalid-feedback">Please select a reason.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="cancellation_comment" class="form-label">Additional comments (optional)</label>
+                            <textarea class="form-control" id="cancellation_comment" rows="3"
+                                      placeholder="Tell us more about your experience…"></textarea>
+                            <div class="form-text" id="cancellation_other_hint" style="display: none;">Please share a few details when selecting Other.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-end">
+                        <button type="button" class="btn btn-primary" id="cancellation_survey_continue_btn">Continue</button>
+                    </div>
+                </div>
+
+                <div class="cancellation-wizard-step" data-step="save" style="display: none;">
+                    <div class="modal-body">
+                        <p id="cancellation_reason_acknowledgement" class="mb-3"></p>
+                        {if $scheduledDowngradeSummary}
+                            <p class="alert alert-warning">
+                                Cancelling your plan will also cancel your scheduled change to
+                                <b>{$scheduledDowngradeSummary.toPlanName}</b>.
+                            </p>
+                        {/if}
+                        <div id="cancellation_offer_available">
+                            <div class="alert alert-info border mb-3">
+                                <p class="fw-semibold mb-0" id="cancellation_offer_label"></p>
+                            </div>
+                        </div>
+                        <div id="cancellation_offer_unavailable" style="display: none;">
+                            <p class="text-muted mb-3">A retention discount isn't available for your account right now.</p>
+                        </div>
+                        <p class="mb-2">You might also like:</p>
+                        <ul class="mb-4">
+                            <li><a href="{$BASE_URL}your-subscription">Learn how to get the most from your subscription</a></li>
+                            {if !$hasHighestPlan}
+                                <li><a href="{$BASE_URL}plans">Upgrade Plan</a></li>
+                            {/if}
+                        </ul>
+                        <button type="button" class="btn btn-lg btn-success w-100 mb-3" id="cancellation_accept_offer_btn">Accept Offer</button>
+                        <button type="button" class="btn btn-lg btn-danger w-100" id="cancellation_decline_offer_btn">No, Cancel My Subscription Now</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    {/if}
 
 </div>

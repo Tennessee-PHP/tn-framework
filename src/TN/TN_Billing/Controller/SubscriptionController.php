@@ -6,6 +6,7 @@ use TN\TN_Core\Attribute\Route\Path;
 use TN\TN_Billing\Model\Subscription\Subscription as SubscriptionModel;
 use TN\TN_Billing\Service\PlanChangeAutoDowngradeService;
 use TN\TN_Billing\Service\PlanChangeBackfillService;
+use TN\TN_Billing\Service\SubscriptionCancelEventBackfillService;
 use TN\TN_Core\Attribute\Command\CommandName;
 use TN\TN_Core\Attribute\Command\Schedule;
 use TN\TN_Core\Attribute\Command\TimeLimit;
@@ -27,6 +28,26 @@ class SubscriptionController extends Controller
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\Subscription\CancelSubscription::class)]
     public function cancelSubscription(): void {}
+
+    #[Path('staff/users/user/:userId/plans/cancellation-attempt')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\SaveCancellationSurvey::class)]
+    public function saveCancellationSurvey(): void {}
+
+    #[Path('staff/users/user/:userId/plans/accept-retention-offer')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\AcceptRetentionOffer::class)]
+    public function acceptRetentionOffer(): void {}
+
+    #[Path('staff/users/user/:userId/plans/abandon-cancellation-attempt')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\Subscription\AbandonCancellationAttempt::class)]
+    public function abandonCancellationAttempt(): void {}
+
+    #[Path('staff/subscriptions/cancellation-attempts')]
+    #[RoleOnly('sales-reporting')]
+    #[Component(\TN\TN_Billing\Component\Subscription\ListCancellationAttempts\ListCancellationAttempts::class)]
+    public function listCancellationAttempts(): void {}
 
     #[Path('staff/users/user/:userId/plans/resume-subscription')]
     #[UsersOnly]
@@ -53,6 +74,21 @@ class SubscriptionController extends Controller
         echo '  level40 (GOAT) → level35 (All-Access)' . PHP_EOL;
 
         $stats = PlanChangeAutoDowngradeService::run($dryRun);
+
+        echo json_encode($stats, JSON_PRETTY_PRINT) . PHP_EOL;
+
+        return json_encode($stats);
+    }
+
+    #[TimeLimit(7200)]
+    #[CommandName('billing/backfill-subscription-cancel-events')]
+    public function backfillSubscriptionCancelEvents(): ?string
+    {
+        $recomputeAnalytics = !in_array('--no-analytics', Command::get()->args, true);
+        echo 'Starting subscription cancel event backfill (recompute analytics: '
+            . ($recomputeAnalytics ? 'yes' : 'no') . ')' . PHP_EOL;
+
+        $stats = SubscriptionCancelEventBackfillService::run($recomputeAnalytics);
 
         echo json_encode($stats, JSON_PRETTY_PRINT) . PHP_EOL;
 

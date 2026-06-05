@@ -9,6 +9,7 @@ use TN\TN_Core\Component\DataSeries\DataSeriesTable\DataSeriesTable;
 use TN\TN_Core\Component\Input\DateInput\DateInput;
 use TN\TN_Core\Component\Input\Select\PlanSelect\PlanSelect;
 use TN\TN_Core\Component\Input\Select\CampaignSelect\CampaignSelect;
+use TN\TN_Reporting\Component\Input\Select\CustomerTypeSelect\CustomerTypeSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\EndedReasonSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\ProductTypeSelect;
 use TN\TN_Core\Component\Input\Select\ProductTypeSelect\RefundReasonSelect;
@@ -75,6 +76,7 @@ class TypeReport extends DashboardComponent
                 'refundReason' => new RefundReasonSelect(),
                 'endedReason' => new EndedReasonSelect(),
                 'campaign' => new CampaignSelect(),
+                'customerType' => new CustomerTypeSelect(),
             };
             $select->prepare();
             $this->filterSelects[$filter] = $select;
@@ -137,6 +139,14 @@ class TypeReport extends DashboardComponent
                 $this->breakdown = 'endedReasonKey';
                 $this->filterSelects['endedReason']->selected = $this->filterSelects['endedReason']->options[0];
                 break;
+            case 'customertype':
+                if (!in_array('customerType', $this->analyticsEntryClassName::$filters)) {
+                    $this->breakdown = null;
+                    break;
+                }
+                $this->breakdown = 'customerTypeKey';
+                $this->filterSelects['customerType']->selected = $this->filterSelects['customerType']->options[0];
+                break;
         };
 
         $this->timeUnitSelect = new TimeUnitSelect();
@@ -166,6 +176,8 @@ class TypeReport extends DashboardComponent
             $key = is_object($select->selected) ? $select->selected->key : '';
             if ($filter === 'campaign') {
                 $filters['campaignId'] = $key;
+            } elseif ($filter === 'customerType') {
+                $filters['customerTypeKey'] = $key;
             } else {
                 $filters[$filter . 'Key'] = $key;
             }
@@ -210,7 +222,7 @@ class TypeReport extends DashboardComponent
      */
     protected function prepareTable(): void
     {
-        if ($this->analyticsEntryClassName === CampaignDailyEntry::class) {
+        if ($this->analyticsEntryClassName === CampaignDailyEntry::class && $this->breakdown !== 'customerTypeKey') {
             $this->table = new DataSeriesTable($this->getCampaignTableDataSeries());
         } else {
             $this->table = new DataSeriesTable($this->dataSeries);
@@ -326,7 +338,8 @@ class TypeReport extends DashboardComponent
             'dataSeries' => $dataSeriesInverted,
             'chartType' => $this->chartType,
             'labelColumnKey' => 'date',
-            'dataSetColumnKeys' => $columnKeys
+            'dataSetColumnKeys' => $columnKeys,
+            'stackBars' => $this->chartType === 'bar' && (bool)$this->breakdown,
         ]);
         $this->chart->prepare();
     }

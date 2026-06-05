@@ -9,7 +9,7 @@ use TN\TN_Core\Component\Renderer\JSON\JSON;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\User\User;
 
-class CancelSubscription extends JSON
+class AcceptRetentionOffer extends JSON
 {
     public function prepare(): void
     {
@@ -22,15 +22,11 @@ class CancelSubscription extends JSON
         $attemptId = (int)($_REQUEST['attemptId'] ?? 0);
         $attempt = CancellationAttempt::readFromId($attemptId);
         if (!$attempt instanceof CancellationAttempt) {
-            throw new ValidationException('Please complete the cancellation survey first');
+            throw new ValidationException('Invalid cancellation attempt');
         }
 
-        CancellationRecoveryService::completeCancellation($attempt, $subscription, $user);
+        $result = CancellationRecoveryService::acceptRetentionOffer($attempt, $subscription, $user);
 
-        $this->data = [
-            'result' => 'success',
-            'message' => 'Your subscription has been cancelled. Your access will expire on ' . date('m-d-Y', $subscription->endTs),
-            'endTs' => date('m-d-Y', $subscription->endTs),
-        ];
+        $this->data = array_merge(['result' => 'success'], $result);
     }
 }

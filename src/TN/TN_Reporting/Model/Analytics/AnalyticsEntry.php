@@ -37,12 +37,17 @@ abstract class AnalyticsEntry implements Persistence
     /**
      * @return string
      */
+    protected static function filterPropertyKey(string $filter): string
+    {
+        return $filter === 'campaign' ? 'campaignId' : $filter . 'Key';
+    }
+
     protected function getFilterIndexKey(): string
     {
         $filters = get_called_class()::$filters;
         $keys = [];
         foreach ($filters as $filter) {
-            $prop = $filter . 'Key';
+            $prop = static::filterPropertyKey($filter);
             $keys[] = $this->$prop ?? '';
         }
         return implode(':', $keys);
@@ -70,10 +75,7 @@ abstract class AnalyticsEntry implements Persistence
             $updateData = [];
 
             foreach (get_called_class()::$filters as $filter) {
-                $filterKey = $filter . 'Key';
-                if ($filter === 'campaign') {
-                    $filterKey = 'campaignId';
-                }
+                $filterKey = static::filterPropertyKey($filter);
 
                 if (property_exists($report, $filterKey) && $report->$filterKey === null) {
                     $updateData[$filterKey] = ($filter === 'campaign') ? 0 : '';
@@ -92,7 +94,8 @@ abstract class AnalyticsEntry implements Persistence
         foreach ($reports as $report) {
             $indexKey = '';
             foreach (get_called_class()::$filters as $filter) {
-                $indexKey .= $report->{$filter . 'Key'} . ':';
+                $filterKey = static::filterPropertyKey($filter);
+                $indexKey .= $report->$filterKey . ':';
             }
             if (empty($indexKey)) {
                 $indexKey = 'all';
@@ -113,7 +116,8 @@ abstract class AnalyticsEntry implements Persistence
             foreach ($variants as $data) {
                 $indexKey = '';
                 foreach (get_called_class()::$filters as $filter) {
-                    $indexKey .= $data[$filter] . ':';
+                    $filterKey = static::filterPropertyKey($filter);
+                    $indexKey .= $data[$filterKey] . ':';
                 }
                 if (!isset($indexedReports[$indexKey])) {
                     $report = self::getInstance();

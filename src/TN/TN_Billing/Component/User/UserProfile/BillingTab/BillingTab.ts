@@ -11,16 +11,26 @@ import * as braintree from 'braintree-web';
 declare const TN: any;
 
 export default class BillingTab extends HTMLComponent {
-    private $cancelForm: Cash;
     private $scheduleDowngradeForm: Cash;
     private $cancelScheduledDowngradeForm: Cash;
-    private $scheduleDowngradeSelect: Cash;
+    private $scheduleDowngradeRadios: Cash;
     private $scheduleDowngradeSubmit: Cash;
     private $scheduleDowngradeConfirmCopy: Cash;
     private $resumeAutoRenewForm: Cash;
     private $refundForm: Cash;
     private $refundCheckboxes: Cash;
     private $refundButtons: Cash;
+
+    private $cancelModal: Cash;
+    private $cancelReasonSelect: Cash;
+    private $cancelComment: Cash;
+    private $cancelSurveyContinueBtn: Cash;
+    private $cancelAcceptOfferBtn: Cash;
+    private $cancelDeclineOfferBtn: Cash;
+    private $cancelWizardLoading: Cash;
+    private $cancelWizardSteps: Cash;
+    private cancellationAttemptId: number = 0;
+    private cancellationWizardComplete: boolean = false;
 
     // Braintree related properties
     private braintreeClient: braintree.Client;
@@ -39,10 +49,9 @@ export default class BillingTab extends HTMLComponent {
         BillingTab.isInitialized = true;
 
         // Original form handling
-        this.$cancelForm = $('#user_plans_staffer_cancel_form');
         this.$scheduleDowngradeForm = $('#user_plans_schedule_downgrade_form');
         this.$cancelScheduledDowngradeForm = $('#user_plans_cancel_scheduled_downgrade_form');
-        this.$scheduleDowngradeSelect = $('#schedule_downgrade_plan_select');
+        this.$scheduleDowngradeRadios = this.$scheduleDowngradeForm.find('input[name="toPlanKey"]');
         this.$scheduleDowngradeSubmit = $('#schedule_downgrade_submit_btn');
         this.$scheduleDowngradeConfirmCopy = $('#schedule_downgrade_confirm_copy');
         this.$resumeAutoRenewForm = $('#user_plans_resume_autorenew_form');
@@ -50,10 +59,10 @@ export default class BillingTab extends HTMLComponent {
         this.$refundCheckboxes = $('.refund-check');
         this.$refundButtons = $('.refund-btn');
 
-        this.$cancelForm.on('submit', this.onCancelFormSubmit.bind(this));
+
         if (this.$scheduleDowngradeForm.length) {
             this.$scheduleDowngradeForm.on('submit', this.onScheduleDowngradeFormSubmit.bind(this));
-            this.$scheduleDowngradeSelect.on('change', this.updateScheduleDowngradeFormState.bind(this));
+            this.$scheduleDowngradeRadios.on('change', this.updateScheduleDowngradeFormState.bind(this));
             this.updateScheduleDowngradeFormState();
         }
         if (this.$cancelScheduledDowngradeForm.length) {
@@ -64,6 +73,8 @@ export default class BillingTab extends HTMLComponent {
         }
         this.$refundForm.on('submit', this.onRefundFormSubmit.bind(this));
         this.$refundCheckboxes.on('change', this.updateRefundButtonState.bind(this));
+
+        this.initCancellationWizard();
 
         // Set initial state for refund buttons
         this.updateRefundButtonState();
@@ -96,18 +107,252 @@ export default class BillingTab extends HTMLComponent {
     }
 
     private updateScheduleDowngradeFormState(): void {
-        const $selected = this.$scheduleDowngradeSelect.find('option:selected');
+        this.$scheduleDowngradeForm.find('.schedule-downgrade-plan-card').removeClass('form-check-box-checked');
+
+        const $selected = this.$scheduleDowngradeRadios.filter(':checked');
         const planKey = ($selected.val() as string) || '';
         const price = parseFloat(($selected.attr('data-price') as string) || '0');
+        const planName = ($selected.attr('data-plan-name') as string) || '';
+
         if (!planKey) {
             this.$scheduleDowngradeConfirmCopy.text('');
             this.$scheduleDowngradeSubmit.prop('disabled', true);
             return;
         }
+
+        $selected.closest('.schedule-downgrade-plan-card').addClass('form-check-box-checked');
+
         this.$scheduleDowngradeConfirmCopy.text(
-            `On your next renewal you will be charged $${price.toFixed(2)} for the ${$selected.text().split(' — ')[0]} plan.`
+            `On your next renewal you will be charged $${price.toFixed(2)} for the ${planName} plan.`
         );
         this.$scheduleDowngradeSubmit.prop('disabled', false);
+    }
+
+    private cancellationCurrentStep: 'survey' | 'save' = 'survey';
+
+    private initCancellationWizard(): void {
+        this.$cancelModal = $('#cancelplan_modal');
+        if (!this.$cancelModal.length) {
+            return;
+        }
+
+        this.$cancelReasonSelect = $('#cancellation_reason_select');
+        this.$cancelComment = $('#cancellation_comment');
+        this.$cancelSurveyContinueBtn = $('#cancellation_survey_continue_btn');
+        this.$cancelAcceptOfferBtn = $('#cancellation_accept_offer_btn');
+        this.$cancelDeclineOfferBtn = $('#cancellation_decline_offer_btn');
+        this.$cancelWizardLoading = this.$cancelModal.find('.cancellation-wizard-loading');
+        this.$cancelWizardSteps = this.$cancelModal.find('.cancellation-wizard-step');
+
+        this.$cancelReasonSelect.on('change', this.onCancellationReasonChange.bind(this));
+        this.$cancelSurveyContinueBtn.on('click', this.onCancellationSurveyContinue.bind(this));
+        this.$cancelAcceptOfferBtn.on('click', this.onCancellationAcceptOffer.bind(this));
+        this.$cancelDeclineOfferBtn.on('click', this.onCancellationDeclineOffer.bind(this));
+
+        const modalEl = this.$cancelModal.get(0) as HTMLElement;
+        modalEl.addEventListener('show.bs.modal', this.resetCancellationWizard.bind(this));
+        modalEl.addEventListener('hidden.bs.modal', this.onCancellationModalHidden.bind(this));
+    }
+
+    private resetCancellationWizard(): void {
+        this.cancellationAttemptId = 0;
+        this.cancellationWizardComplete = false;
+        this.cancellationCurrentStep = 'survey';
+        this.$cancelReasonSelect.val('');
+        this.$cancelReasonSelect.removeClass('is-invalid');
+        this.$cancelComment.val('');
+        $('#cancellation_other_hint').hide();
+        $('#cancellation_offer_available').show();
+        $('#cancellation_offer_unavailable').hide();
+        this.$cancelAcceptOfferBtn.show();
+        this.showCancellationStep('survey');
+        this.setCancellationWizardLoading(false);
+    }
+
+    private onCancellationReasonChange(): void {
+        const reason = (this.$cancelReasonSelect.val() as string) || '';
+        $('#cancellation_other_hint').toggle(reason === 'other');
+    }
+
+    private showCancellationStep(step: 'survey' | 'save'): void {
+        this.cancellationCurrentStep = step;
+        this.$cancelWizardSteps.each((_, el) => {
+            const $step = $(el);
+            $step.toggle($step.attr('data-step') === step);
+        });
+
+        const titles: Record<string, string> = {
+            survey: 'Cancel Your Plan',
+            save: 'Before You Go…',
+        };
+        $('#cancelPlanModalTitle').text(titles[step] || 'Cancel Your Plan');
+    }
+
+    private setCancellationWizardLoading(loading: boolean): void {
+        this.$cancelWizardLoading.toggle(loading);
+        if (loading) {
+            this.$cancelWizardSteps.hide();
+        } else {
+            this.showCancellationStep(this.cancellationCurrentStep);
+        }
+    }
+
+    private onCancellationSurveyContinue(): void {
+        const reasonCode = (this.$cancelReasonSelect.val() as string) || '';
+        if (!reasonCode) {
+            this.$cancelReasonSelect.addClass('is-invalid');
+            return;
+        }
+        this.$cancelReasonSelect.removeClass('is-invalid');
+
+        const data = {
+            id: this.$cancelModal.data('user-id'),
+            reasonCode,
+            comment: (this.$cancelComment.val() as string) || '',
+        };
+
+        this.setCancellationWizardLoading(true);
+        axios
+            .post(this.$cancelModal.data('survey-url'), data, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result !== 'success') {
+                    return;
+                }
+
+                this.cancellationAttemptId = response.data.attemptId;
+                $('#cancellation_reason_acknowledgement').text(response.data.reasonAcknowledgement || '');
+
+                const skipSave = !!response.data.skipSaveStep;
+                if (skipSave) {
+                    $('#cancellation_offer_available').hide();
+                    $('#cancellation_offer_unavailable').show();
+                    this.$cancelAcceptOfferBtn.hide();
+                } else {
+                    $('#cancellation_offer_available').show();
+                    $('#cancellation_offer_unavailable').hide();
+                    $('#cancellation_offer_label').text(response.data.offerLabel || '');
+                    this.$cancelAcceptOfferBtn.show();
+                }
+
+                this.showCancellationStep('save');
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response?.data?.message || 'Could not save your feedback. Please try again.');
+            })
+            .finally((): void => {
+                this.setCancellationWizardLoading(false);
+            });
+    }
+
+    private onCancellationAcceptOffer(): void {
+        if (!this.cancellationAttemptId) {
+            return;
+        }
+
+        const data = {
+            id: this.$cancelModal.data('user-id'),
+            attemptId: this.cancellationAttemptId,
+        };
+
+        this.setCancellationWizardLoading(true);
+        axios
+            .post(this.$cancelModal.data('accept-offer-url'), data, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result !== 'success') {
+                    return;
+                }
+
+                this.cancellationWizardComplete = true;
+                new SuccessToast(response.data.message);
+
+                const modalInstance =
+                    Modal.getInstance(document.getElementById('cancelplan_modal')) ||
+                    new Modal(document.getElementById('cancelplan_modal'));
+                modalInstance.hide();
+
+                if (response.data.redirectUrl) {
+                    window.location.href = response.data.redirectUrl;
+                    return;
+                }
+
+                _.delay(() => {
+                    window.location.reload();
+                }, 1500);
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response?.data?.message || 'Could not apply the offer. Please try again.');
+            })
+            .finally((): void => {
+                this.setCancellationWizardLoading(false);
+            });
+    }
+
+    private onCancellationDeclineOffer(): void {
+        this.completeCancellation();
+    }
+
+    private completeCancellation(): void {
+        if (!this.cancellationAttemptId) {
+            new ErrorToast('Please complete the cancellation survey first.');
+            this.showCancellationStep('survey');
+            return;
+        }
+
+        const data = {
+            id: this.$cancelModal.data('user-id'),
+            attemptId: this.cancellationAttemptId,
+        };
+
+        this.setCancellationWizardLoading(true);
+        axios
+            .post(this.$cancelModal.data('cancel-url'), data, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result !== 'success') {
+                    return;
+                }
+
+                this.cancellationWizardComplete = true;
+                new SuccessToast(response.data.message);
+
+                const modalInstance =
+                    Modal.getInstance(document.getElementById('cancelplan_modal')) ||
+                    new Modal(document.getElementById('cancelplan_modal'));
+                modalInstance.hide();
+
+                _.delay(() => {
+                    window.location.reload();
+                }, 2000);
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response?.data?.message || 'Could not cancel your subscription. Please try again.');
+            })
+            .finally((): void => {
+                this.setCancellationWizardLoading(false);
+            });
+    }
+
+    private onCancellationModalHidden(): void {
+        if (this.cancellationWizardComplete || !this.cancellationAttemptId) {
+            return;
+        }
+
+        axios.post(
+            this.$cancelModal.data('abandon-url'),
+            {
+                id: this.$cancelModal.data('user-id'),
+                attemptId: this.cancellationAttemptId,
+            },
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        );
     }
 
     private onScheduleDowngradeFormSubmit(event: Event): void {
@@ -155,34 +400,6 @@ export default class BillingTab extends HTMLComponent {
                         const modalInstance = Modal.getInstance(modalEl) || new Modal(modalEl);
                         modalInstance.hide();
                     }
-                    _.delay(() => {
-                        window.location.reload();
-                    }, 2000);
-                }
-            })
-            .catch((error: AxiosError): void => {
-                // @ts-ignore
-                new ErrorToast(error.response.data.message);
-            });
-    }
-
-    private onCancelFormSubmit(event: Event): void {
-        event.preventDefault();
-        let data: ReloadData = this.$cancelForm.getFormData();
-        axios
-            .post(this.$cancelForm.attr('action'), data, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            })
-            .then((response: AxiosResponse): void => {
-                if (response.data.result === 'success') {
-                    new SuccessToast(response.data.message);
-                    // @ts-ignore: Modal typing might be incomplete or instance needed
-                    const cancelModalInstance =
-                        Modal.getInstance(document.getElementById('cancelplan_modal')) ||
-                        new Modal(document.getElementById('cancelplan_modal'));
-                    cancelModalInstance.hide();
                     _.delay(() => {
                         window.location.reload();
                     }, 2000);

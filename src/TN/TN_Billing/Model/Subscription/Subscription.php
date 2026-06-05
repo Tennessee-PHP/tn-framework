@@ -11,6 +11,7 @@ use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Billing\Model\VoucherCode;
 use TN\TN_Billing\Service\PlanChangeService;
+use TN\TN_Billing\Service\SubscriptionCancelEventService;
 use TN\TN_Billing\Trait\GetBillingCycle;
 use TN\TN_Billing\Trait\GetGateway;
 use TN\TN_Billing\Trait\GetPlan;
@@ -344,6 +345,98 @@ class Subscription implements Persistence
         }
 
         return static::countAndTotal(new SearchArguments(conditions: $conditions), 'lastTransactionAmount');
+    }
+
+    public const string CUSTOMER_TYPE_BRAND_NEW = 'brand-new';
+
+    public const string CUSTOMER_TYPE_PREVIOUSLY_SUBSCRIBED = 'previously-subscribed';
+
+    /** @return array<string, string> */
+    public static function getNewSubscriptionCustomerTypeOptions(): array
+    {
+        return [
+            self::CUSTOMER_TYPE_BRAND_NEW => 'Brand new',
+            self::CUSTOMER_TYPE_PREVIOUSLY_SUBSCRIBED => 'Previously subscribed',
+        ];
+    }
+
+    /**
+     * Gift-path subscriptions (redeemed or complimentary) are always brand new for analytics.
+     */
+    public static function isGiftPathNewSubscription(self $subscription): bool
+    {
+        return $subscription->gatewayKey === 'free';
+    }
+
+    public static function userHadPriorSubscription(int $userId, int $beforeStartTs, int $excludeSubscriptionId): bool
+    {
+        return static::count(new SearchArguments([
+            new SearchComparison('`userId`', '=', $userId),
+            new SearchComparison('`startTs`', '<', $beforeStartTs),
+            new SearchComparison('`id`', '!=', $excludeSubscriptionId),
+        ])) > 0;
+    }
+
+    public static function classifyNewSubscriptionCustomerTypeKey(self $subscription): string
+    {
+        if (static::isGiftPathNewSubscription($subscription)) {
+            return self::CUSTOMER_TYPE_BRAND_NEW;
+        }
+
+        if (static::userHadPriorSubscription($subscription->userId, $subscription->startTs, $subscription->id)) {
+            return self::CUSTOMER_TYPE_PREVIOUSLY_SUBSCRIBED;
+        }
+
+        return self::CUSTOMER_TYPE_BRAND_NEW;
+    }
+
+    public static function countAndTotalNewByCustomerType(
+        string $customerTypeKey,
+        int $startTs,
+        int $endTs,
+        string $planKey = '',
+        string $billingCycleKey = '',
+        string $gatewayKey = '',
+        ?int $campaignId = null
+    ): CountAndTotalResult {
+        if (!in_array($customerTypeKey, [self::CUSTOMER_TYPE_BRAND_NEW, self::CUSTOMER_TYPE_PREVIOUSLY_SUBSCRIBED], true)) {
+            return new CountAndTotalResult(0, 0.0);
+        }
+
+        $conditions = [
+            new SearchComparison(
+                argument1: new SearchComparisonArgument(property: 'active'),
+                operator: SearchComparisonOperator::Equals,
+                argument2: new SearchComparisonArgument(value: 1)
+            ),
+            new SearchComparison('`startTs`', '>=', $startTs),
+            new SearchComparison('`startTs`', '<', $endTs),
+        ];
+
+        if (!empty($planKey)) {
+            $conditions[] = new SearchComparison('`planKey`', '=', $planKey);
+        }
+        if (!empty($billingCycleKey)) {
+            $conditions[] = new SearchComparison('`billingCycleKey`', '=', $billingCycleKey);
+        }
+        if (!empty($gatewayKey)) {
+            $conditions[] = new SearchComparison('`gatewayKey`', '=', $gatewayKey);
+        }
+        if ($campaignId !== null) {
+            $conditions[] = new SearchComparison('`campaignId`', '=', $campaignId);
+        }
+
+        $count = 0;
+        $total = 0.0;
+        foreach (static::search(new SearchArguments(conditions: $conditions)) as $subscription) {
+            if (static::classifyNewSubscriptionCustomerTypeKey($subscription) !== $customerTypeKey) {
+                continue;
+            }
+            $count++;
+            $total += $subscription->lastTransactionAmount;
+        }
+
+        return new CountAndTotalResult($count, $total);
     }
 
     /**
@@ -973,6 +1066,7 @@ class Subscription implements Persistence
     {
         PlanChangeService::deleteScheduledDowngradeIfPresent($this);
         $this->end('user-cancelled');
+        SubscriptionCancelEventService::recordCancel($this);
         $user = $this->getUser();
         $user->subscriptionsChanged();
         Email::sendFromTemplate(
@@ -1030,6 +1124,8 @@ class Subscription implements Persistence
             'endReason' => '',
             'nextTransactionTs' => $nextTransactionTs
         ]);
+
+        SubscriptionCancelEventService::recordUncancel($this);
 
         $user->subscriptionsChanged();
         Email::sendFromTemplate(

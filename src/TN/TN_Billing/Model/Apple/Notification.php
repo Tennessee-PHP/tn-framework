@@ -7,6 +7,7 @@ use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Transaction\Apple\Transaction;
 use TN\TN_Billing\Service\PlanChangeService;
+use TN\TN_Billing\Service\SubscriptionCancelEventService;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\User\User;
 
@@ -142,6 +143,11 @@ class Notification
         $subscription->update([
             'endReason' => $enabled ? '' : 'user-cancelled'
         ]);
+        if ($enabled) {
+            SubscriptionCancelEventService::recordUncancel($subscription);
+        } else {
+            SubscriptionCancelEventService::recordCancel($subscription);
+        }
         $user = User::readFromId($subscription->userId);
         if ($user instanceof User) {
             $user->subscriptionsChanged();

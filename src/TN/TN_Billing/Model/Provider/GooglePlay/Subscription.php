@@ -10,6 +10,7 @@ use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Subscription as TNSubscription;
 use TN\TN_Billing\Model\Transaction\GooglePlay\Transaction;
 use TN\TN_Billing\Service\PlanChangeService;
+use TN\TN_Billing\Service\SubscriptionCancelEventService;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
@@ -244,6 +245,8 @@ class Subscription implements Persistence
             $cancelReason = $response->getCancelReason();
             if ($cancelReason === 0 && $response->getUserCancellationTimeMillis()) {
                 $tnSub->update(['endReason' => 'user-cancelled']);
+                $cancelEventTs = (int) round($response->getUserCancellationTimeMillis() / 1000);
+                SubscriptionCancelEventService::recordCancel($tnSub, $cancelEventTs);
             } else if ($cancelReason === 1) {
                 $tnSub->update(['endReason' => 'payment-failed']);
             }

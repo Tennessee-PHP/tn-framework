@@ -1,1 +1,1 @@
-{include "./TypeReport.tpl" desc="<b>New Subscriptions</b> is the number of subscriptions that started on each day."}
+{include "./TypeReport.tpl" desc="<b>New Subscriptions</b> is the number of subscriptions that started on each day, with count and revenue. Use <b>Customer type</b> to filter or break down <b>Brand new</b> (first paid subscription or gift sale) vs <b>Previously subscribed</b> (returning customers)."}

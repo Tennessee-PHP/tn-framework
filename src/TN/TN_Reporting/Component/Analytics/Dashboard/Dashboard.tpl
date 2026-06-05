@@ -51,6 +51,10 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=endedSubscriptions">Ended</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'subscriptionCancellations'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=subscriptionCancellations">Cancelled</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'stalledSubscriptions'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=stalledSubscriptions">Stalled</a>
             </li>

@@ -14,6 +14,7 @@ use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\PersistentModel\PersistentModel;
 use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Model\PersistentModel\Search\SearchComparison;
+use TN\TN_Core\Model\PersistentModel\Search\SearchLogical;
 use TN\TN_Core\Model\PersistentModel\Storage\MySQL\MySQL;
 use TN\TN_Core\Model\Storage\DB;
 use TN\TN_Core\Model\Time\Time;
@@ -120,7 +121,10 @@ class VoucherCode implements Persistence
         return static::searchOne(new SearchArguments([
             new SearchComparison('`code`', '=', $code),
             new SearchComparison('`startTs`', '<', Time::getNow()),
-            new SearchComparison('`endTs`', '>', Time::getNow())
+            new SearchLogical('OR', [
+                new SearchComparison('`endTs`', '=', 0),
+                new SearchComparison('`endTs`', '>', Time::getNow()),
+            ]),
         ]));
     }
 

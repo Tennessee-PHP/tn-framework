@@ -24,12 +24,25 @@ use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsLifetimeValueEntr
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsDowngradeEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsNewEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsRenewalEntry;
+use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsCancelEventsEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsUpgradeEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsStalledEntry;
 use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
+use TN\TN_Reporting\Service\NewSubscriptionCustomerTypeBackfillService;
 
 class AnalyticsController extends Controller
 {
+    #[CommandName('reporting/analytics/backfill-new-subscription-customer-type')]
+    #[TimeLimit(5000)]
+    public function backfillNewSubscriptionCustomerType(): ?string
+    {
+        echo "Starting 2-year backfill for new subscription customer-type analytics...\n";
+        NewSubscriptionCustomerTypeBackfillService::run(2);
+        echo "Backfill completed.\n";
+
+        return null;
+    }
+
     #[Schedule('*/10 * * * *')]
     #[TimeLimit(5000)]
     #[CommandName('reporting/analytics/update')]
@@ -82,6 +95,7 @@ class AnalyticsController extends Controller
             SubscriptionsRenewalEntry::updateDayReports($ts);
             SubscriptionsStalledEntry::updateDayReports($ts);
             SubscriptionsEndedEntry::updateDayReports($ts);
+            SubscriptionsCancelEventsEntry::updateDayReports($ts);
             ExpensesFeesEntry::updateDayReports($ts);
             ExpensesRefundsEntry::updateDayReports($ts);
             CampaignDailyEntry::updateDayReports($ts);

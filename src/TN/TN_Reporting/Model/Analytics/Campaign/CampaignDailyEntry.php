@@ -2,7 +2,6 @@
 
 namespace TN\TN_Reporting\Model\Analytics\Campaign;
 
-use TN\TN_Billing\Model\Refund\Refund;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\Transaction\Transaction;
 use TN\TN_Core\Attribute\MySQL\TableName;
@@ -17,10 +16,13 @@ use TN\TN_Reporting\Model\Campaign\Campaign;
 class CampaignDailyEntry extends AnalyticsEntry
 {
     /** @var array|string[] */
-    public static array $filters = ['campaign'];
+    public static array $filters = ['campaign', 'customerType'];
 
     /** @var int|null */
     public ?int $campaignId = null;
+
+    /** @var string|null */
+    public ?string $customerTypeKey = null;
 
     /** @var int */
     public int $subscriptions = 0;
@@ -35,22 +37,31 @@ class CampaignDailyEntry extends AnalyticsEntry
      */
     public function calculateDataAndUpdate(): void
     {
-        echo 'updating daily campaign report for ' . date('Y-m-d', $this->dayTs) . implode(', ', [$this->campaignId]) . PHP_EOL;
-        $data = [];
+        echo 'updating daily campaign report for ' . date('Y-m-d', $this->dayTs)
+            . implode(', ', [$this->campaignId, $this->customerTypeKey]) . PHP_EOL;
 
-        $endTs = strtotime(date('Y-m-d 23:59:59', $this->dayTs));
+        $endTs = strtotime('+1 day', $this->dayTs);
+        $customerTypeKey = $this->customerTypeKey ?? '';
+        $campaignId = !empty($this->campaignId) ? $this->campaignId : null;
 
-        $filters = [];
-        if (!empty($this->campaignId)) {
-            $filters['campaignId'] = $this->campaignId;
+        if ($customerTypeKey === '') {
+            $result = Subscription::countAndTotalByType('new', $this->dayTs, $endTs, '', '', '', null, $campaignId);
+        } else {
+            $result = Subscription::countAndTotalNewByCustomerType(
+                $customerTypeKey,
+                $this->dayTs,
+                $endTs,
+                '',
+                '',
+                '',
+                $campaignId
+            );
         }
 
-        $result = Subscription::countAndTotalByType('new', $this->dayTs, strtotime('+1 day', $this->dayTs), '', '', '', null, $this->campaignId);
-
-        $data['subscriptions'] = $result->count;
-        $data['revenue'] = $result->total;
-
-        $this->update($data);
+        $this->update([
+            'subscriptions' => $result->count,
+            'revenue' => $result->total,
+        ]);
     }
 
     /**
@@ -64,6 +75,12 @@ class CampaignDailyEntry extends AnalyticsEntry
         foreach ($campaigns as $campaign) {
             $values['campaignId'][] = $campaign->id;
         }
+
+        $values['customerTypeKey'] = [
+            '',
+            Subscription::CUSTOMER_TYPE_BRAND_NEW,
+            Subscription::CUSTOMER_TYPE_PREVIOUSLY_SUBSCRIBED,
+        ];
 
         return $values;
     }

@@ -111,7 +111,11 @@ class PlanChangeService
         }
     }
 
-    public static function scheduleDowngrade(Subscription $subscription, Plan $toPlan): PlanChange
+    public static function scheduleDowngrade(
+        Subscription $subscription,
+        Plan $toPlan,
+        bool $sendScheduledDowngradeEmail = true
+    ): PlanChange
     {
         self::validateDowngradeTarget($subscription, $toPlan);
 
@@ -147,20 +151,22 @@ class PlanChangeService
             'nextTransactionAmount' => $renewalAmount,
         ]);
 
-        $user = $subscription->getUser();
-        if ($user) {
-            Email::sendFromTemplate(
-                'subscription/subscription/scheduleddowngrade',
-                $user->email,
-                [
-                    'username' => $user->username,
-                    'fromPlanName' => $fromPlan->name,
-                    'toPlanName' => $toPlan->name,
-                    'billingCycleName' => $subscription->getBillingCycle()->name,
-                    'effectiveTs' => $subscription->nextTransactionTs,
-                    'renewalAmount' => $renewalAmount,
-                ]
-            );
+        if ($sendScheduledDowngradeEmail) {
+            $user = $subscription->getUser();
+            if ($user) {
+                Email::sendFromTemplate(
+                    'subscription/subscription/scheduleddowngrade',
+                    $user->email,
+                    [
+                        'username' => $user->username,
+                        'fromPlanName' => $fromPlan->name,
+                        'toPlanName' => $toPlan->name,
+                        'billingCycleName' => $subscription->getBillingCycle()->name,
+                        'effectiveTs' => $subscription->nextTransactionTs,
+                        'renewalAmount' => $renewalAmount,
+                    ]
+                );
+            }
         }
 
         return $planChange;
@@ -198,6 +204,11 @@ class PlanChangeService
         $scheduled = self::getScheduledDowngrade($subscription);
         if (!$scheduled instanceof PlanChange) {
             throw new ValidationException('No scheduled downgrade to cancel');
+        }
+
+        $fromPlan = $subscription->getPlan();
+        if (!$fromPlan instanceof Plan || !$fromPlan->isPurchasable()) {
+            throw new ValidationException('This scheduled plan change cannot be cancelled');
         }
 
         $scheduled->erase();

@@ -5,6 +5,7 @@ namespace TN\TN_Billing\Component\User\UserProfile\BillingTab;
 use TN\TN_Billing\Model\Customer\Braintree\Customer;
 use TN\TN_Billing\Model\Gateway\Gateway;
 use TN\TN_Billing\Model\Refund\Refund;
+use TN\TN_Billing\Model\Subscription\CancellationAttempt;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Subscription\Subscription;
@@ -41,6 +42,11 @@ class BillingTab extends UserProfileTab
     public array $downgradePlanOptions = [];
     /** @var array{toPlanKey: string, toPlanName: string, fromPlanName: string, effectiveTs: int, renewalAmount: float}|null */
     public ?array $scheduledDowngradeSummary = null;
+    public bool $canCancelScheduledDowngrade = false;
+    public bool $canShowCancelButton = false;
+    /** @var array<string, string> */
+    public array $cancellationReasonOptions = [];
+    public float $switchToAnnualSavings = 0.0;
 
     public function prepare(): void
     {
@@ -74,6 +80,16 @@ class BillingTab extends UserProfileTab
         $this->hasHighestPlan = $userHasHighestPlan;
         $this->braintreeCustomer = Customer::getExistingFromUser($this->user);
         $this->subscriptionPrices = $subscriptionPrices;
+        if (
+            is_array($subscriptionPrices)
+            && $this->activeSubscription instanceof Subscription
+            && $this->activeSubscription->billingCycleKey !== 'annually'
+        ) {
+            $this->switchToAnnualSavings = round(
+                ($subscriptionPrices['monthly'] * 12) - $subscriptionPrices['annually'],
+                2
+            );
+        }
         $this->endReasonDescriptions = Subscription::getEndReasonOptions();
         $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
         $this->subscriptionsReorganized = $subscriptionsReorganized;
@@ -97,6 +113,11 @@ class BillingTab extends UserProfileTab
         }
 
         $this->prepareDowngradeState();
+        $this->cancellationReasonOptions = CancellationAttempt::getReasonOptions();
+        $this->canShowCancelButton = $this->activeSubscription instanceof Subscription
+            && $this->activeSubscriptionIsBraintree
+            && !$this->activeSubscription->hasEndTs()
+            && $this->activeSubscription->planKey !== 'insider';
     }
 
     private function prepareDowngradeState(): void
@@ -127,6 +148,7 @@ class BillingTab extends UserProfileTab
                     'effectiveTs' => $scheduled->effectiveTs,
                     'renewalAmount' => PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $toPlan),
                 ];
+                $this->canCancelScheduledDowngrade = $currentPlan->isPurchasable();
             }
             return;
         }
