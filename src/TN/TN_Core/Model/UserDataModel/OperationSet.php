@@ -445,6 +445,9 @@ class OperationSet
             }
         }
 
+        // Response ts must reflect when ops were applied so the next sync cursor excludes them.
+        $this->recTs = Time::getNow();
+
         return $this;
     }
 
