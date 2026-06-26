@@ -397,6 +397,12 @@ class User implements Persistence
         $otherUser = null;
         if (!empty($tnLoginAsUserId)) {
             $otherUser = static::readFromId((int)$tnLoginAsUserId);
+            if ($otherUser instanceof User) {
+                $loginAsAccessToken = $request->getSession('TN_LoginAs_Access_Token');
+                if (is_string($loginAsAccessToken) && $loginAsAccessToken !== '') {
+                    $otherUser->token = $loginAsAccessToken;
+                }
+            }
         } else {
             $loginAsToken = $request->getCookie('TN_LoginAs_token');
             if ($loginAsToken !== null && $loginAsToken !== '') {
@@ -699,7 +705,15 @@ class User implements Persistence
         $tnLoginAsUserId = $request->getSession('TN_LoginAs_User_Id', null);
         if (empty($tnLoginAsUserId)) {
             $request->setSession('TN_LoginAs_User_Id', $otherUserId);
-            $loginAsUserToken = UserToken::createForUser($otherUser);
+            $twoFaVerifiedAt = null;
+            if ($this->token !== '') {
+                $actorUserToken = UserToken::findValidByToken($this->token);
+                if ($actorUserToken !== null && $actorUserToken->twoFaVerifiedAt !== null) {
+                    $twoFaVerifiedAt = $actorUserToken->twoFaVerifiedAt;
+                }
+            }
+            $loginAsUserToken = UserToken::createForUser($otherUser, $twoFaVerifiedAt);
+            $request->setSession('TN_LoginAs_Access_Token', $loginAsUserToken->token);
             if (!defined('UNIT_TESTING') || !constant('UNIT_TESTING')) {
                 $request->setCookie('TN_LoginAs_token', $loginAsUserToken->token, [
                     'expires' => Time::getNow() + self::getAccessTokenTtl(),
@@ -723,6 +737,7 @@ class User implements Persistence
     {
         $request = HTTPRequest::get();
         $request->setSession('TN_LoginAs_User_Id', null);
+        $request->setSession('TN_LoginAs_Access_Token', null);
         $request->setCookie('TN_LoginAs_token', '', [
             'expires' => Time::getNow() + self::getAccessTokenTtl(),
             'secure' => true,
