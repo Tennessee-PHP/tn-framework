@@ -129,6 +129,36 @@ class VoucherCode implements Persistence
     }
 
     /**
+     * Whether the promo is within its configured start/end window (matches staff list active/inactive grouping).
+     */
+    public function isCurrentlyActive(?int $now = null): bool
+    {
+        $now = $now ?? Time::getNow();
+        if ($this->endTs === 0) {
+            return $this->startTs <= $now;
+        }
+        if ($this->startTs === $this->endTs && $this->endTs !== 0) {
+            return false;
+        }
+
+        return $this->startTs <= $now && $this->endTs >= $now;
+    }
+
+    /**
+     * Whether this voucher includes the given plan key (ignores promo date window).
+     */
+    public function appliesToPlanKey(string $planKey): bool
+    {
+        foreach (explode(',', $this->planKeys) as $key) {
+            if ($key === $planKey) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * can the code currently be applied to the plan?
      * @param Plan $plan
      * @return bool
@@ -137,7 +167,7 @@ class VoucherCode implements Persistence
     {
         return ($this->endTs === 0 || $this->endTs > Time::getNow()) &&
             $this->startTs < Time::getNow() &&
-            in_array($plan, $this->getPlans());
+            in_array($plan, $this->getPlans(), true);
     }
 
     /**

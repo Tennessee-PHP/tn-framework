@@ -9,7 +9,9 @@ use TN\TN_Billing\Model\Subscription\CancellationAttempt;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
 use TN\TN_Billing\Model\Subscription\Plan\Price;
 use TN\TN_Billing\Model\Subscription\Subscription;
+use TN\TN_Billing\Model\VoucherCode;
 use TN\TN_Billing\Service\PlanChangeService;
+use TN\TN_Core\Model\PersistentModel\Search\SearchArguments;
 use TN\TN_Core\Component\User\UserProfile\UserProfileTab;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Time\Time;
@@ -47,6 +49,12 @@ class BillingTab extends UserProfileTab
     /** @var array<string, string> */
     public array $cancellationReasonOptions = [];
     public float $switchToAnnualSavings = 0.0;
+    public bool $canManageSubscriptionVoucher = false;
+    public int $subscriptionVoucherCodeId = 0;
+    /** @var VoucherCode[] */
+    public array $voucherCodesActive = [];
+    /** @var VoucherCode[] */
+    public array $voucherCodesInactive = [];
 
     public function prepare(): void
     {
@@ -118,6 +126,30 @@ class BillingTab extends UserProfileTab
             && $this->activeSubscriptionIsBraintree
             && !$this->activeSubscription->hasEndTs()
             && $this->activeSubscription->planKey !== 'insider';
+
+        $this->prepareSubscriptionVoucherAdminState();
+    }
+
+    private function prepareSubscriptionVoucherAdminState(): void
+    {
+        if (
+            !$this->activeSubscription instanceof Subscription
+            || (!$this->observer->hasRole('super-user') && !$this->observer->hasRole('user-admin'))
+        ) {
+            return;
+        }
+
+        $this->canManageSubscriptionVoucher = true;
+        $this->subscriptionVoucherCodeId = $this->activeSubscription->voucherCodeId;
+
+        $now = Time::getNow();
+        foreach (VoucherCode::search(new SearchArguments()) as $voucherCode) {
+            if ($voucherCode->isCurrentlyActive($now)) {
+                $this->voucherCodesActive[] = $voucherCode;
+            } else {
+                $this->voucherCodesInactive[] = $voucherCode;
+            }
+        }
     }
 
     private function prepareDowngradeState(): void

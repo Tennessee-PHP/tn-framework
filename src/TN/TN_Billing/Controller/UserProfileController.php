@@ -13,4 +13,9 @@ class UserProfileController extends Controller
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\User\UserProfile\BillingTab\UpdatePaymentMethod\UpdatePaymentMethod::class)]
     public function updatePaymentMethod(): void {}
+
+    #[Path(':userId/profile/action/billing/save-subscription-voucher-code')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\User\UserProfile\BillingTab\SaveSubscriptionVoucherCode\SaveSubscriptionVoucherCode::class)]
+    public function saveSubscriptionVoucherCode(): void {}
 }

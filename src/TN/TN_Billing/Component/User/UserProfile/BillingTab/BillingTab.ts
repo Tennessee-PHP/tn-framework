@@ -17,6 +17,7 @@ export default class BillingTab extends HTMLComponent {
     private $scheduleDowngradeSubmit: Cash;
     private $scheduleDowngradeConfirmCopy: Cash;
     private $resumeAutoRenewForm: Cash;
+    private $subscriptionVoucherForm: Cash;
     private $refundForm: Cash;
     private $refundCheckboxes: Cash;
     private $refundButtons: Cash;
@@ -55,6 +56,7 @@ export default class BillingTab extends HTMLComponent {
         this.$scheduleDowngradeSubmit = $('#schedule_downgrade_submit_btn');
         this.$scheduleDowngradeConfirmCopy = $('#schedule_downgrade_confirm_copy');
         this.$resumeAutoRenewForm = $('#user_plans_resume_autorenew_form');
+        this.$subscriptionVoucherForm = $('#user_plans_subscription_voucher_form');
         this.$refundForm = $('#user_plans_staffer_refunds_form');
         this.$refundCheckboxes = $('.refund-check');
         this.$refundButtons = $('.refund-btn');
@@ -70,6 +72,9 @@ export default class BillingTab extends HTMLComponent {
         }
         if (this.$resumeAutoRenewForm.length) {
             this.$resumeAutoRenewForm.on('submit', this.onResumeAutoRenewFormSubmit.bind(this));
+        }
+        if (this.$subscriptionVoucherForm.length) {
+            this.$subscriptionVoucherForm.on('submit', this.onSubscriptionVoucherFormSubmit.bind(this));
         }
         this.$refundForm.on('submit', this.onRefundFormSubmit.bind(this));
         this.$refundCheckboxes.on('change', this.updateRefundButtonState.bind(this));
@@ -400,6 +405,29 @@ export default class BillingTab extends HTMLComponent {
                         const modalInstance = Modal.getInstance(modalEl) || new Modal(modalEl);
                         modalInstance.hide();
                     }
+                    _.delay(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
+            })
+            .catch((error: AxiosError): void => {
+                // @ts-ignore
+                new ErrorToast(error.response.data.message);
+            });
+    }
+
+    private onSubscriptionVoucherFormSubmit(event: Event): void {
+        event.preventDefault();
+        const data: ReloadData = this.$subscriptionVoucherForm.getFormData();
+        axios
+            .post(this.$subscriptionVoucherForm.attr('action'), data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+            .then((response: AxiosResponse): void => {
+                if (response.data.result === 'success') {
+                    new SuccessToast(response.data.message);
                     _.delay(() => {
                         window.location.reload();
                     }, 2000);
