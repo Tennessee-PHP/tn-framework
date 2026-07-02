@@ -42,7 +42,7 @@ class BillingTab extends UserProfileTab
     public bool $canScheduleDowngrade = false;
     /** @var array<int, array{key: string, name: string, price: float}> */
     public array $downgradePlanOptions = [];
-    /** @var array{toPlanKey: string, toPlanName: string, fromPlanName: string, effectiveTs: int, renewalAmount: float}|null */
+    /** @var array{toPlanKey: string, toPlanName: string, fromPlanKey: string, fromPlanName: string, effectiveTs: int, renewalAmount: float}|null */
     public ?array $scheduledDowngradeSummary = null;
     public bool $canCancelScheduledDowngrade = false;
     public bool $canShowCancelButton = false;
@@ -176,6 +176,7 @@ class BillingTab extends UserProfileTab
                 $this->scheduledDowngradeSummary = [
                     'toPlanKey' => $toPlan->key,
                     'toPlanName' => $toPlan->name,
+                    'fromPlanKey' => $currentPlan->key,
                     'fromPlanName' => $currentPlan->name,
                     'effectiveTs' => $scheduled->effectiveTs,
                     'renewalAmount' => PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $toPlan),
