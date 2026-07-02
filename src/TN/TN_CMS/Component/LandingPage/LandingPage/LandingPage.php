@@ -71,7 +71,7 @@ class LandingPage extends HTMLComponent
         }
 
         if ($this->landingPage->convertKitTag !== '') {
-            TrackedVisitor::getInstance()->setConvertKitTag($this->landingPage->convertKitTag);
+            TrackedVisitor::get()->setConvertKitTag($this->landingPage->convertKitTag);
         }
 
         $this->pageEntry = PageEntry::getPageEntryForContentItem(LandingPageModel::class, $this->landingPage->id);
