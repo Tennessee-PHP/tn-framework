@@ -57,7 +57,7 @@ class Operation implements Persistence
         return static::search(new SearchArguments(
             conditions: [
                 new SearchComparison('`userId`', '=', $userId),
-                new SearchComparison('`appliedTs`', '>', $ts),
+                new SearchComparison('`appliedTs`', '>=', $ts),
                 new SearchComparison('`model`', 'IN', $models)
             ],
             sorters: new SearchSorter('appliedTs', 'ASC')
