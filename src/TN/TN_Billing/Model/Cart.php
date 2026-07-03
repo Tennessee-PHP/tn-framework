@@ -311,10 +311,20 @@ class Cart implements Persistence
 
         $this->updateRenewalTs();
 
+        $plan = Plan::getInstanceByKey($this->planKey);
+
+        // clear voucher if it no longer applies to the selected plan
+        if (!empty($this->voucherCode) && $plan instanceof Plan) {
+            $existingVoucher = VoucherCode::getActiveFromCode($this->voucherCode);
+            if ($existingVoucher instanceof VoucherCode && !$existingVoucher->canApplyToPlan($plan)) {
+                $this->update(['voucherCode' => '']);
+            }
+        }
+
         // let's see if we can add a campaign and voucher code from the tracked visitor
         $trackedVisitor = TrackedVisitor::get();
         $voucherCode = $trackedVisitor->getActiveVoucherCode();
-        if ($voucherCode instanceof VoucherCode) {
+        if ($voucherCode instanceof VoucherCode && $plan instanceof Plan && $voucherCode->canApplyToPlan($plan)) {
             $this->updateVoucherCode($voucherCode->code);
         }
 
@@ -411,7 +421,8 @@ class Cart implements Persistence
         $price = $this->getPrice()->price;
         if (!empty($this->voucherCode)) {
             $voucherCode = VoucherCode::getActiveFromCode($this->voucherCode);
-            if ($voucherCode instanceof VoucherCode) {
+            $plan = Plan::getInstanceByKey($this->planKey);
+            if ($voucherCode instanceof VoucherCode && $plan instanceof Plan && $voucherCode->canApplyToPlan($plan)) {
                 $price = $voucherCode->applyToPrice($price);
             } else {
                 $this->update([

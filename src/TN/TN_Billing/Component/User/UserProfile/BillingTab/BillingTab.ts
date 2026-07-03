@@ -168,7 +168,7 @@ export default class BillingTab extends HTMLComponent {
         this.$cancelComment.val('');
         $('#cancellation_other_hint').hide();
         $('#cancellation_offer_available').show();
-        $('#cancellation_offer_unavailable').hide();
+        $('#cancellation_existing_discount').hide();
         this.$cancelAcceptOfferBtn.show();
         this.showCancellationStep('survey');
         this.setCancellationWizardLoading(false);
@@ -232,11 +232,18 @@ export default class BillingTab extends HTMLComponent {
                 const skipSave = !!response.data.skipSaveStep;
                 if (skipSave) {
                     $('#cancellation_offer_available').hide();
-                    $('#cancellation_offer_unavailable').show();
                     this.$cancelAcceptOfferBtn.hide();
+
+                    const existingLabel = response.data.existingDiscountLabel || '';
+                    if (existingLabel) {
+                        $('#cancellation_existing_discount_label').text(existingLabel);
+                        $('#cancellation_existing_discount').show();
+                    } else {
+                        $('#cancellation_existing_discount').hide();
+                    }
                 } else {
                     $('#cancellation_offer_available').show();
-                    $('#cancellation_offer_unavailable').hide();
+                    $('#cancellation_existing_discount').hide();
                     $('#cancellation_offer_label').text(response.data.offerLabel || '');
                     this.$cancelAcceptOfferBtn.show();
                 }

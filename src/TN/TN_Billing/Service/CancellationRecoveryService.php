@@ -6,6 +6,7 @@ use TN\TN_Billing\Model\Cart;
 use TN\TN_Billing\Model\Subscription\BillingCycle\BillingCycle;
 use TN\TN_Billing\Model\Subscription\CancellationAttempt;
 use TN\TN_Billing\Model\Subscription\Plan\Plan;
+use TN\TN_Billing\Model\Subscription\PlanChange;
 use TN\TN_Billing\Model\Subscription\Subscription;
 use TN\TN_Billing\Model\VoucherCode;
 use TN\TN_Core\Error\ValidationException;
@@ -219,6 +220,65 @@ class CancellationRecoveryService
         }
 
         return PlanChangeService::computePlanRenewalAmount($subscription, $plan);
+    }
+
+    /**
+     * Message when the subscriber already has a discount on the upcoming renewal (e.g. prior retention offer).
+     */
+    public static function getExistingRenewalDiscountLabel(Subscription $subscription): string
+    {
+        $plan = $subscription->getPlan();
+        if (!$plan instanceof Plan) {
+            return '';
+        }
+
+        $standardAmount = self::getStandardRenewalAmount($subscription, $plan);
+        if ($standardAmount <= 0) {
+            return '';
+        }
+
+        $renewalAmount = self::computeUpcomingRenewalAmount($subscription);
+        if ($renewalAmount > 0 && $renewalAmount < $standardAmount) {
+            $pct = (int) round((1 - $renewalAmount / $standardAmount) * 100);
+            if ($pct > 0) {
+                return sprintf('You are already receiving a %d%% discount on your next renewal.', $pct);
+            }
+        }
+
+        if ($subscription->voucherCodeId > 0) {
+            $voucher = VoucherCode::readFromId($subscription->voucherCodeId);
+            if (
+                $voucher instanceof VoucherCode
+                && $voucher->discountPercentage > 0
+                && $voucher->appliesToPlanKey($plan->key)
+            ) {
+                return sprintf(
+                    'You are already receiving a %d%% discount on your next renewal.',
+                    $voucher->discountPercentage
+                );
+            }
+        }
+
+        return '';
+    }
+
+    private static function getStandardRenewalAmount(Subscription $subscription, Plan $plan): float
+    {
+        $targetPlan = $plan;
+        $scheduledDowngrade = PlanChangeService::getScheduledDowngrade($subscription);
+        if (
+            $scheduledDowngrade instanceof PlanChange
+            && $scheduledDowngrade->effectiveTs === $subscription->nextTransactionTs
+        ) {
+            $toPlan = Plan::getInstanceByKey($scheduledDowngrade->toPlanKey);
+            if ($toPlan instanceof Plan) {
+                $targetPlan = $toPlan;
+            }
+        }
+
+        $priceObj = $targetPlan->getPrice($subscription->getBillingCycle());
+
+        return $priceObj ? (float) $priceObj->price : 0.0;
     }
 
     /**

@@ -51,6 +51,7 @@ class BillingTab extends UserProfileTab
     public float $switchToAnnualSavings = 0.0;
     public bool $canManageSubscriptionVoucher = false;
     public int $subscriptionVoucherCodeId = 0;
+    public ?VoucherCode $subscriptionVoucherCode = null;
     /** @var VoucherCode[] */
     public array $voucherCodesActive = [];
     /** @var VoucherCode[] */
@@ -127,20 +128,28 @@ class BillingTab extends UserProfileTab
             && !$this->activeSubscription->hasEndTs()
             && $this->activeSubscription->planKey !== 'insider';
 
-        $this->prepareSubscriptionVoucherAdminState();
+        $this->prepareSubscriptionVoucherState();
     }
 
-    private function prepareSubscriptionVoucherAdminState(): void
+    private function prepareSubscriptionVoucherState(): void
     {
-        if (
-            !$this->activeSubscription instanceof Subscription
-            || (!$this->observer->hasRole('super-user') && !$this->observer->hasRole('user-admin'))
-        ) {
+        if (!$this->activeSubscription instanceof Subscription) {
+            return;
+        }
+
+        $this->subscriptionVoucherCodeId = $this->activeSubscription->voucherCodeId;
+        if ($this->subscriptionVoucherCodeId > 0) {
+            $voucherCode = VoucherCode::readFromId($this->subscriptionVoucherCodeId);
+            if ($voucherCode instanceof VoucherCode) {
+                $this->subscriptionVoucherCode = $voucherCode;
+            }
+        }
+
+        if (!$this->observer->hasRole('super-user') && !$this->observer->hasRole('user-admin')) {
             return;
         }
 
         $this->canManageSubscriptionVoucher = true;
-        $this->subscriptionVoucherCodeId = $this->activeSubscription->voucherCodeId;
 
         $now = Time::getNow();
         foreach (VoucherCode::search(new SearchArguments()) as $voucherCode) {

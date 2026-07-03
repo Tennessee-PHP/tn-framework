@@ -29,12 +29,17 @@ class SaveCancellationSurvey extends JSON
             $attempt->update(['offerType' => CancellationAttempt::OFFER_NONE_INELIGIBLE]);
         }
 
+        $existingDiscountLabel = $offerPreview['skipSaveStep']
+            ? CancellationRecoveryService::getExistingRenewalDiscountLabel($subscription)
+            : '';
+
         $this->data = [
             'result' => 'success',
             'attemptId' => $attempt->id,
             'offerType' => $attempt->offerType,
             'offerAmount' => $offerPreview['amount'],
             'offerLabel' => $offerPreview['label'],
+            'existingDiscountLabel' => $existingDiscountLabel,
             'reasonAcknowledgement' => CancellationRecoveryService::getReasonAcknowledgement($attempt->reasonCode),
             'skipSaveStep' => $offerPreview['skipSaveStep'],
         ];

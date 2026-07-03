@@ -328,8 +328,10 @@
                                 <p class="fw-semibold mb-0" id="cancellation_offer_label"></p>
                             </div>
                         </div>
-                        <div id="cancellation_offer_unavailable" style="display: none;">
-                            <p class="text-muted mb-3">A retention discount isn't available for your account right now.</p>
+                        <div id="cancellation_existing_discount" style="display: none;">
+                            <div class="alert alert-info border mb-3">
+                                <p class="fw-semibold mb-0" id="cancellation_existing_discount_label"></p>
+                            </div>
                         </div>
                         <p class="mb-2">You might also like:</p>
                         <ul class="mb-4">
