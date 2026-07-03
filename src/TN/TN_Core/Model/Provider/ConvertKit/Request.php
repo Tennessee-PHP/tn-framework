@@ -64,6 +64,23 @@ class Request implements Persistence
                 $result = $api->$action(...unserialize($this->serializedArguments));
             }
         } catch (\Throwable $e) {
+            if ($this->isRateLimitError($e)) {
+                $this->update([
+                    'attempted' => false,
+                    'completed' => false,
+                    'requestTs' => 0,
+                    'result' => serialize([
+                        'rate_limited' => true,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                        'code' => $e->getCode(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ])
+                ]);
+                return false;
+            }
+
             $this->update([
                 'completed' => false,
                 'result' => serialize([
@@ -115,5 +132,24 @@ class Request implements Persistence
             'api_secret' => $_ENV['CONVERTKIT_SECRET'],
             'fields' => $fields
         ]);
+    }
+
+    public function failedDueToRateLimit(): bool
+    {
+        if ($this->completed || $this->attempted) {
+            return false;
+        }
+
+        $result = @unserialize($this->result);
+        return is_array($result) && !empty($result['rate_limited']);
+    }
+
+    protected function isRateLimitError(\Throwable $e): bool
+    {
+        if ($e->getCode() === 429) {
+            return true;
+        }
+
+        return str_contains($e->getMessage(), '429 Too Many Requests');
     }
 }
