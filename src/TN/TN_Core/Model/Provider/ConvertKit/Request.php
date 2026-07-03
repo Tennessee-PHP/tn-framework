@@ -48,24 +48,40 @@ class Request implements Persistence
             'requestTs' => Time::getNow(),
             'attempted' => true
         ]);
-        $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
-        $action = $this->action;
 
-        if ($action === 'update_subscriber_fields') {
-            $result = $this->requestUpdateSubscriberFields($api);
-        } elseif ($action === 'update_subscriber_by_id') {
-            $result = $this->requestUpdateSubscriberById($api);
-        } elseif ($action === 'add_subscriber_to_sequence') {
-            $args = unserialize($this->serializedArguments);
-            $result = $api->$action($args[0], $args[1]['email']);
-        } else {
-            $result = $api->$action(...unserialize($this->serializedArguments));
+        try {
+            $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
+            $action = $this->action;
+
+            if ($action === 'update_subscriber_fields') {
+                $result = $this->requestUpdateSubscriberFields($api);
+            } elseif ($action === 'update_subscriber_by_id') {
+                $result = $this->requestUpdateSubscriberById($api);
+            } elseif ($action === 'add_subscriber_to_sequence') {
+                $args = unserialize($this->serializedArguments);
+                $result = $api->$action($args[0], $args[1]['email']);
+            } else {
+                $result = $api->$action(...unserialize($this->serializedArguments));
+            }
+        } catch (\Throwable $e) {
+            $this->update([
+                'completed' => false,
+                'result' => serialize([
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ])
+            ]);
+            return false;
         }
+
         $this->update([
             'completed' => $result !== false,
             'result' => serialize($result)
         ]);
-        return true;
+        return $result !== false;
     }
 
     /**

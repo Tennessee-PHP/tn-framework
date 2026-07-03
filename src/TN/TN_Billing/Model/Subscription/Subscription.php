@@ -1100,7 +1100,7 @@ class Subscription implements Persistence
             throw new ValidationException('This subscription has already ended');
         }
 
-        if ($this->endReason !== 'user-cancelled') {
+        if (!in_array($this->endReason, ['user-cancelled', 'refunded'], true)) {
             throw new ValidationException('This subscription cannot be resumed');
         }
 

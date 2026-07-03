@@ -96,6 +96,10 @@ class PlanChangeService
             throw new ValidationException('Target plan is not a paid subscription tier (' . $toPlan->key . ')');
         }
 
+        if (!$toPlan->isPurchasable()) {
+            throw new ValidationException('Target plan is not available (' . $toPlan->key . ')');
+        }
+
         if ($toPlan->level >= $fromPlan->level) {
             throw new ValidationException(
                 'Target plan must be a lower tier (from ' . $fromPlan->key . ' level ' . $fromPlan->level

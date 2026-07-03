@@ -112,7 +112,7 @@ class BillingTab extends UserProfileTab
             && $this->activeSubscriptionIsBraintree
             && $this->activeSubscription->hasEndTs()
             && $this->activeSubscription->endTs > Time::getNow()
-            && $this->activeSubscription->endReason === 'user-cancelled'
+            && in_array($this->activeSubscription->endReason, ['user-cancelled', 'refunded'], true)
         ) {
             $this->canResumeAutoRenew = true;
             $this->resumeAutoRenewHasValidPayment = $this->braintreeCustomer && $this->braintreeCustomer->hasValidVaultedPayment();
@@ -199,6 +199,7 @@ class BillingTab extends UserProfileTab
         foreach (Plan::getInstances() as $plan) {
             if (
                 !$plan->paid
+                || !$plan->isPurchasable()
                 || $plan->level >= $currentPlan->level
                 || !$plan->billingCycleIsCompatible($this->activeSubscription->getBillingCycle())
             ) {
