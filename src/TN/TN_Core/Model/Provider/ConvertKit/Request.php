@@ -90,7 +90,7 @@ class Request implements Persistence
     protected function requestUpdateSubscriberById(\ConvertKit_API\ConvertKit_API $api): mixed
     {
         [$subscriberId, $fields] = unserialize($this->serializedArguments);
-        return $api->make_request('v3/subscribers/' . (int) $subscriberId, 'POST', [
+        return $api->make_request('subscribers/' . (int) $subscriberId, 'PUT', [
             'api_secret' => $_ENV['CONVERTKIT_SECRET'],
             'fields' => $fields
         ]);
@@ -111,7 +111,7 @@ class Request implements Persistence
             return false;
         }
 
-        return $api->make_request('v3/subscribers/' . $subscriberId, 'POST', [
+        return $api->make_request('subscribers/' . $subscriberId, 'PUT', [
             'api_secret' => $_ENV['CONVERTKIT_SECRET'],
             'fields' => $fields
         ]);
