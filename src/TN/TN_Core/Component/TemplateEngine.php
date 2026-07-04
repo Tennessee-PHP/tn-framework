@@ -191,8 +191,11 @@ class TemplateEngine extends Smarty
         $data['DISCORD_INVITE_URL'] = $discordInvite;
         $data['envList']['DISCORD_INVITE_URL'] = $discordInvite;
 
-        $request = HTTPRequest::get();
-        $data['csrfToken'] = $request ? CsrfService::getCsrfSecretForRequest($request) : null;
+        try {
+            $data['csrfToken'] = CsrfService::getCsrfSecretForRequest(HTTPRequest::get());
+        } catch (\TN\TN_Core\Error\CodeException) {
+            $data['csrfToken'] = null;
+        }
 
         return $data;
     }
