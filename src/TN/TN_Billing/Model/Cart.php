@@ -166,6 +166,12 @@ class Cart implements Persistence
             return false;
         }
 
+        // Already marked emailedReminder above so this cart is not retried every cron run.
+        // Paid subscribers (including gift-cart browsers) must not get the abandoned-cart promo.
+        if ($user->isPaidSubscriber()) {
+            return false;
+        }
+
         Email::sendFromTemplate(
             'cart/abandoned',
             $user->email,
