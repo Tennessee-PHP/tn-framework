@@ -56,6 +56,8 @@ class BillingTab extends UserProfileTab
     public array $voucherCodesActive = [];
     /** @var VoucherCode[] */
     public array $voucherCodesInactive = [];
+    public bool $nextRenewalComplimentary = false;
+    public bool $canManageNextRenewalComplimentary = false;
 
     public function prepare(): void
     {
@@ -100,7 +102,13 @@ class BillingTab extends UserProfileTab
             );
         }
         $this->endReasonDescriptions = Subscription::getEndReasonOptions();
-        $this->braintreeOverduePayment = $this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment() ? $subscription->nextTransactionAmount : false;
+        if ($this->user->hasActiveBraintreeSubscription() && $subscription->hasOverduePayment()) {
+            $this->braintreeOverduePayment = $subscription->nextRenewalComplimentary
+                ? 0.0
+                : $subscription->nextTransactionAmount;
+        } else {
+            $this->braintreeOverduePayment = false;
+        }
         $this->subscriptionsReorganized = $subscriptionsReorganized;
         $this->activeSubscriptionIsBraintree = $this->user->hasActiveBraintreeSubscription();
         $this->inGracePeriod = $this->activeSubscription && $this->activeSubscription->inGracePeriod();
@@ -116,9 +124,13 @@ class BillingTab extends UserProfileTab
         ) {
             $this->canResumeAutoRenew = true;
             $this->resumeAutoRenewHasValidPayment = $this->braintreeCustomer && $this->braintreeCustomer->hasValidVaultedPayment();
-            $this->resumeAutoRenewNextChargeAmount = $this->activeSubscription->nextTransactionAmount > 0
-                ? $this->activeSubscription->nextTransactionAmount
-                : $this->activeSubscription->getPlan()->getPrice($this->activeSubscription->getBillingCycle())->price;
+            if ($this->activeSubscription->nextRenewalComplimentary) {
+                $this->resumeAutoRenewNextChargeAmount = 0.0;
+            } else {
+                $this->resumeAutoRenewNextChargeAmount = $this->activeSubscription->nextTransactionAmount > 0
+                    ? $this->activeSubscription->nextTransactionAmount
+                    : $this->activeSubscription->getPlan()->getPrice($this->activeSubscription->getBillingCycle())->price;
+            }
         }
 
         $this->prepareDowngradeState();
@@ -129,6 +141,7 @@ class BillingTab extends UserProfileTab
             && $this->activeSubscription->planKey !== 'insider';
 
         $this->prepareSubscriptionVoucherState();
+        $this->prepareNextRenewalComplimentaryState();
     }
 
     private function prepareSubscriptionVoucherState(): void
@@ -161,6 +174,25 @@ class BillingTab extends UserProfileTab
         }
     }
 
+    private function prepareNextRenewalComplimentaryState(): void
+    {
+        if (!$this->activeSubscription instanceof Subscription) {
+            return;
+        }
+
+        $this->nextRenewalComplimentary = $this->activeSubscription->nextRenewalComplimentary;
+
+        if (!$this->observer->hasRole('super-user') && !$this->observer->hasRole('user-admin')) {
+            return;
+        }
+
+        if (!$this->activeSubscriptionIsBraintree || $this->activeSubscription->hasEndTs()) {
+            return;
+        }
+
+        $this->canManageNextRenewalComplimentary = true;
+    }
+
     private function prepareDowngradeState(): void
     {
         if (
@@ -182,13 +214,16 @@ class BillingTab extends UserProfileTab
         if ($scheduled) {
             $toPlan = Plan::getInstanceByKey($scheduled->toPlanKey);
             if ($toPlan instanceof Plan) {
+                $renewalAmount = $this->activeSubscription->nextRenewalComplimentary
+                    ? 0.0
+                    : PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $toPlan);
                 $this->scheduledDowngradeSummary = [
                     'toPlanKey' => $toPlan->key,
                     'toPlanName' => $toPlan->name,
                     'fromPlanKey' => $currentPlan->key,
                     'fromPlanName' => $currentPlan->name,
                     'effectiveTs' => $scheduled->effectiveTs,
-                    'renewalAmount' => PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $toPlan),
+                    'renewalAmount' => $renewalAmount,
                 ];
                 $this->canCancelScheduledDowngrade = $currentPlan->isPurchasable();
             }
@@ -208,7 +243,9 @@ class BillingTab extends UserProfileTab
             $options[] = [
                 'key' => $plan->key,
                 'name' => $plan->name,
-                'price' => PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $plan),
+                'price' => $this->activeSubscription->nextRenewalComplimentary
+                    ? 0.0
+                    : PlanChangeService::computePlanRenewalAmount($this->activeSubscription, $plan),
                 'level' => $plan->level,
             ];
         }

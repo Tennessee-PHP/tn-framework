@@ -102,6 +102,12 @@ class Subscription implements Persistence
     /** @var float this is saved on the subscription so that a price change after the upcoming transaction email does not affect how much we charge the users */
     public float $nextTransactionAmount = 0.00;
 
+    /**
+     * When true, the next Braintree renewal is free (skip gateway sale, record local $0 success).
+     * Cleared after that renewal. Distinct from nextTransactionAmount = 0, which means unset/recalculate.
+     */
+    public bool $nextRenewalComplimentary = false;
+
     /** @var int the last time a recurring payment failed */
     public int $lastTransactionFailure = 0;
 
@@ -572,7 +578,18 @@ class Subscription implements Persistence
 
         $planName = $this->getPlan()->name;
         $scheduledDowngrade = PlanChangeService::getScheduledDowngrade($this);
-        if (
+        if ($this->nextRenewalComplimentary) {
+            $price = 0.0;
+            if (
+                $scheduledDowngrade instanceof PlanChange
+                && $scheduledDowngrade->effectiveTs === $this->nextTransactionTs
+            ) {
+                $toPlan = Plan::getInstanceByKey($scheduledDowngrade->toPlanKey);
+                if ($toPlan instanceof Plan) {
+                    $planName = $toPlan->name;
+                }
+            }
+        } elseif (
             $scheduledDowngrade instanceof PlanChange
             && $scheduledDowngrade->effectiveTs === $this->nextTransactionTs
         ) {
@@ -750,7 +767,16 @@ class Subscription implements Persistence
             $downgradeToPlan = Plan::getInstanceByKey($scheduledDowngrade->toPlanKey);
         }
 
-        if ($downgradeToPlan instanceof Plan) {
+        $isComplimentary = $this->nextRenewalComplimentary;
+        $creditableSubscription = null;
+        $credit = 0;
+
+        if ($isComplimentary) {
+            $price = 0.0;
+            if ($downgradeToPlan instanceof Plan) {
+                $plan = $downgradeToPlan;
+            }
+        } elseif ($downgradeToPlan instanceof Plan) {
             $price = PlanChangeService::computePlanRenewalAmount($this, $downgradeToPlan);
             $plan = $downgradeToPlan;
         } else {
@@ -760,11 +786,11 @@ class Subscription implements Persistence
             }
         }
 
-        $creditableSubscription = Subscription::getCreditableUserSubscription($this->getUser(), $this->getPlan(), $this->id);
-        if ($creditableSubscription instanceof Subscription) {
-            $credit = $creditableSubscription->getCreditAmount();
-        } else {
-            $credit = 0;
+        if (!$isComplimentary) {
+            $creditableSubscription = Subscription::getCreditableUserSubscription($this->getUser(), $this->getPlan(), $this->id);
+            if ($creditableSubscription instanceof Subscription) {
+                $credit = $creditableSubscription->getCreditAmount();
+            }
         }
 
         $transaction = \TN\TN_Billing\Model\Transaction\Braintree\Transaction::getInstance();
@@ -779,26 +805,33 @@ class Subscription implements Persistence
             'ip' => 'from-server'
         ]);
 
-        // execute transaction
-        $transaction->execute(
-            [
-                'name' => $_ENV['SITE_NAME'] . '*' . $plan->name,
-                'url' => $_ENV['BASE_URL']
-            ],
-            [
+        if ($isComplimentary) {
+            // Braintree cannot process a $0 sale — record a local successful renewal instead.
+            $transaction->update([
+                'success' => true,
+                'ts' => Time::getNow(),
+            ]);
+        } else {
+            $transaction->execute(
                 [
-                    'description' => $plan->description,
-                    'discountAmount' => $credit,
-                    'kind' => 'debit',
-                    'name' => $plan->name . ' ' . $billingCycle->name,
-                    'quantity' => 1,
-                    'unitAmount' => $amount,
-                    'totalAmount' => $amount
-                ]
-            ],
-            $nonce,
-            $deviceData
-        );
+                    'name' => $_ENV['SITE_NAME'] . '*' . $plan->name,
+                    'url' => $_ENV['BASE_URL']
+                ],
+                [
+                    [
+                        'description' => $plan->description,
+                        'discountAmount' => $credit,
+                        'kind' => 'debit',
+                        'name' => $plan->name . ' ' . $billingCycle->name,
+                        'quantity' => 1,
+                        'unitAmount' => $amount,
+                        'totalAmount' => $amount
+                    ]
+                ],
+                $nonce,
+                $deviceData
+            );
+        }
 
         // on failure, email
         if (!$transaction->success) {
@@ -830,6 +863,7 @@ class Subscription implements Persistence
             'nextTransactionTs' => $billingCycle->getNextTs(Time::getNow()),
             'upcomingTransactionLastNotified' => 0,
             'nextTransactionAmount' => 0.00,
+            'nextRenewalComplimentary' => false,
         ];
         if ($scheduledDowngrade instanceof PlanChange && $downgradeToPlan instanceof Plan) {
             $updateData['planKey'] = $downgradeToPlan->key;
@@ -839,7 +873,9 @@ class Subscription implements Persistence
         try {
             $this->update($updateData);
         } catch (ValidationException $e) {
-            $transaction->refund();
+            if (!$isComplimentary) {
+                $transaction->refund();
+            }
             throw new ValidationException('An error occurred while setting the subscription\'s next billing date');
         }
 

@@ -6,6 +6,10 @@
 
                 {if $activeSubscription->endTs} This plan ends on {$activeSubscription->endTs|date_format:"%B %e, %Y"}
                     {if $activeSubscription->gatewayKey === 'braintree'}, and will not renew after this time - it is cancelled{/if}.
+                {elseif $nextRenewalComplimentary && $activeSubscription->nextTransactionTs}
+                    <div class="mt-2 mb-0">
+                        <strong>Your next renewal on {$activeSubscription->nextTransactionTs|date_format:"%B %e, %Y"} is free.</strong>
+                    </div>
                 {elseif $activeSubscription->nextTransactionTs} You will next be billed on {$activeSubscription->nextTransactionTs|date_format:"%B %e, %Y"}.
                 {/if}
                 {*{if $activeSubscription->endReason}

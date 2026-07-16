@@ -18,4 +18,9 @@ class UserProfileController extends Controller
     #[UsersOnly]
     #[Component(\TN\TN_Billing\Component\User\UserProfile\BillingTab\SaveSubscriptionVoucherCode\SaveSubscriptionVoucherCode::class)]
     public function saveSubscriptionVoucherCode(): void {}
+
+    #[Path(':userId/profile/action/billing/save-subscription-next-renewal-complimentary')]
+    #[UsersOnly]
+    #[Component(\TN\TN_Billing\Component\User\UserProfile\BillingTab\SaveSubscriptionNextRenewalComplimentary\SaveSubscriptionNextRenewalComplimentary::class)]
+    public function saveSubscriptionNextRenewalComplimentary(): void {}
 }

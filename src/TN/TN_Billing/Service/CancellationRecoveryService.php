@@ -210,6 +210,10 @@ class CancellationRecoveryService
 
     public static function computeUpcomingRenewalAmount(Subscription $subscription): float
     {
+        if ($subscription->nextRenewalComplimentary) {
+            return 0.0;
+        }
+
         if ($subscription->nextTransactionAmount > 0) {
             return $subscription->nextTransactionAmount;
         }
@@ -230,6 +234,10 @@ class CancellationRecoveryService
         $plan = $subscription->getPlan();
         if (!$plan instanceof Plan) {
             return '';
+        }
+
+        if ($subscription->nextRenewalComplimentary) {
+            return 'Your next renewal is free.';
         }
 
         $standardAmount = self::getStandardRenewalAmount($subscription, $plan);
