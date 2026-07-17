@@ -9,6 +9,7 @@ use TN\TN_Billing\Model\Transaction\Apple\Transaction;
 use TN\TN_Billing\Service\PlanChangeService;
 use TN\TN_Billing\Service\SubscriptionCancelEventService;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Time\Time;
 use TN\TN_Core\Model\User\User;
 
 /**
@@ -61,13 +62,17 @@ class Notification
 
     /** @param object $data constructor */
     protected function __construct(object $data) {
-        $this->notificationType = strtoupper($data->notificationType);
-        $this->subType = strtoupper($data->subtype);
+        $this->notificationType = strtoupper((string)($data->notificationType ?? ''));
+        $this->subType = strtoupper((string)($data->subtype ?? ''));
         $data = $data->data;
         $this->bundleId = $data->bundleId;
-        $this->environment = strtoupper($data->environment);
+        $this->environment = strtoupper((string)($data->environment ?? ''));
         $this->transactionInfo = self::decodePayload($data->signedTransactionInfo);
-        $this->renewalInfo = self::decodePayload($data->signedRenewalInfo);
+        if (!empty($data->signedRenewalInfo)) {
+            $this->renewalInfo = self::decodePayload($data->signedRenewalInfo);
+        } else {
+            $this->renewalInfo = (object)[];
+        }
     }
 
     /**
@@ -121,14 +126,111 @@ class Notification
                 return;
             case 'REFUND':
                 $this->applyRefund();
+                return;
             case 'SUBSCRIBED':
+                if ($this->subType === 'INITIAL_BUY') {
+                    $this->applyInitialBuy();
+                    return;
+                }
                 if ($this->subType === 'RESUBSCRIBE') {
                     $this->applyAutoRenewSucceeded();
+                    return;
                 }
-            // do something with subType === 'INITIAL_BUY'?
+                return;
             default:
                 return;
         }
+    }
+
+    /**
+     * First purchase: link via appAccountToken issued before StoreKit purchase.
+     *
+     * @throws ValidationException
+     */
+    protected function applyInitialBuy(): void
+    {
+        $transactionId = (string)($this->transactionInfo->transactionId ?? '');
+        if ($transactionId === '') {
+            throw new ValidationException('INITIAL_BUY notification missing transactionId');
+        }
+
+        if ($this->findExistingAppleTransaction($transactionId) instanceof Transaction) {
+            return;
+        }
+
+        $appAccountToken = trim((string)($this->transactionInfo->appAccountToken ?? ''));
+        if ($appAccountToken === '') {
+            throw new ValidationException('INITIAL_BUY notification missing appAccountToken');
+        }
+
+        $user = $this->resolveUserFromAppAccountToken($appAccountToken);
+
+        $productId = (string)($this->transactionInfo->productId ?? '');
+        if ($productId === '') {
+            throw new ValidationException('INITIAL_BUY notification missing productId');
+        }
+
+        $purchaseDate = (int)($this->transactionInfo->purchaseDate ?? 0);
+        $expiresDate = (int)($this->transactionInfo->expiresDate ?? 0);
+        if ($purchaseDate <= 0 || $expiresDate <= 0) {
+            throw new ValidationException('INITIAL_BUY notification missing purchaseDate or expiresDate');
+        }
+
+        $this->provisionInitialBuySubscription(
+            $user,
+            $this->bundleId,
+            $transactionId,
+            $productId,
+            (int)floor($purchaseDate / 1000),
+            (int)floor($expiresDate / 1000)
+        );
+    }
+
+    protected function findExistingAppleTransaction(string $appleId): ?Transaction
+    {
+        return Transaction::readFromAppleId($appleId);
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    protected function resolveUserFromAppAccountToken(string $appAccountToken): User
+    {
+        $tokenRow = AppAccountToken::readFromToken($appAccountToken);
+        if (!($tokenRow instanceof AppAccountToken)) {
+            throw new ValidationException('Could not find user for appAccountToken');
+        }
+
+        $user = $tokenRow->getUser();
+        if (!($user instanceof User)) {
+            throw new ValidationException('Could not find user for appAccountToken userId ' . $tokenRow->userId);
+        }
+
+        $tokenRow->update(['lastUsedTs' => Time::getNow()]);
+        return $user;
+    }
+
+    /**
+     * @throws ValidationException
+     */
+    protected function provisionInitialBuySubscription(
+        User $user,
+        string $appBundleId,
+        string $transactionId,
+        string $productId,
+        int $startTs,
+        int $endTs
+    ): void {
+        SignedTransaction::provisionSubscriptionFromPurchase(
+            $user,
+            $appBundleId,
+            $transactionId,
+            $productId,
+            $startTs,
+            $endTs,
+            '',
+            true
+        );
     }
 
     /**

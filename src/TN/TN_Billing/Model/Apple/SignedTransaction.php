@@ -139,12 +139,54 @@ class SignedTransaction
             return;
         }
 
-        $startTs = $this->timestampFromMilliseconds($payload->getPurchaseDate(), 'purchaseDate');
-        $endTs = $this->timestampFromMilliseconds($payload->getExpiresDate(), 'expiresDate');
-        [$plan, $billingCycle] = $this->getPlanAndBillingCycle($this->requireString($payload->getProductId(), 'productId'));
+        self::provisionSubscriptionFromPurchase(
+            $this->user,
+            $this->appBundleId,
+            $appleId,
+            $this->requireString($payload->getProductId(), 'productId'),
+            $this->timestampFromMilliseconds($payload->getPurchaseDate(), 'purchaseDate'),
+            $this->timestampFromMilliseconds($payload->getExpiresDate(), 'expiresDate'),
+            $this->jws,
+            false
+        );
+    }
+
+    /**
+     * Create or extend an Apple subscription and transaction for a user (client validate or INITIAL_BUY webhook).
+     *
+     * @throws ValidationException
+     */
+    public static function provisionSubscriptionFromPurchase(
+        User $user,
+        string $appBundleId,
+        string $appleId,
+        string $productId,
+        int $startTs,
+        int $endTs,
+        string $receiptData = '',
+        bool $callTransactionSuccessful = true
+    ): void {
+        $existingTx = Transaction::readFromAppleId($appleId);
+        if ($existingTx instanceof Transaction) {
+            if ($existingTx->userId !== $user->id) {
+                $existingTx->switchToUser($user);
+            }
+            $user->subscriptionsChanged();
+            return;
+        }
+
+        [$planKey, $billingCycleKey] = self::parseProductId($productId);
+        $plan = Plan::getInstanceByKey($planKey);
+        if (!($plan instanceof Plan)) {
+            throw new ValidationException('Plan could not be found for plan key from product id: ' . $planKey);
+        }
+        $billingCycle = BillingCycle::getInstanceByKey($billingCycleKey);
+        if (!($billingCycle instanceof BillingCycle)) {
+            throw new ValidationException('Billing cycle could not be found for billing cycle key from product id: ' . $billingCycleKey);
+        }
 
         $subscription = Subscription::getExtendableUserSubscriptionByGateway(
-            $this->user,
+            $user,
             'apple',
             $plan->key,
             $billingCycle->key,
@@ -152,7 +194,7 @@ class SignedTransaction
         );
 
         $update = [
-            'userId' => $this->user->id,
+            'userId' => $user->id,
             'planKey' => $plan->key,
             'billingCycleKey' => $billingCycle->key,
             'gatewayKey' => 'apple',
@@ -174,18 +216,19 @@ class SignedTransaction
 
         $subscription->update($update);
 
-        $amount = $this->calculateAmount($plan, $billingCycle);
+        $price = $plan->getPrice($billingCycle);
+        $amount = (int)$price->price + 0.99;
         $transaction = Transaction::getInstance();
         $transaction->update([
-            'userId' => $this->user->id,
+            'userId' => $user->id,
             'amount' => $amount,
             'ts' => $startTs,
             'voucherCodeId' => 0,
             'discount' => 0,
             'subscriptionId' => $subscription->id,
             'appleId' => $appleId,
-            'appBundleId' => $this->appBundleId,
-            'receiptData' => $this->jws,
+            'appBundleId' => $appBundleId,
+            'receiptData' => $receiptData,
             'success' => true
         ]);
 
@@ -196,7 +239,10 @@ class SignedTransaction
             ]);
         }
 
-        $this->user->subscriptionsChanged();
+        if ($callTransactionSuccessful) {
+            $user->transactionSuccessful($transaction, $subscription);
+        }
+        $user->subscriptionsChanged();
     }
 
     /**
@@ -283,12 +329,6 @@ class SignedTransaction
         }
 
         return [$plan, $billingCycle];
-    }
-
-    private function calculateAmount(Plan $plan, BillingCycle $billingCycle): float
-    {
-        $price = $plan->getPrice($billingCycle);
-        return (int)$price->price + 0.99;
     }
 
     /**
