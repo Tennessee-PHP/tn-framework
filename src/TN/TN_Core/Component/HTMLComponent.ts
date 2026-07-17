@@ -78,14 +78,25 @@ abstract class HTMLComponent {
     }
 
     protected setupCloudflareTurnstile(): void {
+        const container = this.$element.find('.cloudflare-turnstile-container').get(0);
+        if (!container) {
+            return;
+        }
+
         // @ts-ignore
         turnstile.ready(() => {
             // @ts-ignore
-            turnstile.render(this.$element.find('.cloudflare-turnstile-container').get(0), {
+            turnstile.render(container, {
                 // @ts-ignore
                 sitekey: TN.CLOUDFLARE_TURNSTILE_SITE_KEY,
                 callback: (token: string) => {
                     this.cloudflareTurnstileToken = token;
+                },
+                'error-callback': () => {
+                    this.cloudflareTurnstileToken = '';
+                },
+                'expired-callback': () => {
+                    this.cloudflareTurnstileToken = '';
                 },
             });
         });
