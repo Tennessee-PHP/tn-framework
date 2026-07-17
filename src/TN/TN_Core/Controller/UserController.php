@@ -23,10 +23,13 @@ class UserController extends Controller
     public function login(): void {}
 
     #[Path('log-out')]
-    #[UsersOnly]
+    #[Anyone]
     public function logout(): Renderer
     {
-        UserModel::getActive()->logout();
+        $user = UserModel::getActive();
+        if ($user->loggedIn) {
+            $user->logout();
+        }
         return Redirect::getInstance(['url' => $_ENV['BASE_URL']]);
     }
 
