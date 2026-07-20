@@ -162,14 +162,6 @@ class Receipt
         foreach ($this->getPurchasesSorted() as $purchase) {
             $appleId = $purchase->getTransactionId();
             $existingTx = Transaction::readFromAppleId($appleId);
-            if ($existingTx instanceof Transaction) {
-                // we already saved a subscription and transaction for this one - we're good
-                if ($existingTx->userId !== $this->user->id) {
-                    $existingTx->switchToUser($this->user);
-                }
-                continue;
-            }
-
             $startTs = $purchase->getPurchaseDate()->getTimestamp();
             $endTs = $purchase->getExpiresDate()->getTimestamp();
 
@@ -188,6 +180,18 @@ class Receipt
             }
             if (!($billingCycle instanceof BillingCycle)) {
                 throw new ValidationException('Billing cycle could not be found for billign cycle key from product id: ' . $parts[1]);
+            }
+
+            if ($existingTx instanceof Transaction) {
+                // Refresh access dates from Apple even when we already stored this transaction id.
+                SignedTransaction::refreshExistingTransactionAccess(
+                    $this->user,
+                    $existingTx,
+                    $startTs,
+                    $endTs,
+                    $this->calculateAmount($plan, $billingCycle)
+                );
+                continue;
             }
 
             $subscription = Subscription::getExtendableUserSubscriptionByGateway(

@@ -124,18 +124,84 @@ class SignedTransaction
     }
 
     /**
+     * Build subscription field updates when re-validating an Apple transaction we already stored.
+     *
+     * @return array<string, int|float>
+     */
+    public static function buildRefreshSubscriptionUpdate(
+        int $subscriptionStartTs,
+        int $subscriptionEndTs,
+        int $subscriptionLastTransactionTs,
+        float $subscriptionLastTransactionAmount,
+        int $purchaseTs,
+        int $expiresTs,
+        ?float $lastTransactionAmount = null
+    ): array {
+        $update = [
+            'startTs' => min($purchaseTs, $subscriptionStartTs),
+            'endTs' => max($expiresTs, $subscriptionEndTs),
+        ];
+        if ($purchaseTs > $subscriptionLastTransactionTs) {
+            $update['lastTransactionTs'] = $purchaseTs;
+            $update['lastTransactionAmount'] = $lastTransactionAmount ?? $subscriptionLastTransactionAmount;
+        }
+
+        return $update;
+    }
+
+    /**
+     * Re-link and refresh access dates for an Apple transaction that already exists in our DB.
+     *
+     * @throws ValidationException
+     */
+    public static function refreshExistingTransactionAccess(
+        User $user,
+        Transaction $existingTx,
+        int $purchaseTs,
+        int $expiresTs,
+        ?float $lastTransactionAmount = null
+    ): void {
+        if ($existingTx->userId !== $user->id) {
+            $existingTx->switchToUser($user);
+        }
+
+        $subscription = Subscription::readFromId($existingTx->subscriptionId);
+        if (!($subscription instanceof Subscription)) {
+            $user->subscriptionsChanged();
+            return;
+        }
+
+        $subscription->update(self::buildRefreshSubscriptionUpdate(
+            $subscription->startTs,
+            $subscription->endTs,
+            $subscription->lastTransactionTs,
+            (float)$subscription->lastTransactionAmount,
+            $purchaseTs,
+            $expiresTs,
+            $lastTransactionAmount
+        ));
+        $user->subscriptionsChanged();
+    }
+
+    /**
      * @throws ValidationException
      */
     public function createTransactionsAndSubscriptions(): void
     {
         $payload = $this->getVerifiedPayload();
         $appleId = $this->requireString($payload->getTransactionId(), 'transactionId');
+        $productId = $this->requireString($payload->getProductId(), 'productId');
+        $purchaseTs = $this->timestampFromMilliseconds($payload->getPurchaseDate(), 'purchaseDate');
+        $expiresTs = $this->timestampFromMilliseconds($payload->getExpiresDate(), 'expiresDate');
         $existingTx = Transaction::readFromAppleId($appleId);
         if ($existingTx instanceof Transaction) {
-            if ($existingTx->userId !== $this->user->id) {
-                $existingTx->switchToUser($this->user);
-            }
-            $this->user->subscriptionsChanged();
+            self::refreshExistingTransactionAccess(
+                $this->user,
+                $existingTx,
+                $purchaseTs,
+                $expiresTs,
+                $this->resolveAmountForProductId($productId)
+            );
             return;
         }
 
@@ -143,9 +209,9 @@ class SignedTransaction
             $this->user,
             $this->appBundleId,
             $appleId,
-            $this->requireString($payload->getProductId(), 'productId'),
-            $this->timestampFromMilliseconds($payload->getPurchaseDate(), 'purchaseDate'),
-            $this->timestampFromMilliseconds($payload->getExpiresDate(), 'expiresDate'),
+            $productId,
+            $purchaseTs,
+            $expiresTs,
             $this->jws,
             false
         );
@@ -168,10 +234,13 @@ class SignedTransaction
     ): void {
         $existingTx = Transaction::readFromAppleId($appleId);
         if ($existingTx instanceof Transaction) {
-            if ($existingTx->userId !== $user->id) {
-                $existingTx->switchToUser($user);
-            }
-            $user->subscriptionsChanged();
+            self::refreshExistingTransactionAccess(
+                $user,
+                $existingTx,
+                $startTs,
+                $endTs,
+                self::resolveAmountForProductIdStatic($productId)
+            );
             return;
         }
 
@@ -316,6 +385,15 @@ class SignedTransaction
      */
     public function getPlanAndBillingCycle(string $productId): array
     {
+        return self::resolvePlanAndBillingCycle($productId);
+    }
+
+    /**
+     * @return array{Plan, BillingCycle}
+     * @throws ValidationException
+     */
+    private static function resolvePlanAndBillingCycle(string $productId): array
+    {
         [$planKey, $billingCycleKey] = self::parseProductId($productId);
 
         $plan = Plan::getInstanceByKey($planKey);
@@ -329,6 +407,22 @@ class SignedTransaction
         }
 
         return [$plan, $billingCycle];
+    }
+
+    private function resolveAmountForProductId(string $productId): ?float
+    {
+        return self::resolveAmountForProductIdStatic($productId);
+    }
+
+    private static function resolveAmountForProductIdStatic(string $productId): ?float
+    {
+        try {
+            [$plan, $billingCycle] = self::resolvePlanAndBillingCycle($productId);
+            $price = $plan->getPrice($billingCycle);
+            return (int)$price->price + 0.99;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
