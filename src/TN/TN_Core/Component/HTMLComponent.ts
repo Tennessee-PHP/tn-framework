@@ -232,11 +232,20 @@ abstract class HTMLComponent {
             return '';
         }
         
-        // Standard controls: prefer the live .val(). Empty string is a real
-        // cleared filter (e.g. username search) and must not fall back to a
-        // stale data-value from an earlier change/keyup.
+        // Prefer the live .val(). For text/email/password/textarea, empty string
+        // is a real cleared filter and must not fall back to a stale data-value.
+        // Custom wrapper controls (e.g. PositionSelect div) store selection in
+        // data-value; cash-dom's .val() is always '' on those (ele.value || ''),
+        // so empty string must still fall back.
         let val = $control.val();
-        if (typeof val === 'undefined' || val === null) {
+        const isClearableTextInput = $control.is(
+            'input[type=text], input[type=password], input[type=email], textarea'
+        );
+        if (
+            typeof val === 'undefined' ||
+            val === null ||
+            (val === '' && !isClearableTextInput)
+        ) {
             val = $control.data('value');
         }
         

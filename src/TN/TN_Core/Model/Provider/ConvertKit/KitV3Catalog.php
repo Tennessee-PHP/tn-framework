@@ -25,7 +25,7 @@ class KitV3Catalog
         }
 
         $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
-        $response = $api->make_request('v3/forms', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
+        $response = $api->make_request('forms', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
         $forms = is_object($response) && isset($response->forms) && is_array($response->forms)
             ? $response->forms
             : [];
@@ -50,7 +50,7 @@ class KitV3Catalog
         }
 
         $api = new \ConvertKit_API\ConvertKit_API($_ENV['CONVERTKIT_KEY'], $_ENV['CONVERTKIT_SECRET']);
-        $response = $api->make_request('v3/tags', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
+        $response = $api->make_request('tags', 'GET', ['api_key' => $_ENV['CONVERTKIT_KEY']]);
         $tags = is_object($response) && isset($response->tags) && is_array($response->tags)
             ? $response->tags
             : [];
