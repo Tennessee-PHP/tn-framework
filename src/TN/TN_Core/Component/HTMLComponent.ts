@@ -157,6 +157,17 @@ abstract class HTMLComponent {
 
     onControlKeyUp(e: any): void {
         const $input = $(e.currentTarget);
+        const timestamp = Date.now();
+        $input.attr('data-timestamp', timestamp.toString());
+        this.triggeringControl = $input;
+
+        // Keep data-value in sync on keyup so clearing a text/email field
+        // does not leave a stale value that overrides the empty input.
+        const currentValue = this.getControlValueFromElement($input);
+        if (typeof currentValue !== 'undefined' && currentValue !== null) {
+            $input.data('value', currentValue);
+        }
+
         if (this.reloadTimer) {
             clearTimeout(this.reloadTimer);
         }
@@ -221,9 +232,11 @@ abstract class HTMLComponent {
             return '';
         }
         
-        // Standard controls: try .val() first
+        // Standard controls: prefer the live .val(). Empty string is a real
+        // cleared filter (e.g. username search) and must not fall back to a
+        // stale data-value from an earlier change/keyup.
         let val = $control.val();
-        if (typeof val === 'undefined' || val === null || val === '') {
+        if (typeof val === 'undefined' || val === null) {
             val = $control.data('value');
         }
         
