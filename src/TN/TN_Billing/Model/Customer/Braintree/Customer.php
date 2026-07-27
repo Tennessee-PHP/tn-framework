@@ -145,22 +145,51 @@ class Customer implements Persistence
         return true;
     }
 
-    /** @return bool */
+    /**
+     * Mark the vaulted payment method as the Braintree customer's default.
+     *
+     * Payment Method: Update with makeDefault only works for credit cards and PayPal.
+     * Apple Pay / Google Pay / Venmo / etc. must use Customer: Update with
+     * defaultPaymentMethodToken (Braintree returns Authorization if makeDefault is used).
+     *
+     * @return bool
+     */
     public function updateDefaultPaymentMethodToken(): bool
     {
-        $braintree = Gateway::getInstanceByKey('braintree');
-        try {
-            $updateResult = $braintree->getApiGateway()->paymentMethod()->update(
-                $this->vaultedToken,
-                [
-                    'options' => [
-                        'makeDefault' => true
-                    ]
-                ]
-            );
-        } catch (\Braintree\Exception\NotFound $e) {
+        if (empty($this->vaultedToken)) {
             return false;
         }
+
+        $braintree = Gateway::getInstanceByKey('braintree');
+        $gateway = $braintree->getApiGateway();
+        $paymentMethod = strtoupper($this->paymentMethod);
+
+        try {
+            if (in_array($paymentMethod, ['CREDIT_CARD', 'PAYPAL_ACCOUNT'], true)) {
+                $updateResult = $gateway->paymentMethod()->update(
+                    $this->vaultedToken,
+                    [
+                        'options' => [
+                            'makeDefault' => true
+                        ]
+                    ]
+                );
+            } else {
+                if (empty($this->customerId)) {
+                    return false;
+                }
+                $updateResult = $gateway->customer()->update(
+                    $this->customerId,
+                    [
+                        'defaultPaymentMethodToken' => $this->vaultedToken
+                    ]
+                );
+            }
+        } catch (\Braintree\Exception $e) {
+            // NotFound, Authorization, etc. — never fail the purchase/update over default-flagging
+            return false;
+        }
+
         return $updateResult->success;
     }
 
