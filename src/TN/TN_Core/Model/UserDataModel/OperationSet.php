@@ -25,6 +25,18 @@ class OperationSet
     /** When set, apply() iterates models in this order (e.g. parent before child for FK constraints). */
     protected ?array $modelApplyOrder = null;
 
+    /** Incoming client op count for sync request logging. */
+    protected int $opsInCount = 0;
+
+    /** Ops successfully applied to persistent storage in this request. */
+    protected int $opsAcceptedCount = 0;
+
+    /**
+     * Silent skips during parse/apply (no field values).
+     * @var list<array{model:string,type:string,record_id:string,reason:string}>
+     */
+    protected array $rejectedOps = [];
+
     /**
      * @param array $operations
      * @param array|null $records Records to return even when an update is a no-op
@@ -83,6 +95,7 @@ class OperationSet
         // fetch all the records that are already created on the server and referenced
         $modelToClassMap = self::getModelToClassMap($classes ?? []);
         $recordsToReadByClass = [];
+        $rejects = [];
 
         foreach ($operationsData as $idx => $opData) {
             // Normalize timestamp to seconds if it's in milliseconds
@@ -91,12 +104,14 @@ class OperationSet
             }
 
             // try to find the class for this op
-            $class = $modelToClassMap[trim(strtolower($opData['model']))] ?? false;
+            $class = $modelToClassMap[trim(strtolower((string)($opData['model'] ?? '')))] ?? false;
 
             if (!$class) {
+                $rejects[] = self::rejectEntry('unknown_model', $opData);
                 continue;
             }
-            if (!$opData['record_id']) {
+            if (empty($opData['record_id'])) {
+                $rejects[] = self::rejectEntry('missing_record_id', $opData);
                 continue;
             }
 
@@ -119,7 +134,7 @@ class OperationSet
         // let's sort the data incoming so we always deal with the smallest TS first, ASC
         $operationTimestamps = [];
         foreach ($operationsData as $opData) {
-            $operationTimestamps[] = $opData['ts'];
+            $operationTimestamps[] = $opData['ts'] ?? 0;
         }
         array_multisort($operationTimestamps, SORT_ASC, $operationsData);
 
@@ -129,39 +144,103 @@ class OperationSet
         // TODO QUESTION are timestamps sent by ExtJS in milliseconds or not?
 
         foreach ($operationsData as $opData) {
-            $class = $modelToClassMap[trim(strtolower($opData['model']))] ?? false;
+            $class = $modelToClassMap[trim(strtolower((string)($opData['model'] ?? '')))] ?? false;
             if (!$class) {
+                // Already recorded in the first pass when model/record_id were validated.
+                continue;
+            }
+            if (empty($opData['record_id'])) {
                 continue;
             }
 
             // create? then create! BUT remember to add the record
-            if (strtolower($opData['type']) === 'create') {
-                $op = $class::createUserData(self::getUser(), $opData['ts'], $opData['fields'], true, false);
+            if (strtolower((string)($opData['type'] ?? '')) === 'create') {
+                $op = $class::createUserData(self::getUser(), $opData['ts'], $opData['fields'] ?? [], true, false);
                 $existingRecordsByClass[$class][$op->record->uuId] = $op->record;
                 $ops[] = $op;
             } else {
                 // otherwise let's try to get the record
                 $record = self::lookupRecordByClassAndId($existingRecordsByClass, $class, $opData['record_id']);
                 if (!$record) {
+                    $rejects[] = self::rejectEntry('record_not_found', $opData);
                     continue;
                 }
-                if (strtolower($opData['type']) === 'update') {
+                if (strtolower((string)($opData['type'] ?? '')) === 'update') {
                     $field = trim((string)($opData['field'] ?? ''));
                     if ($field === '') {
+                        $rejects[] = self::rejectEntry('empty_field', $opData);
                         continue;
                     }
                     $op = $record->updateUserData(self::getUser(), $opData['ts'], [$field => $opData['value']], true, false);
                     if ($op) {
                         $ops[] = $op;
+                    } else {
+                        $rejects[] = self::rejectEntry('noop_update', $opData);
                     }
-                } else if (strtolower($opData['type']) === 'delete') {
+                } else if (strtolower((string)($opData['type'] ?? '')) === 'delete') {
                     $ops[] = $record->deleteUserData(self::getUser(), $opData['ts'], false);
                 }
             }
         }
 
         // create the operation set, setting the classes on it too
-        return new self($ops, $lastSyncTs, $classes);
+        $set = new self($ops, $lastSyncTs, $classes);
+        $set->opsInCount = count($operationsData);
+        $set->rejectedOps = $rejects;
+        return $set;
+    }
+
+    /**
+     * @param array<string, mixed> $opData
+     * @return array{model:string,type:string,record_id:string,reason:string}
+     */
+    protected static function rejectEntry(string $reason, array $opData = []): array
+    {
+        return [
+            'model' => (string)($opData['model'] ?? ''),
+            'type' => (string)($opData['type'] ?? ''),
+            'record_id' => (string)($opData['record_id'] ?? ''),
+            'reason' => $reason,
+        ];
+    }
+
+    /**
+     * @param array{model?:string,type?:string,record_id?:string,reason:string} $entry
+     */
+    public function recordReject(array $entry): void
+    {
+        $this->rejectedOps[] = [
+            'model' => (string)($entry['model'] ?? ''),
+            'type' => (string)($entry['type'] ?? ''),
+            'record_id' => (string)($entry['record_id'] ?? ''),
+            'reason' => (string)($entry['reason'] ?? 'unknown'),
+        ];
+    }
+
+    /** @return list<array{model:string,type:string,record_id:string,reason:string}> */
+    public function getRejectedOps(): array
+    {
+        return $this->rejectedOps;
+    }
+
+    public function getOpsInCount(): int
+    {
+        return $this->opsInCount;
+    }
+
+    public function getOpsAcceptedCount(): int
+    {
+        return $this->opsAcceptedCount;
+    }
+
+    public function getOpsRejectedCount(): int
+    {
+        return count($this->rejectedOps);
+    }
+
+    public function setOpsInCount(int $count): void
+    {
+        $this->opsInCount = $count;
     }
 
     /**
@@ -364,6 +443,12 @@ class OperationSet
 
         // delete and create? return null
         if ($createOp && $deleteOp) {
+            $this->recordReject([
+                'model' => $createOp->model,
+                'type' => 'create',
+                'record_id' => $createOp->recordUuId,
+                'reason' => 'create_delete_coalesce',
+            ]);
             return null;
         }
 
@@ -483,6 +568,12 @@ class OperationSet
             try {
                 $operation->customValidate();
             } catch (ValidationException) {
+                $this->recordReject([
+                    'model' => $operation->model,
+                    'type' => 'create',
+                    'record_id' => $operation->recordUuId,
+                    'reason' => 'validation',
+                ]);
                 continue;
             }
             $records[] = $operation->record;
@@ -494,12 +585,19 @@ class OperationSet
         $appliedOperations = [];
         foreach ($applyOperations as $operation) {
             if (!isset($operation->record->id)) {
+                $this->recordReject([
+                    'model' => $operation->model,
+                    'type' => 'create',
+                    'record_id' => $operation->recordUuId,
+                    'reason' => 'no_id_after_insert',
+                ]);
                 continue;
             }
             $operation->recordId = $operation->record->id;
             $operation->applied = true;
             $operation->appliedTs = Time::getNow();
             $appliedOperations[] = $operation;
+            $this->opsAcceptedCount += 1;
         }
 
         if (!empty($appliedOperations)) {
@@ -514,7 +612,28 @@ class OperationSet
     protected function batchApplyUpdateOperationsOnModel(array $operations): void
     {
         foreach ($operations as $operation) {
+            try {
+                $operation->customValidate();
+            } catch (ValidationException) {
+                $this->recordReject([
+                    'model' => $operation->model,
+                    'type' => 'update',
+                    'record_id' => $operation->recordUuId,
+                    'reason' => 'superseded',
+                ]);
+                continue;
+            }
             $operation->apply();
+            if ($operation->applied) {
+                $this->opsAcceptedCount += 1;
+            } else {
+                $this->recordReject([
+                    'model' => $operation->model,
+                    'type' => 'update',
+                    'record_id' => $operation->recordUuId,
+                    'reason' => 'validation',
+                ]);
+            }
         }
     }
 
@@ -535,6 +654,12 @@ class OperationSet
             try {
                 $operation->customValidate();
             } catch (ValidationException) {
+                $this->recordReject([
+                    'model' => $operation->model,
+                    'type' => 'delete',
+                    'record_id' => $operation->recordUuId,
+                    'reason' => 'superseded',
+                ]);
                 continue;
             }
             $records[] = $operation->record;
@@ -545,6 +670,7 @@ class OperationSet
         foreach ($applyOperations as $operation) {
             $operation->applied = true;
             $operation->appliedTs = Time::getNow();
+            $this->opsAcceptedCount += 1;
         }
         Operation::batchSaveInsert($applyOperations);
     }
