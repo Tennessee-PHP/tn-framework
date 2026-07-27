@@ -29,9 +29,16 @@
         <div class="d-flex justify-content-center">
             <div class="card">
             
-                <h2 class="card-header">{$giftSubscription->getPlan()->name} Plan</h2>
+                <div class="card-header">
+                    <h2 class="mb-1">{$giftSubscription->getPlan()->name} Plan</h2>
+                    <p class="mb-0">{$giftSubscription->getPlan()->description}</p>
+                </div>
                 <div class="card-body">
-                    <p>{$giftSubscription->getPlan()->description}</p>
+                    <p class="mb-1">This gift will be redeemed on the account you're logged into:</p>
+                    <p class="mb-3">
+                        <strong>{$user->username}</strong><br>
+                        {$user->email}
+                    </p>
 
                 <p>Redeem this plan to get access!</p>
                 <div class="d-flex justify-content-center mt-3">

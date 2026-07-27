@@ -84,18 +84,19 @@ class TrackedVisitor implements Persistence
                 'ip' => IP::getAddress(),
                 'firstVisitTs' => Time::getNow(),
                 'lastVisitTs' => Time::getNow(),
-                'utmSource' => $request->getQuery('utm_source', ''),
-                'utmMedium' => $request->getQuery('utm_medium', ''),
-                'utmContent' => $request->getQuery('utm_content', ''),
-                'utmTerm' => $request->getQuery('utm_term', ''),
-                'referrerUrl' => $request->getServer('HTTP_REFERER', '')
+                'utmSource' => substr((string)$request->getQuery('utm_source', ''), 0, 50),
+                'utmMedium' => substr((string)$request->getQuery('utm_medium', ''), 0, 50),
+                'utmContent' => substr((string)$request->getQuery('utm_content', ''), 0, 50),
+                'utmTerm' => substr((string)$request->getQuery('utm_term', ''), 0, 50),
+                // Browser referrers can exceed the column (e.g. gift activate with a long query string)
+                'referrerUrl' => substr((string)$request->getServer('HTTP_REFERER', ''), 0, 200)
             ]);
         }
 
         $afterPurchaseUrlQuery = $request->getQuery('afterpurchaseurl');
         if ($trackedVisitor && !empty($afterPurchaseUrlQuery) && str_contains($afterPurchaseUrlQuery, $_ENV['BASE_URL'])) {
             $trackedVisitor->update([
-                'afterPurchaseUrl' => $afterPurchaseUrlQuery
+                'afterPurchaseUrl' => substr((string)$afterPurchaseUrlQuery, 0, 200)
             ]);
         }
 

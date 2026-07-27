@@ -10,6 +10,7 @@ use TN\TN_Core\Component\HTMLComponent;
 use TN\TN_Core\Component\User\LoginForm\LoginForm;
 use TN\TN_Core\Component\User\RegisterForm\RegisterForm;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\User\User;
 
 #[Page('Activate Gift Subscription', '', false)]
@@ -34,7 +35,7 @@ class ActivateGiftSubscription extends HTMLComponent
 
         $this->user = User::getActive();
         if (!$this->user->loggedIn) {
-            $this->registerForm = new RegisterForm([
+            $this->registerForm = new (Stack::resolveClassName(RegisterForm::class))([
                 'redirect_url' => $_ENV['BASE_URL'] . 'gift/activate/' . $this->key
             ]);
             $this->registerForm->prepare();
