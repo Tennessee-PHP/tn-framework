@@ -22,5 +22,17 @@ class RequiresBraintree extends RequiresResource
         }
         $user = User::getActive();
         $page->addJsVar('braintreeClientToken', $braintree->generateClientToken($user->loggedIn ? $user : null));
+
+        // Google Pay: TEST for sandbox, PRODUCTION for live; merchant ID optional (omit in sandbox)
+        $btEnv = strtolower((string) ($_ENV['BRAINTREE_ENVIRONMENT'] ?? 'sandbox'));
+        $page->addJsVar('braintreeEnvironment', $btEnv);
+        $page->addJsVar(
+            'googlePayEnvironment',
+            $btEnv === 'production' ? 'PRODUCTION' : 'TEST'
+        );
+        $googleMerchantId = trim((string) ($_ENV['GOOGLE_PAY_MERCHANT_ID'] ?? ''));
+        if ($googleMerchantId !== '') {
+            $page->addJsVar('googlePayMerchantId', $googleMerchantId);
+        }
     }
 }

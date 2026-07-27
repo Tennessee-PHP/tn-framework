@@ -16,9 +16,13 @@ class Braintree extends Gateway
         'client',
         'hosted-fields',
         'apple-pay',
+        'google-payment',
         'data-collector',
         'paypal-checkout'
     ];
+
+    /** Google Pay JS (required alongside Braintree google-payment) */
+    public const GOOGLE_PAY_JS_URL = 'https://pay.google.com/gp/p/js/pay.js';
 
     protected string $key = 'braintree';
     protected string $name = 'Braintree';
@@ -70,7 +74,7 @@ class Braintree extends Gateway
 
     public function getJsUrls(): array
     {
-        $files = [];
+        $files = [self::GOOGLE_PAY_JS_URL];
         foreach (self::JS_FILES as $file) {
             $files[] = 'https://js.braintreegateway.com/web/' . self::JS_VERSION . '/js/' . $file . '.min.js';
         }
