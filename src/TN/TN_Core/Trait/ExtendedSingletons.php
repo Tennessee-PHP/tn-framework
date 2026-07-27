@@ -15,6 +15,13 @@ trait ExtendedSingletons
     private static array $instances = [];
 
     /**
+     * True after {@see getInstances()} has scanned package namespaces.
+     * Must not use {@see $instances} emptiness alone: a prior {@see getInstance()} on one
+     * subclass would leave the list non-empty and skip discovering sibling subclasses.
+     */
+    private static bool $extendedInstancesLoaded = false;
+
+    /**
      * protected constructor to enforce singleton
      */
     protected function __construct()
@@ -54,7 +61,8 @@ trait ExtendedSingletons
     /** @return array get instances of all that extend this class */
     public static function getInstances(): array
     {
-        if (empty(self::$instances)) {
+        if (!self::$extendedInstancesLoaded) {
+            self::$extendedInstancesLoaded = true;
             foreach (Stack::getClassesInPackageNamespaces(self::getExtendedNamespace()) as $class) {
                 $class::getInstance();
             }
