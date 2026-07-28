@@ -724,7 +724,13 @@ trait MySQL
         } else if (strtolower($typeName) === 'datetime') {
             $type = 'datetime';
         } else if ($typeName === 'array') {
-            $type = 'text';
+            $columnTypeAttributes = $property->getAttributes(ColumnType::class);
+            if (count($columnTypeAttributes) > 0) {
+                $type = $columnTypeAttributes[0]->newInstance()->type;
+                $typeOptions = '';
+            } else {
+                $type = 'text';
+            }
         }
 
         $autoIncrementAttributes = $property->getAttributes(AutoIncrement::class);
