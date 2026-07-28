@@ -218,13 +218,29 @@ abstract class UserDataModel implements Persistence
      */
     public static function createUserData(User $user, int $originTs, array $data, bool $fromClient = false, bool $apply = true): Operation
     {
+        $normalizedData = $fromClient ? static::getDataFromClient($data) : $data;
+        $uuId = $normalizedData['uuId'] ?? $normalizedData['id'] ?? null;
+        if (is_string($uuId) && $uuId !== '') {
+            $existingRecords = static::readFromIdsOrUuIdsForUser($user->id, [$uuId]);
+            if (!empty($existingRecords)) {
+                $existing = $existingRecords[0];
+                $updateData = $normalizedData;
+                unset($updateData['uuId'], $updateData['id']);
+                $updateOp = $existing->updateUserData($user, $originTs, $updateData, false, $apply);
+                if ($updateOp !== null) {
+                    return $updateOp;
+                }
+                return self::getOperation($user, $originTs, Operation::UPDATE, $existing, []);
+            }
+        }
+
         // FIRST, set up the record
         $record = self::getInstance();
         $record->userId = $user->id;
         $record->year = date('Y', $originTs);
 
-        // and set its data
-        static::setData($record, $data, $fromClient);
+        // and set its data (already normalized when $fromClient)
+        static::setData($record, $normalizedData, false);
 
         // SECOND, set up the operation
         $operation = self::getOperation($user, $originTs, Operation::CREATE, $record);

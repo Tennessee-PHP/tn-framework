@@ -153,11 +153,36 @@ class OperationSet
                 continue;
             }
 
-            // create? then create! BUT remember to add the record
+            // create? upsert if this uuId already exists for the user (do not insert duplicates)
             if (strtolower((string)($opData['type'] ?? '')) === 'create') {
-                $op = $class::createUserData(self::getUser(), $opData['ts'], $opData['fields'] ?? [], true, false);
-                $existingRecordsByClass[$class][$op->record->uuId] = $op->record;
-                $ops[] = $op;
+                $fields = $opData['fields'] ?? [];
+                if (!isset($fields['id']) && !isset($fields['uuId'])) {
+                    $fields['id'] = $opData['record_id'];
+                }
+                $existing = self::lookupRecordByClassAndId(
+                    $existingRecordsByClass,
+                    $class,
+                    $opData['record_id']
+                );
+                if ($existing) {
+                    $updateFields = $fields;
+                    unset($updateFields['uuId'], $updateFields['id']);
+                    $op = $existing->updateUserData(
+                        self::getUser(),
+                        $opData['ts'],
+                        $updateFields,
+                        true,
+                        false
+                    );
+                    if ($op) {
+                        $ops[] = $op;
+                    }
+                    $existingRecordsByClass[$class][$existing->uuId] = $existing;
+                } else {
+                    $op = $class::createUserData(self::getUser(), $opData['ts'], $fields, true, false);
+                    $existingRecordsByClass[$class][$op->record->uuId] = $op->record;
+                    $ops[] = $op;
+                }
             } else {
                 // otherwise let's try to get the record
                 $record = self::lookupRecordByClassAndId($existingRecordsByClass, $class, $opData['record_id']);
