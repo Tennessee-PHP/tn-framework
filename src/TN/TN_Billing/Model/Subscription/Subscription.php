@@ -796,10 +796,17 @@ class Subscription implements Persistence
         $transaction = \TN\TN_Billing\Model\Transaction\Braintree\Transaction::getInstance();
         $user = $this->getUser();
         $amount = round($price - $credit, 2);
+        $renewalVoucherCode = null;
+        if ($this->voucherCodeId > 0) {
+            $candidateVoucher = VoucherCode::readFromId($this->voucherCodeId);
+            if ($candidateVoucher instanceof VoucherCode && $candidateVoucher->shouldRemoveAfterRenewal()) {
+                $renewalVoucherCode = $candidateVoucher;
+            }
+        }
         $transaction->update([
             'userId' => $user instanceof User ? $user->id : 0,
             'amount' => $amount,
-            'voucherCodeId' => 0,
+            'voucherCodeId' => $renewalVoucherCode instanceof VoucherCode ? $renewalVoucherCode->id : 0,
             'discount' => $credit,
             'subscriptionId' => $this->id,
             'ip' => 'from-server'
@@ -865,6 +872,9 @@ class Subscription implements Persistence
             'nextTransactionAmount' => 0.00,
             'nextRenewalComplimentary' => false,
         ];
+        if ($renewalVoucherCode instanceof VoucherCode) {
+            $updateData['voucherCodeId'] = 0;
+        }
         if ($scheduledDowngrade instanceof PlanChange && $downgradeToPlan instanceof Plan) {
             $updateData['planKey'] = $downgradeToPlan->key;
             $appliedDowngrade = true;

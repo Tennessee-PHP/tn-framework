@@ -58,6 +58,24 @@ class VoucherCode implements Persistence
     public string $planKeys;
 
     /**
+     * Staff-only Keep My Price codes: forever while attached, removed after one successful renewal.
+     *
+     * @var list<string>
+     */
+    private const REMOVE_AFTER_RENEWAL_CODES = [
+        'PRO2025PRICING',
+        'ELITE2025PRICING',
+    ];
+
+    /**
+     * Whether this voucher should be cleared from the subscription after a successful renewal.
+     */
+    public function shouldRemoveAfterRenewal(): bool
+    {
+        return in_array($this->code, self::REMOVE_AFTER_RENEWAL_CODES, true);
+    }
+
+    /**
      * count usages of the voucher codes
      * @param $startTs
      * @param $endTs
