@@ -35,6 +35,10 @@
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=newSubscriptions">New</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'braintreePaymentMethods'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=braintreePaymentMethods">Braintree Payment Methods</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link{if $report->reportKey === 'upgradeSubscriptions'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=upgradeSubscriptions">Upgrades</a>
             </li>

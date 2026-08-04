@@ -48,6 +48,9 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
     /** @var string the requesting IP address */
     public string $ip = '';
 
+    /** @var string Braintree paymentInstrumentType (e.g. CREDIT_CARD, PAYPAL_ACCOUNT) */
+    public string $paymentMethod = '';
+
     /**
      * gets all transactions of this braintree type
      * @param User $user
@@ -374,7 +377,8 @@ class Transaction extends \TN\TN_Billing\Model\Transaction\Transaction
 
         $this->update([
             'success' => true,
-            'braintreeId' => $transaction->id ?? ''
+            'braintreeId' => $transaction->id ?? '',
+            'paymentMethod' => strtoupper($transaction->paymentInstrumentType ?? '')
         ]);
     }
 

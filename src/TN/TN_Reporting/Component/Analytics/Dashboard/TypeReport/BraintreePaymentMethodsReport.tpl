@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>Braintree Payment Methods</b> is a daily count of new Braintree subscriptions by how they paid (card, PayPal, Apple Pay, Google Pay). Uses the same new-subscription definition as the New report. Pre-deploy transactions without a stored method appear under Other / Unknown."}

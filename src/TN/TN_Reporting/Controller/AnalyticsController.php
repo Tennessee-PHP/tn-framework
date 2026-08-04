@@ -17,6 +17,7 @@ use TN\TN_Core\Attribute\Route\Access\Restrictions\RoleOnly;
 use TN\TN_Reporting\Model\Analytics\Campaign\CampaignDailyEntry;
 use TN\TN_Reporting\Model\Analytics\Revenue\RevenuePerSubscriptionEntry;
 use TN\TN_Reporting\Model\Analytics\Revenue\RevenueRecurringEntry;
+use TN\TN_Reporting\Model\Analytics\Subscriptions\BraintreePaymentMethodsEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsActiveEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsChurnEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsEndedEntry;
@@ -90,6 +91,7 @@ class AnalyticsController extends Controller
             SubscriptionsLifetimeValueEntry::updateDayReports($ts);
             UsersRegistrationsEntry::updateDayReports($ts);
             SubscriptionsNewEntry::updateDayReports($ts);
+            BraintreePaymentMethodsEntry::updateDayReports($ts);
             SubscriptionsUpgradeEntry::updateDayReports($ts);
             SubscriptionsDowngradeEntry::updateDayReports($ts);
             SubscriptionsRenewalEntry::updateDayReports($ts);
