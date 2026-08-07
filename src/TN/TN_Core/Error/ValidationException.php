@@ -32,6 +32,12 @@ class ValidationException extends TNException
     public int $httpResponseCode = 400;
     public bool $messageIsUserFacing = true;
 
+    /**
+     * Optional machine-readable code for JSON clients (e.g. nickname_taken).
+     * Included as {@code code} in {@see \TN\TN_Core\Component\Renderer\JSON\JSON::validationError()}.
+     */
+    public ?string $errorCode = null;
+
     /** @param string|array $error constructor  */
     public function __construct(string|array $error = "")
     {

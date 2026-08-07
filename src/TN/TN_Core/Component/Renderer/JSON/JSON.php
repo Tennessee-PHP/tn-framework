@@ -69,6 +69,9 @@ class JSON extends Renderer
             'result' => 'error',
             'message' => $e->getMessage(),
         ];
+        if ($e->errorCode !== null && $e->errorCode !== '') {
+            $payload['code'] = $e->errorCode;
+        }
         $fieldErrors = $e->getFieldErrors();
         if ($fieldErrors !== null && $fieldErrors !== []) {
             $payload['fieldErrors'] = $fieldErrors;
