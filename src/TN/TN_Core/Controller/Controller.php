@@ -16,6 +16,7 @@ use TN\TN_Core\Error\Access\AccessCsrfInvalidException;
 use TN\TN_Core\Error\Access\AccessForbiddenException;
 use TN\TN_Core\Error\Access\AccessLoginRequiredException;
 use TN\TN_Core\Error\Access\AccessTwoFactorRequiredException;
+use TN\TN_Core\Error\Access\AccessUnauthorizedException;
 use TN\TN_Core\Error\Access\AccessUncontrolledException;
 use TN\TN_Core\Error\Access\FullPageRoadblockException;
 use TN\TN_Core\Error\Access\UnmatchedException;
@@ -315,11 +316,28 @@ abstract class Controller
                 $renderer = $rendererClass::forbidden();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 403, $method);
+            } catch (AccessUnauthorizedException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
+                $this->addCorsHeadersForMethod($method);
+                $renderer = $rendererClass::error($e->getMessage(), 401);
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 401, $method);
             } catch (AccessLoginRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 $renderer = $rendererClass::loginRequired();
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 401, $method);
+            } catch (RateLimitExceededException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
+                $this->addCorsHeadersForMethod($method);
+                header('Retry-After: ' . (int) $e->retryAfter);
+                if (is_a($rendererClass, JSON::class, true)) {
+                    $renderer = $rendererClass::rateLimitExceeded($e);
+                } else {
+                    $renderer = $rendererClass::error($e->getMessage(), 429);
+                }
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 429, $method);
             } catch (AccessTwoFactorRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 // Use resolved Page so apps get their 2FA challenge (e.g. ShowTwoFactorChallenge with setup link)
@@ -628,12 +646,12 @@ abstract class Controller
 
     /**
      * Check if a user can access a specific method by evaluating its restrictions
-     * 
+     *
      * @param ReflectionMethod $method Method to check
      * @param User $user User to check
      * @return bool True if user has access, false otherwise
      */
-    private static function checkMethodAccess(ReflectionMethod $method, User $user): bool
+    public static function checkMethodAccess(ReflectionMethod $method, User $user): bool
     {
         try {
             // Get all restriction attributes (same logic as setAccess method)

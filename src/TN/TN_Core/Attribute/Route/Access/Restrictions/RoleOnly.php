@@ -6,6 +6,7 @@ use TN\TN_Core\Attribute\Route\Access\Restriction;
 use TN\TN_Core\Model\Request\HTTPRequest;
 use TN\TN_Core\Model\Role\Role;
 use TN\TN_Core\Model\User\User;
+use TN\TN_Core\Model\User\UserApiKey;
 use TN\TN_Core\Model\User\UserToken;
 use TN\TN_Core\Error\ForbiddenReason;
 
@@ -44,10 +45,16 @@ class RoleOnly extends Restriction
         }
         $request = HTTPRequest::get();
         $token = $request->getAuthToken();
-        $userToken = $token !== null && $token !== '' ? UserToken::findValidByToken($token) : null;
-        if ($userToken === null || !$userToken->isTwoFactorVerified()) {
-            return self::TWO_FACTOR_REQUIRED;
+        if ($token !== null && $token !== '') {
+            $userToken = UserToken::findValidByToken($token);
+            if ($userToken !== null && $userToken->isTwoFactorVerified()) {
+                return self::UNRESTRICTED;
+            }
+            $apiKey = UserApiKey::findValidByRawToken($token);
+            if ($apiKey !== null && (int) $apiKey->userId === (int) $user->id) {
+                return self::UNRESTRICTED;
+            }
         }
-        return self::UNRESTRICTED;
+        return self::TWO_FACTOR_REQUIRED;
     }
 }

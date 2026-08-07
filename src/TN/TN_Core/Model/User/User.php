@@ -22,10 +22,13 @@ use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Attribute\MySQL\Timestamp;
 use TN\TN_Core\Attribute\Optional;
 use TN\TN_Core\Error\Access\AccessForbiddenException;
+use TN\TN_Core\Error\Access\AccessUnauthorizedException;
 use TN\TN_Core\Error\Login\LoginErrorMessage;
 use TN\TN_Core\Error\Login\LoginException;
+use TN\TN_Core\Error\RateLimitExceededException;
 use TN\TN_Core\Error\TNException;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Service\UserApiKeyRateLimitService;
 use TN\TN_Core\Interface\Persistence;
 use TN\TN_Core\Model\Email\Email;
 use TN\TN_Core\Model\HashMethod\HashMethod;
@@ -360,22 +363,90 @@ class User implements Persistence
         }
 
         $userToken = UserToken::findValidByToken($token);
-        if ($userToken === null) {
+        if ($userToken !== null) {
+            $user = static::readFromId($userToken->userId, true);
+            if (!$user instanceof User) {
+                static::setNoActiveUser();
+                return;
+            }
+            $user->token = $userToken->token;
+            self::setUserAsActive($user);
+
+            if ($tokenSource === 'body') {
+                self::persistSessionAndCookieForUser($user);
+            }
+            return;
+        }
+
+        if (!UserApiKey::isPersonalApiKeyToken($token)) {
             static::setNoActiveUser();
             return;
         }
 
-        $user = static::readFromId($userToken->userId, true);
-        if (!$user instanceof User) {
+        $apiKey = UserApiKey::findByRawToken($token);
+        if ($apiKey === null) {
+            $request->stashUserApiKeyRequestLog([
+                'prefix' => UserApiKey::displayPrefixFromToken($token),
+                'authResult' => UserApiKeyRequestLog::AUTH_INVALID,
+            ]);
             static::setNoActiveUser();
             return;
         }
-        $user->token = $userToken->token;
+
+        if ($apiKey->isRevoked()) {
+            $request->stashUserApiKeyRequestLog([
+                'userApiKeyId' => $apiKey->id,
+                'userId' => $apiKey->userId,
+                'prefix' => $apiKey->prefix,
+                'authResult' => UserApiKeyRequestLog::AUTH_REVOKED,
+            ]);
+            static::setNoActiveUser();
+            return;
+        }
+
+        if ($apiKey->isExpired()) {
+            $request->stashUserApiKeyRequestLog([
+                'userApiKeyId' => $apiKey->id,
+                'userId' => $apiKey->userId,
+                'prefix' => $apiKey->prefix,
+                'authResult' => UserApiKeyRequestLog::AUTH_EXPIRED,
+            ]);
+            static::setNoActiveUser();
+            throw new AccessUnauthorizedException(UserApiKey::EXPIRED_MESSAGE);
+        }
+
+        try {
+            UserApiKeyRateLimitService::check($apiKey);
+        } catch (RateLimitExceededException $e) {
+            $request->stashUserApiKeyRequestLog([
+                'userApiKeyId' => $apiKey->id,
+                'userId' => $apiKey->userId,
+                'prefix' => $apiKey->prefix,
+                'authResult' => UserApiKeyRequestLog::AUTH_RATE_LIMITED,
+            ]);
+            static::setNoActiveUser();
+            throw $e;
+        }
+
+        $user = static::readFromId($apiKey->userId, true);
+        if (!$user instanceof User || $user->inactive) {
+            $request->stashUserApiKeyRequestLog([
+                'userApiKeyId' => $apiKey->id,
+                'userId' => $apiKey->userId,
+                'prefix' => $apiKey->prefix,
+                'authResult' => UserApiKeyRequestLog::AUTH_INVALID,
+            ]);
+            static::setNoActiveUser();
+            return;
+        }
         self::setUserAsActive($user);
-
-        if ($tokenSource === 'body') {
-            self::persistSessionAndCookieForUser($user);
-        }
+        $apiKey->recordUse();
+        $request->stashUserApiKeyRequestLog([
+            'userApiKeyId' => $apiKey->id,
+            'userId' => $apiKey->userId,
+            'prefix' => $apiKey->prefix,
+            'authResult' => UserApiKeyRequestLog::AUTH_OK,
+        ]);
     }
 
     /** @param User $user we found a user - set it as active! */

@@ -22,6 +22,7 @@ use TN\TN_Core\Service\RateLimitService;
 use TN\TN_Core\Model\Package\Stack;
 use TN\TN_Core\Model\Response\HTTPResponse;
 use TN\TN_Core\Model\User\User;
+use TN\TN_Core\Model\User\UserApiKeyRequestLog;
 
 /**
  * an HTTP request relayed to the framework by a web server
@@ -80,6 +81,19 @@ class HTTPRequest extends Request
      * @var string|null Source of auth token when getAuthToken() returned non-null: 'body', 'query', 'cookie', 'header'
      */
     private ?string $authTokenSource = null;
+
+    /**
+     * Pending personal API key request log (flushed after response).
+     *
+     * @var array{
+     *   userApiKeyId: ?int,
+     *   userId: ?int,
+     *   prefix: string,
+     *   authResult: string,
+     *   startedAt: float
+     * }|null
+     */
+    private ?array $pendingUserApiKeyRequestLog = null;
 
     /**
      * @var HTTPRequest|null static instance
@@ -268,6 +282,56 @@ class HTTPRequest extends Request
     }
 
     /**
+     * Stash a personal API key request for logging after the response is sent.
+     *
+     * @param array{
+     *   userApiKeyId?: ?int,
+     *   userId?: ?int,
+     *   prefix?: string,
+     *   authResult: string
+     * } $context
+     */
+    public function stashUserApiKeyRequestLog(array $context): void
+    {
+        $this->pendingUserApiKeyRequestLog = [
+            'userApiKeyId' => $context['userApiKeyId'] ?? null,
+            'userId' => $context['userId'] ?? null,
+            'prefix' => (string) ($context['prefix'] ?? ''),
+            'authResult' => (string) ($context['authResult'] ?? ''),
+            'startedAt' => microtime(true),
+        ];
+    }
+
+    /**
+     * Persist a stashed personal API key request log. Fail-soft.
+     */
+    public function flushUserApiKeyRequestLog(int $statusCode): void
+    {
+        if ($this->pendingUserApiKeyRequestLog === null) {
+            return;
+        }
+        $pending = $this->pendingUserApiKeyRequestLog;
+        $this->pendingUserApiKeyRequestLog = null;
+        try {
+            $durationMs = (int) round((microtime(true) - $pending['startedAt']) * 1000);
+            UserApiKeyRequestLog::write([
+                'userApiKeyId' => $pending['userApiKeyId'],
+                'userId' => $pending['userId'],
+                'prefix' => $pending['prefix'],
+                'method' => strtoupper((string) $this->method),
+                'path' => '/' . ltrim((string) $this->path, '/'),
+                'statusCode' => $statusCode,
+                'durationMs' => max(0, $durationMs),
+                'ip' => $this->getClientIp(),
+                'userAgent' => (string) ($this->getServer('HTTP_USER_AGENT') ?? ''),
+                'authResult' => $pending['authResult'],
+            ]);
+        } catch (\Throwable $e) {
+            error_log('UserApiKeyRequestLog flush failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Return the CSRF token from this request: X-CSRF-Token header, then JSON body (csrfToken or _csrf), then POST field.
      * @return string|null
      */
@@ -394,6 +458,7 @@ class HTTPRequest extends Request
                 429
             );
             $response->respond();
+            $this->flushUserApiKeyRequestLog(429);
             return;
         }
 
@@ -421,6 +486,7 @@ class HTTPRequest extends Request
             }
 
             $response->respond();
+            $this->flushUserApiKeyRequestLog($response->code);
         } catch (\Throwable $e) {
             throw $e;
         }
