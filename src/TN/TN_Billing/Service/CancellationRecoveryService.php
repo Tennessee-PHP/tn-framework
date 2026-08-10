@@ -62,7 +62,7 @@ class CancellationRecoveryService
         self::assertWizardEligible($subscription, $user);
 
         if (!array_key_exists($reasonCode, CancellationAttempt::getReasonOptions())) {
-            throw new ValidationException('Please select a cancellation reason');
+            throw new ValidationException('Please select a reason');
         }
 
         $existing = CancellationAttempt::getOpenAttemptForSubscription($subscription->id);
@@ -374,7 +374,7 @@ class CancellationRecoveryService
         }
 
         if (empty($attempt->reasonCode)) {
-            throw new ValidationException('Please complete the cancellation survey first');
+            throw new ValidationException('Please complete the survey first');
         }
 
         if (!$attempt->isOpen()) {

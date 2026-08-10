@@ -22,7 +22,7 @@ class CancelSubscription extends JSON
         $attemptId = (int)($_REQUEST['attemptId'] ?? 0);
         $attempt = CancellationAttempt::readFromId($attemptId);
         if (!$attempt instanceof CancellationAttempt) {
-            throw new ValidationException('Please complete the cancellation survey first');
+            throw new ValidationException('Please complete the survey first');
         }
 
         CancellationRecoveryService::completeCancellation($attempt, $subscription, $user);

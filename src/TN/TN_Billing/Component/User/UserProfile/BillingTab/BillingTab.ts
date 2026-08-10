@@ -316,7 +316,7 @@ export default class BillingTab extends HTMLComponent {
 
     private completeCancellation(): void {
         if (!this.cancellationAttemptId) {
-            new ErrorToast('Please complete the cancellation survey first.');
+            new ErrorToast('Please complete the survey first.');
             this.showCancellationStep('survey');
             return;
         }

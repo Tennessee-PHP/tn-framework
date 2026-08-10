@@ -298,9 +298,9 @@
                         {if $activeSubscription->nextTransactionTs}
                             <p class="mb-3">You'll keep access until <b>{$activeSubscription->nextTransactionTs|date_format:"%B %e, %Y"}</b>. You won't be charged again.</p>
                         {/if}
-                        <p class="mb-3">Before you go, please tell us why you're cancelling. Your feedback helps us improve.</p>
+                        <p class="mb-3">Please tell us why you're turning off auto-renew. Your feedback helps us improve.</p>
                         <div class="mb-3">
-                            <label for="cancellation_reason_select" class="form-label">Reason for cancelling <span class="text-danger">*</span></label>
+                            <label for="cancellation_reason_select" class="form-label">Reason for turning off auto-renew <span class="text-danger">*</span></label>
                             <select class="form-select" id="cancellation_reason_select" required>
                                 <option value="">Select a reason…</option>
                                 {foreach $cancellationReasonOptions as $code => $label}
