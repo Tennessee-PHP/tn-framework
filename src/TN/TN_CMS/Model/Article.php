@@ -479,6 +479,29 @@ class Article extends Content implements Persistence
         return $this->processedDisplayContent ?? '';
     }
 
+    /**
+     * Article HTML for JSON API consumers (e.g. Draft Dominator in-app help).
+     * Same body transforms as displayContent, but advert placeholders are removed
+     * instead of replaced with live article_mid ads.
+     *
+     * @param bool $preRoadblockOnly When true, return only content before the roadblock marker.
+     */
+    public function getDisplayContentForApi(bool $preRoadblockOnly = false): string
+    {
+        $text = str_replace(PHP_EOL, '', $this->content);
+        $text = $this->replaceAdvertPlaceholders($text, false);
+        $text = str_replace('blockquote class="twitter-tweet"', 'blockquote class="twitter-tweet-toload"', $text);
+        $text = str_replace('https://staging-www.fbg-dev.com/', $_ENV['BASE_URL'], $text);
+
+        if ($preRoadblockOnly) {
+            $roadblockPattern = '/\s*<div\s+class="roadblock">\s*<h3\s+class="text-center">Roadblock\s+Placeholder<\/h3>\s*<p\s+class="align-center">If\s+the\s+user\s+needs\s+to\s+pay\s+to\s+see\s+the\s+full\s+article,\s+this\s+is\s+where\s+the\s+roadblock\s+will\s+be\.<\/p>\s*<\/div>\s*/i';
+            $parts = preg_split($roadblockPattern, $text);
+            return $parts[0] ?? '';
+        }
+
+        return $text;
+    }
+
     protected function getAuthor(): ?User
     {
         if ($this->authorId === 0) {
@@ -698,13 +721,17 @@ class Article extends Content implements Persistence
     }
 
     /**
-     * @param $text
+     * @param string $text
+     * @param bool $injectAds When false, placeholders are removed with no article_mid injection.
      * @return string
      */
-    protected function replaceAdvertPlaceholders($text): string
+    protected function replaceAdvertPlaceholders($text, bool $injectAds = true): string
     {
-        $adverts = Advert::getShowableAdverts(User::getActive(), 'article_mid');
-        shuffle($adverts);
+        $adverts = [];
+        if ($injectAds) {
+            $adverts = Advert::getShowableAdverts(User::getActive(), 'article_mid');
+            shuffle($adverts);
+        }
 
         // Regex pattern to match advertisement placeholder regardless of whitespace
         $advertPattern = '/\s*<div\s+class="py-2\s+px-4\s+mb-2\s+bg-light\s+rounded-3">\s*<div\s+class="container-fluid\s+py-2">\s*<h2\s+class="fw-bold">Advertisement\s+Placeholder<\/h2>\s*<p\s+class="col-md-8\s+fs-4">When\s+the\s+article\s+is\s+published,\s+this\s+placeholder\s+will\s+be\s+switched\s+out\s+for\s+an\s+ad\.<\/p>\s*<button\s+class="btn\s+btn-primary\s+btn-lg"\s+type="button">Let\'s\s+Go!<\/button><\/div>\s*<\/div>\s*/i';
