@@ -23,7 +23,7 @@
 
     {*fbq('track', 'PageView');*}
     {foreach $events as $event}
-    fbq('track', '{$event->event}'{foreach $event->args as $arg}, {json_encode($arg)}{/foreach});
+    fbq('track', '{$event->event}'{if $event->args}, {json_encode($event->args)}{/if});
     {/foreach}
     {literal}
 </script>
