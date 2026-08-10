@@ -110,7 +110,8 @@ class Article extends Content implements Persistence
 
     /**
      * get all the objects stored on this class
-     * @param array $filters : an array of filters. Supported keys are authorId, state, category, categoryId, tag. See the examples given.
+     * @param array $filters : an array of filters. Supported keys are authorId, state, category, categoryId, tag,
+     *                         inPast, publishedAfter, publishedBefore. See the examples given.
      * @param string|null $sortProperty
      * @param int|null $sortDirection
      * @param int $start
@@ -138,6 +139,8 @@ class Article extends Content implements Persistence
         $categoryId = $filters['categoryId'] ?? null;
         $playerId = $filters['playerId'] ?? null;
         $inPast = $filters['inPast'] ?? false;
+        $publishedAfter = $filters['publishedAfter'] ?? null;
+        $publishedBefore = $filters['publishedBefore'] ?? null;
 
         if ($category) {
             // translate category into tag
@@ -163,24 +166,40 @@ class Article extends Content implements Persistence
             $wheres[] = "c.`contentClass` = ?";
             $values[] = get_called_class();
             $wheres[] = "c.`contentId` = `a`.id";
+            $publishedTsCol = 'a.`publishedTs`';
+            $authorIdCol = 'a.`authorId`';
+            $stateCol = 'a.`state`';
         } else {
             $query = "SELECT " .
                 ($count ? "count(DISTINCT `id`) " : " DISTINCT `id`, `publishedTs`, `weight` ") .
                 " FROM `{$table}`";
+            $publishedTsCol = '`publishedTs`';
+            $authorIdCol = '`authorId`';
+            $stateCol = '`state`';
         }
 
         if ($inPast) {
-            $wheres[] = "`publishedTs` <= ?";
+            $wheres[] = "{$publishedTsCol} <= ?";
             $values[] = Time::getNow();
         }
 
+        if ($publishedAfter !== null && $publishedAfter !== '') {
+            $wheres[] = "{$publishedTsCol} >= ?";
+            $values[] = (int) $publishedAfter;
+        }
+
+        if ($publishedBefore !== null && $publishedBefore !== '') {
+            $wheres[] = "{$publishedTsCol} <= ?";
+            $values[] = (int) $publishedBefore;
+        }
+
         if ($authorId !== null) {
-            $wheres[] = "`authorId` = ?";
+            $wheres[] = "{$authorIdCol} = ?";
             $values[] = $authorId;
         }
 
         if ($state !== null) {
-            $wheres[] = "`state` = ?";
+            $wheres[] = "{$stateCol} = ?";
             $values[] = $state;
         }
 

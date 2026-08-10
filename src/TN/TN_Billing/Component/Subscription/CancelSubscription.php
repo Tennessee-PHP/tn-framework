@@ -29,7 +29,7 @@ class CancelSubscription extends JSON
 
         $this->data = [
             'result' => 'success',
-            'message' => 'Your subscription has been cancelled. Your access will expire on ' . date('m-d-Y', $subscription->endTs),
+            'message' => 'Auto-renew is off. You still have access until ' . date('F j, Y', $subscription->endTs) . '.',
             'endTs' => date('m-d-Y', $subscription->endTs),
         ];
     }

@@ -39,7 +39,7 @@
                                 type="button"
                                 data-bs-toggle="modal"
                                 data-bs-target="#cancelplan_modal">
-                            Cancel This Plan
+                            Turn Off Auto-Renew
                         </button>
                     </div>
                 {/if}
@@ -283,7 +283,7 @@
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="cancelPlanModalTitle">Cancel Your Plan</h5>
+                    <h5 class="modal-title" id="cancelPlanModalTitle">Turn Off Auto-Renew</h5>
                     <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -295,6 +295,9 @@
 
                 <div class="cancellation-wizard-step" data-step="survey">
                     <div class="modal-body">
+                        {if $activeSubscription->nextTransactionTs}
+                            <p class="mb-3">You'll keep access until <b>{$activeSubscription->nextTransactionTs|date_format:"%B %e, %Y"}</b>. You won't be charged again.</p>
+                        {/if}
                         <p class="mb-3">Before you go, please tell us why you're cancelling. Your feedback helps us improve.</p>
                         <div class="mb-3">
                             <label for="cancellation_reason_select" class="form-label">Reason for cancelling <span class="text-danger">*</span></label>
@@ -323,7 +326,7 @@
                         <p id="cancellation_reason_acknowledgement" class="mb-3"></p>
                         {if $scheduledDowngradeSummary}
                             <p class="alert alert-warning">
-                                Cancelling your plan will also cancel your scheduled change to
+                                Turning off auto-renew will also cancel your scheduled change to
                                 <b>{$scheduledDowngradeSummary.toPlanName}</b>.
                             </p>
                         {/if}
@@ -345,7 +348,7 @@
                             {/if}
                         </ul>
                         <button type="button" class="btn btn-lg btn-success w-100 mb-3" id="cancellation_accept_offer_btn">Accept Offer</button>
-                        <button type="button" class="btn btn-lg btn-danger w-100" id="cancellation_decline_offer_btn">No, Cancel My Subscription Now</button>
+                        <button type="button" class="btn btn-lg btn-danger w-100" id="cancellation_decline_offer_btn">Turn Off Auto-Renew</button>
                     </div>
                 </div>
             </div>

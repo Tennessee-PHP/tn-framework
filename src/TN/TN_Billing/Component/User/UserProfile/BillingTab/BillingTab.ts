@@ -192,10 +192,10 @@ export default class BillingTab extends HTMLComponent {
         });
 
         const titles: Record<string, string> = {
-            survey: 'Cancel Your Plan',
+            survey: 'Turn Off Auto-Renew',
             save: 'Before You Go…',
         };
-        $('#cancelPlanModalTitle').text(titles[step] || 'Cancel Your Plan');
+        $('#cancelPlanModalTitle').text(titles[step] || 'Turn Off Auto-Renew');
     }
 
     private setCancellationWizardLoading(loading: boolean): void {
