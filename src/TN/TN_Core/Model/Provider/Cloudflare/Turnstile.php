@@ -2,7 +2,7 @@
 
 namespace TN\TN_Core\Model\Provider\Cloudflare;
 
-use Curl\Curl;
+use TN\TN_Core\Model\HTTP\OutboundHttp;
 use TN\TN_Core\Model\IP\IP;
 
 class Turnstile
@@ -17,19 +17,14 @@ class Turnstile
             return true;
         }
 
-        $curl = new Curl();
-        $curl->setOpt(CURLOPT_FOLLOWLOCATION, 1);
-        $curl->setOpt(CURLOPT_RETURNTRANSFER, true);
-
-
         $body = [
             'secret' => $_ENV['CLOUDFLARE_TURNSTILE_SECRET_KEY'],
             'response' => $token,
             'remoteip' => IP::getAddress()
         ];
 
-        $curl->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $body);
-        $data = json_decode($curl->response, true);
+        $response = OutboundHttp::post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $body);
+        $data = json_decode($response ?? '', true);
 
         return (bool)($data['success'] ?? false);
     }
@@ -50,18 +45,14 @@ class Turnstile
             throw new \TN\TN_Core\Error\ValidationException('Token is empty');
         }
 
-        $curl = new Curl();
-        $curl->setOpt(CURLOPT_FOLLOWLOCATION, 1);
-        $curl->setOpt(CURLOPT_RETURNTRANSFER, true);
-
         $body = [
             'secret' => $_ENV['CLOUDFLARE_TURNSTILE_SECRET_KEY'],
             'response' => $token,
             'remoteip' => IP::getAddress()
         ];
 
-        $curl->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $body);
-        $data = json_decode($curl->response, true);
+        $response = OutboundHttp::post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $body);
+        $data = json_decode($response ?? '', true);
 
         if (!is_array($data)) {
             throw new \TN\TN_Core\Error\ValidationException('Invalid response from Cloudflare');

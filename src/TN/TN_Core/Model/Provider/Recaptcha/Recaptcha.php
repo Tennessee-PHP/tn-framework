@@ -2,8 +2,8 @@
 
 namespace TN\TN_Core\Model\Provider\Recaptcha;
 
-use Curl\Curl;
 use TN\TN_Core\Error\ValidationException;
+use TN\TN_Core\Model\HTTP\OutboundHttp;
 use TN\TN_Core\Model\IP\IP;
 
 class Recaptcha
@@ -15,25 +15,19 @@ class Recaptcha
      */
     public static function getScore(string $token): float
     {
-        $curl = new Curl();
-        $curl->setOpt(CURLOPT_FOLLOWLOCATION, 1);
-        $curl->setOpt(CURLOPT_RETURNTRANSFER, true);
-
-
         $body = [
             'secret' => $_ENV['RECAPTCHA_3_SECRET_KEY'],
             'response' => $token,
             'remoteip' => IP::getAddress()
         ];
 
-        // trying login route
-        $curl->post('https://www.google.com/recaptcha/api/siteverify', $body);
-        $data = json_decode($curl->response, true);
+        $response = OutboundHttp::post('https://www.google.com/recaptcha/api/siteverify', $body);
+        $data = json_decode($response ?? '', true);
 
-        if (!$data['success']) {
+        if (!is_array($data) || !($data['success'] ?? false)) {
             throw new ValidationException('Recaptcha failed');
-        } else {
-            return $data['score'];
         }
+
+        return (float) $data['score'];
     }
 }
