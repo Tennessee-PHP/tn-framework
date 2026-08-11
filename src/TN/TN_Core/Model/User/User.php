@@ -449,10 +449,27 @@ class User implements Persistence
         ]);
     }
 
+    /**
+     * Whether this account is under a timed suspension that blocks login/session.
+     * Site subclasses (e.g. NE User) override when they store a suspension end timestamp.
+     */
+    public function isSuspended(): bool
+    {
+        return false;
+    }
+
+    /**
+     * User-facing login error when {@see isSuspended()} is true.
+     */
+    public function getSuspendedLoginMessage(): string
+    {
+        return LoginErrorMessage::Suspended->value;
+    }
+
     /** @param User $user we found a user - set it as active! */
     private static function setUserAsActive(User $user): void
     {
-        if ($user->inactive) {
+        if ($user->inactive || $user->isSuspended()) {
             static::setNoActiveUser();
             return;
         }
@@ -490,7 +507,7 @@ class User implements Persistence
             $user = $otherUser;
         }
 
-        if ($user->inactive) {
+        if ($user->inactive || $user->isSuspended()) {
             static::setNoActiveUser();
             return;
         }
@@ -644,6 +661,8 @@ class User implements Persistence
         if ($user && $user->verifyPassword($password)) {
             if ($user->inactive) {
                 throw new LoginException(LoginErrorMessage::Inactive);
+            } else if ($user->isSuspended()) {
+                throw new LoginException(LoginErrorMessage::Suspended, 0, $user->getSuspendedLoginMessage());
             } else if ($user->locked) {
                 throw new LoginException(LoginErrorMessage::Locked);
             } else {
@@ -692,6 +711,9 @@ class User implements Persistence
         }
         if ($user->inactive) {
             throw new LoginException(LoginErrorMessage::Inactive);
+        }
+        if ($user->isSuspended()) {
+            throw new LoginException(LoginErrorMessage::Suspended, 0, $user->getSuspendedLoginMessage());
         }
         $loginCode->update(['used' => true]);
         $user->doLogin();

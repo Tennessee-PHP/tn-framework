@@ -7,12 +7,16 @@ class LoginException extends \TN\TN_Core\Error\TNException
 
     public int $httpResponseCode = 400;
     public bool $messageIsUserFacing = true;
-    public function __construct(LoginErrorMessage $message, ?int $attemptsLeft = 0)
+
+    /**
+     * @param string|null $customMessage When set, used instead of the enum value (e.g. suspension end date).
+     */
+    public function __construct(LoginErrorMessage $message, ?int $attemptsLeft = 0, ?string $customMessage = null)
     {
-        $message = $message->value;
+        $text = ($customMessage !== null && $customMessage !== '') ? $customMessage : $message->value;
         if ($attemptsLeft > 0) {
-            $message .= " ({$attemptsLeft} attempts left)";
+            $text .= " ({$attemptsLeft} attempts left)";
         }
-        parent::__construct($message);
+        parent::__construct($text);
     }
 }
