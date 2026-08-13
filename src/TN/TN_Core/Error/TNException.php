@@ -24,9 +24,14 @@ class TNException extends \Exception
         return $this->messageIsUserFacing || $this->getUserIsAdmin() || $_ENV['ENV'] === 'development';
     }
 
+    public static function getGenericDisplayMessage(): string
+    {
+        return 'An error has occurred. Please go to ' . ($_ENV['BASE_URL'] ?? '') . 'contact-support to open a ticket with us so we can resolve the error.';
+    }
+
     public function getDisplayMessage(): string
     {
-        $genericMessage = 'An error has occurred - it has been logged! Please try again later.';
+        $genericMessage = self::getGenericDisplayMessage();
         if ($this->canShowMessage()) {
             $message = $this->getPrevious() ? $this->getPrevious()->getMessage() : $this->message;
         } else {
