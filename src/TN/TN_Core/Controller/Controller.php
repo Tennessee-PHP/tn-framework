@@ -385,6 +385,11 @@ abstract class Controller
                 $renderer = $rendererClass::error($e->getMessage(), 404);
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 404, $method);
+            } catch (AccessLoginRequiredException $e) {
+                self::setCurrentMatchedMethodForCORS(null);
+                $renderer = $rendererClass::loginRequired();
+                $renderer->prepare();
+                return new HTTPResponse($renderer, 401, $method);
             } catch (AccessTwoFactorRequiredException $e) {
                 self::setCurrentMatchedMethodForCORS(null);
                 $twoFactorRendererClass = ($rendererClass === Page::class)
