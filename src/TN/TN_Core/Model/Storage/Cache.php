@@ -234,6 +234,46 @@ class Cache
     }
 
     /**
+     * Acquire a short-lived Redis lock (SET NX EX). Returns a token to pass to unlock(), or false.
+     */
+    public static function tryLock(string $key, int $lifetimeSeconds): string|false
+    {
+        $lifetimeSeconds = max(1, $lifetimeSeconds);
+        $storageKey = self::getStorageKey($key);
+        $token = bin2hex(random_bytes(16));
+        $event = (new self())->startPerformanceEvent('Redis', "SET NX EX {$storageKey}", ['lifetime' => $lifetimeSeconds]);
+
+        $client = Redis::getInstance();
+        $result = $client->set($storageKey, $token, 'EX', $lifetimeSeconds, 'NX');
+
+        $event?->end();
+        if ($result === null || $result === false) {
+            return false;
+        }
+        return $token;
+    }
+
+    /**
+     * Release a lock acquired by tryLock(). No-op if the token does not match.
+     */
+    public static function unlock(string $key, string $token): void
+    {
+        if ($token === '') {
+            return;
+        }
+        $storageKey = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "UNLOCK {$storageKey}");
+
+        $client = Redis::getInstance();
+        $current = $client->get($storageKey);
+        if ($current === $token) {
+            $client->del($storageKey);
+        }
+
+        $event?->end();
+    }
+
+    /**
      * deletes a key from the cache
      * @param string $key the key to remove
      * <code>
