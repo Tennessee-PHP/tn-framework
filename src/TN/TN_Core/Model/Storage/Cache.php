@@ -234,6 +234,70 @@ class Cache
     }
 
     /**
+     * Get a cached value, or have one worker build it and set it (single-flight).
+     *
+     * Callers pass the build step. This class only gets, locks, calls that function, and sets.
+     *
+     * @param callable(): mixed $producer
+     * @param callable(mixed): bool|null $isHit custom hit test; default is not false and not null
+     */
+    public static function getOrSet(
+        string $key,
+        int $lifetimeSeconds,
+        callable $producer,
+        int $lockSeconds = 60,
+        int $waitMs = 15000,
+        ?callable $isHit = null
+    ): mixed {
+        $isHit = $isHit ?? [self::class, 'defaultIsHit'];
+        $lockSeconds = max(1, $lockSeconds);
+        $waitMs = max(0, $waitMs);
+
+        $value = self::get($key);
+        if ($isHit($value)) {
+            return $value;
+        }
+
+        $lockKey = $key . ':rebuild-lock';
+        $token = self::tryLock($lockKey, $lockSeconds);
+        if ($token !== false) {
+            try {
+                $value = self::get($key);
+                if ($isHit($value)) {
+                    return $value;
+                }
+                $value = $producer();
+                if ($isHit($value)) {
+                    self::set($key, $value, $lifetimeSeconds);
+                }
+                return $value;
+            } finally {
+                self::unlock($lockKey, $token);
+            }
+        }
+
+        $attempts = (int) ceil($waitMs / 100);
+        for ($i = 0; $i < $attempts; $i++) {
+            usleep(100000);
+            $value = self::get($key);
+            if ($isHit($value)) {
+                return $value;
+            }
+        }
+
+        $value = $producer();
+        if ($isHit($value)) {
+            self::set($key, $value, $lifetimeSeconds);
+        }
+        return $value;
+    }
+
+    protected static function defaultIsHit(mixed $value): bool
+    {
+        return $value !== false && $value !== null;
+    }
+
+    /**
      * Acquire a short-lived Redis lock (SET NX EX). Returns a token to pass to unlock(), or false.
      */
     public static function tryLock(string $key, int $lifetimeSeconds): string|false
