@@ -24,6 +24,7 @@ class Cache
         'getProjectionsSetsv3:',
         'api-response:',
         'page-entry-listing:',
+        'projections-set-blc:',
     ];
 
     /**
@@ -84,7 +85,7 @@ class Cache
     {
         $logicalKey = $key;
         if (self::usesNodeShm($logicalKey)) {
-            $shmEvent = (new self())->startPerformanceEvent('NodeShm', "GET {$logicalKey}");
+            $shmEvent = (new self())->startPerformanceEvent('NodeCache', "GET {$logicalKey}");
             $shm = NodeShmCache::get($logicalKey);
             $shmHit = $shm !== false && $shm !== null;
             $shmEvent?->setMetadata(['hit' => $shmHit, 'miss' => !$shmHit]);
