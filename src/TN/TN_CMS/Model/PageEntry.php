@@ -34,7 +34,9 @@ use TN\TN_Core\Model\User\User;
 class PageEntry implements Persistence
 {
     use MySQL;
-    use PersistentModel;
+    use PersistentModel {
+        invalidateCache as private invalidatePersistentCache;
+    }
     use PerformanceRecorder;
 
     const string cacheIndexId = 'i';
@@ -761,6 +763,12 @@ class PageEntry implements Persistence
      * @param array $changedProperties
      * @return void
      */
+    protected function invalidateCache(): void
+    {
+        $this->invalidatePersistentCache();
+        PageEntryListingCache::bump();
+    }
+
     protected function afterSaveUpdate(array $changedProperties): void
     {
         // Ensure cache is always invalidated when PageEntry is updated

@@ -21,7 +21,7 @@ class RateLimitService
     /**
      * Check rate limits for this request. No-op for non-staff paths.
      * @param HTTPRequest $request
-     * @param object|null $redisClient Optional Redis-like client for testing (incr, expire). If null, uses Redis::getInstance() and fails open on error.
+     * @param object|null $redisClient Optional Redis-like client for testing (incr, expire). If null, uses Redis::getInstance(true) and fails open on error.
      * @throws RateLimitExceededException if staff path and either IP or token limit exceeded
      */
     public static function check(HTTPRequest $request, ?object $redisClient = null): void
@@ -38,7 +38,7 @@ class RateLimitService
         $useTestClient = $redisClient !== null;
         if (!$useTestClient) {
             try {
-                $redisClient = Redis::getInstance();
+                $redisClient = Redis::getInstance(true);
             } catch (\Throwable $e) {
                 error_log('RateLimitService: Redis unavailable, rate limit skipped: ' . $e->getMessage());
                 return;

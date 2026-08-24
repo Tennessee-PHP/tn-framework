@@ -900,7 +900,7 @@ class User implements Persistence
      */
     protected function logIPLogin(): void
     {
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $client->hset($this->getIPHashKey(), $this->getRemoteAddress(), Time::getNow());
     }
 

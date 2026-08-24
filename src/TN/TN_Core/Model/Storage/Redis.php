@@ -6,85 +6,112 @@ use Predis\Client;
 
 /**
  * Redis client singleton with support for both single instances and clusters
- * 
+ *
  * Supports:
  * - Single Redis instances (REDIS_CLUSTER=0)
- * - AWS ElastiCache clusters via seed node (REDIS_CLUSTER=1, no REDIS_CLUSTER_NODES)  
+ * - AWS ElastiCache clusters via seed node (REDIS_CLUSTER=1, no REDIS_CLUSTER_NODES)
  * - Direct cluster access with multiple nodes (REDIS_CLUSTER=1, with REDIS_CLUSTER_NODES)
+ *
+ * Same shape as DB::getInstance($db, bool $write = false):
+ * - $write false (default) → REDIS_READ_HOST, or REDIS_HOST if that is empty
+ * - $write true → REDIS_HOST
  */
 class Redis
 {
-    /** @var Client|null local instance of the caching client */
-    private static ?Client $client = null;
+    /** @var array{read: Client|null, write: Client|null} */
+    private static array $clients = ['read' => null, 'write' => null];
 
-    /** @return Client get an instance of the client, instantiating it if necessary */
-    public static function getInstance()
+    /**
+     * @param bool $write if write permissions are required. Use true for SET, DEL, INCR, locks, and write-then-read.
+     * @return Client get an instance of the client, instantiating it if necessary
+     */
+    public static function getInstance(bool $write = false): Client
+    {
+        $type = $write ? 'write' : 'read';
+        if (self::$clients[$type] === null) {
+            self::$clients[$type] = self::createClient($write);
+        }
+        return self::$clients[$type];
+    }
+
+    private static function createClient(bool $write): Client
     {
         $options = [
             'prefix' => $_ENV['REDIS_PREFIX']
         ];
+        $host = self::host($write);
 
-        if (self::$client === null) {
-            // Use REDIS_URL if available (for Render and other cloud providers)
-            if (!empty($_ENV['REDIS_URL'])) {
-                self::$client = new Client($_ENV['REDIS_URL'], $options);
-            } elseif (($_ENV['REDIS_CLUSTER'] ?? 0) == 1) {
-                // Check if we have multiple cluster nodes (direct cluster access)
-                // or a single seed node (AWS ElastiCache style)
-                if (!empty($_ENV['REDIS_CLUSTER_NODES'])) {
-                    // Multiple nodes - use true cluster mode
-                    $options['cluster'] = 'redis';
-
-                    $clusterNodes = [];
-                    $nodes = explode(',', $_ENV['REDIS_CLUSTER_NODES']);
-                    foreach ($nodes as $node) {
-                        $node = trim($node);
-                        if (!empty($node)) {
-                            $clusterNodes[] = $_ENV['REDIS_SCHEME'] . '://' . $node;
-                        }
-                    }
-
-                    self::$client = new Client($clusterNodes, $options);
-                } else {
-                    // AWS ElastiCache cluster - use single endpoint as seed node
-                    $options['cluster'] = 'redis';
-
-                    // Add cluster-specific options to match PHP session configuration
-                    $options['parameters'] = [
-                        'timeout' => 5.0,
-                        'read_write_timeout' => 5.0,
-                    ];
-
-                    // Connect to the seed node, Predis will discover other cluster nodes
-                    $clusterNodes = [$_ENV['REDIS_SCHEME'] . '://' . $_ENV['REDIS_HOST'] . ':' . $_ENV['REDIS_PORT']];
-
-                    self::$client = new Client($clusterNodes, $options);
-                }
-            } else {
-                // Single Redis instance configuration (non-cluster)
-                self::$client = new Client([
-                    'scheme' => $_ENV['REDIS_SCHEME'],
-                    'host' => $_ENV['REDIS_HOST'],
-                    'port' => $_ENV['REDIS_PORT']
-                ], $options);
-            }
+        // Use REDIS_URL if available (for Render and other cloud providers),
+        // unless a read host is set for a read client.
+        if (!empty($_ENV['REDIS_URL']) && ($write || empty($_ENV['REDIS_READ_HOST']))) {
+            return new Client($_ENV['REDIS_URL'], $options);
         }
-        return self::$client;
+
+        if (($_ENV['REDIS_CLUSTER'] ?? 0) == 1) {
+            // Check if we have multiple cluster nodes (direct cluster access)
+            // or a single seed node (AWS ElastiCache style)
+            if (!empty($_ENV['REDIS_CLUSTER_NODES'])) {
+                // Multiple nodes - use true cluster mode
+                $options['cluster'] = 'redis';
+
+                $clusterNodes = [];
+                $nodes = explode(',', $_ENV['REDIS_CLUSTER_NODES']);
+                foreach ($nodes as $node) {
+                    $node = trim($node);
+                    if (!empty($node)) {
+                        $clusterNodes[] = $_ENV['REDIS_SCHEME'] . '://' . $node;
+                    }
+                }
+
+                return new Client($clusterNodes, $options);
+            }
+
+            // AWS ElastiCache cluster - use single endpoint as seed node
+            $options['cluster'] = 'redis';
+
+            // Add cluster-specific options to match PHP session configuration
+            $options['parameters'] = [
+                'timeout' => 5.0,
+                'read_write_timeout' => 5.0,
+            ];
+
+            // Connect to the seed node, Predis will discover other cluster nodes
+            $clusterNodes = [$_ENV['REDIS_SCHEME'] . '://' . $host . ':' . $_ENV['REDIS_PORT']];
+
+            return new Client($clusterNodes, $options);
+        }
+
+        // Single Redis instance configuration (non-cluster)
+        return new Client([
+            'scheme' => $_ENV['REDIS_SCHEME'],
+            'host' => $host,
+            'port' => $_ENV['REDIS_PORT']
+        ], $options);
+    }
+
+    private static function host(bool $write): string
+    {
+        if (!$write && !empty($_ENV['REDIS_READ_HOST'])) {
+            return $_ENV['REDIS_READ_HOST'];
+        }
+        return $_ENV['REDIS_HOST'] ?? '';
     }
 
     /**
-     * Cleanup Redis connection and reset singleton instance
+     * Cleanup Redis connections and reset singleton instances
      * Useful for error recovery and explicit connection management
      */
     public static function cleanup(): void
     {
-        if (self::$client !== null) {
-            try {
-                self::$client->disconnect();
-            } catch (\Exception $e) {
-                // Ignore disconnect errors, we're cleaning up anyway
+        foreach (self::$clients as $type => $client) {
+            if ($client !== null) {
+                try {
+                    $client->disconnect();
+                } catch (\Exception $e) {
+                    // Ignore disconnect errors, we're cleaning up anyway
+                }
+                self::$clients[$type] = null;
             }
-            self::$client = null;
         }
     }
 }

@@ -19,6 +19,13 @@ class Cache
     private const string KEY_MATCH_SUFFIX = 'Cache:*';
     private const int SCAN_COUNT = 200;
 
+    /** Logical-key fragments that also live on /dev/shm after the first Redis fill. */
+    private const array NODE_SHM_PREFIXES = [
+        'getProjectionsSetsv3:',
+        'api-response:',
+        'page-entry-listing:',
+    ];
+
     /**
      * set some data in the cache
      * 
@@ -36,10 +43,11 @@ class Cache
     public static function set(string $key, mixed $value, int $lifetime = 3600)
     {
         self::dropLegacyKeyIndex();
+        $logicalKey = $key;
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SET {$key}", ['lifetime' => $lifetime]);
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
 
         // Check if key exists with wrong type
         $type = $client->type($key);
@@ -53,12 +61,17 @@ class Cache
         }
 
         $event?->end();
+
+        if ($lifetime > 0 && self::usesNodeShm($logicalKey)) {
+            NodeShmCache::set($logicalKey, $value, $lifetime);
+        }
     }
 
     /**
      * gets some data from the cache
      * 
      * @param string $key the key to fetch
+     * @param bool $write if true, read from the primary (write-then-read / lock poll)
      * @return mixed first unserialized so should always be exactly the same as was passed into the set function
      * @see https://www.php.net/manual/en/function.unserialize.php
      * @example
@@ -67,12 +80,24 @@ class Cache
      * if (!$articles) { // articles didn't exist or had expired; must fetch from original source...
      * </code>
      */
-    public static function get(string $key): mixed
+    public static function get(string $key, bool $write = false): mixed
     {
+        $logicalKey = $key;
+        if (self::usesNodeShm($logicalKey)) {
+            $shmEvent = (new self())->startPerformanceEvent('NodeShm', "GET {$logicalKey}");
+            $shm = NodeShmCache::get($logicalKey);
+            $shmHit = $shm !== false && $shm !== null;
+            $shmEvent?->setMetadata(['hit' => $shmHit, 'miss' => !$shmHit]);
+            $shmEvent?->end();
+            if ($shmHit) {
+                return $shm;
+            }
+        }
+
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "GET {$key}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance($write);
         $data = $client->get($key);
 
         // Handle null/false values from Redis to avoid unserialize deprecation warning
@@ -86,6 +111,14 @@ class Cache
         $isHit = $result !== false && $result !== null;
         $event?->setMetadata(['hit' => $isHit, 'miss' => !$isHit]);
         $event?->end();
+
+        if ($isHit && self::usesNodeShm($logicalKey)) {
+            $ttl = (int) $client->ttl($key);
+            $lifetime = $ttl > 0 ? $ttl : 3600;
+            if ($ttl !== -2) {
+                NodeShmCache::set($logicalKey, $result, $lifetime);
+            }
+        }
 
         return $result;
     }
@@ -113,7 +146,7 @@ class Cache
 
         $event = (new self())->startPerformanceEvent('Redis', "MGET " . implode(' ', $storageKeys));
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(false);
         $results = $client->mget($storageKeys);
 
         // Process results and map back to original keys
@@ -147,7 +180,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $client->sadd($key, [$value]);
         $client->persist($key);
         $client->expire($key, $lifespan);
@@ -160,7 +193,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SREM {$key} {$value}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $client->srem($key, [$value]);
 
         $event?->end();
@@ -171,7 +204,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SMEMBERS {$key}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(false);
         $result = $client->smembers($key);
 
         $event?->end();
@@ -189,7 +222,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SISMEMBER {$key} {$value}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(false);
         $result = (bool) $client->sismember($key, $value);
 
         $event?->end();
@@ -208,7 +241,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "HSET {$key} {$field}", ['lifetime' => $lifetime]);
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $client->hset($key, $field, serialize($value));
         if ($lifetime) {
             $client->expire($key, $lifetime);
@@ -222,7 +255,7 @@ class Cache
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "HGET {$key} {$field}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(false);
         $result = unserialize($client->hget($key, $field));
 
         // Add hit/miss information to performance tracking
@@ -253,7 +286,7 @@ class Cache
         $lockSeconds = max(1, $lockSeconds);
         $waitMs = max(0, $waitMs);
 
-        $value = self::get($key);
+        $value = self::get($key, true);
         if ($isHit($value)) {
             return $value;
         }
@@ -262,7 +295,7 @@ class Cache
         $token = self::tryLock($lockKey, $lockSeconds);
         if ($token !== false) {
             try {
-                $value = self::get($key);
+                $value = self::get($key, true);
                 if ($isHit($value)) {
                     return $value;
                 }
@@ -279,7 +312,7 @@ class Cache
         $attempts = (int) ceil($waitMs / 100);
         for ($i = 0; $i < $attempts; $i++) {
             usleep(100000);
-            $value = self::get($key);
+            $value = self::get($key, true);
             if ($isHit($value)) {
                 return $value;
             }
@@ -307,7 +340,7 @@ class Cache
         $token = bin2hex(random_bytes(16));
         $event = (new self())->startPerformanceEvent('Redis', "SET NX EX {$storageKey}", ['lifetime' => $lifetimeSeconds]);
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $result = $client->set($storageKey, $token, 'EX', $lifetimeSeconds, 'NX');
 
         $event?->end();
@@ -328,7 +361,7 @@ class Cache
         $storageKey = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "UNLOCK {$storageKey}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $current = $client->get($storageKey);
         if ($current === $token) {
             $client->del($storageKey);
@@ -347,7 +380,7 @@ class Cache
         $storageKey = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "GET INT {$storageKey}");
 
-        $value = Redis::getInstance()->get($storageKey);
+        $value = Redis::getInstance(true)->get($storageKey);
 
         $event?->end();
         if ($value === null || $value === false || $value === '') {
@@ -366,7 +399,7 @@ class Cache
         $storageKey = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "INCR {$storageKey}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         if ((int) $client->exists($storageKey) === 0) {
             $client->set($storageKey, '2');
             $event?->end();
@@ -387,7 +420,7 @@ class Cache
         $storageKey = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "UNLINK {$storageKey}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         try {
             $client->unlink($storageKey);
         } catch (\Throwable) {
@@ -406,14 +439,37 @@ class Cache
      */
     public static function delete(string $key): void
     {
+        $logicalKey = $key;
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "DEL {$key}");
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $client->set($key, false);
         $client->del($key);
 
         $event?->end();
+
+        if (self::usesNodeShm($logicalKey)) {
+            NodeShmCache::delete($logicalKey);
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function nodeShmPrefixes(): array
+    {
+        return self::NODE_SHM_PREFIXES;
+    }
+
+    public static function usesNodeShm(string $key): bool
+    {
+        foreach (self::NODE_SHM_PREFIXES as $prefix) {
+            if (str_contains($key, $prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -460,9 +516,9 @@ class Cache
         self::dropLegacyKeyIndex();
         $event = (new self())->startPerformanceEvent('Redis', 'SCAN DEL Cache:* (deleteAll)');
 
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         $batch = [];
-        foreach (self::eachCacheStorageKey() as $storageKey) {
+        foreach (self::eachCacheStorageKey(true) as $storageKey) {
             $batch[] = $storageKey;
             if (count($batch) >= self::SCAN_COUNT) {
                 $client->del($batch);
@@ -479,10 +535,10 @@ class Cache
     /**
      * @return \Generator<int, string> storage keys (no Predis REDIS_PREFIX)
      */
-    private static function eachCacheStorageKey(): \Generator
+    private static function eachCacheStorageKey(bool $write = false): \Generator
     {
         $pattern = ($_ENV['REDIS_PREFIX'] ?? '') . self::KEY_MATCH_SUFFIX;
-        foreach (Redis::getInstance() as $nodeClient) {
+        foreach (Redis::getInstance($write) as $nodeClient) {
             $cursor = '0';
             do {
                 $result = $nodeClient->scan($cursor, [
@@ -517,7 +573,7 @@ class Cache
             return;
         }
         $dropped = true;
-        $client = Redis::getInstance();
+        $client = Redis::getInstance(true);
         try {
             $client->unlink('Cache::_keys');
         } catch (\Throwable) {
