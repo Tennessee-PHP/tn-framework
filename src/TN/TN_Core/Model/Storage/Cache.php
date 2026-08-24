@@ -287,7 +287,9 @@ class Cache
         $lockSeconds = max(1, $lockSeconds);
         $waitMs = max(0, $waitMs);
 
-        $value = self::get($key, true);
+        // Fast path: replica. Miss/stale falls through; the post-lock primary
+        // get below is the correctness check (APICachedJSON / Draft Dominator).
+        $value = self::get($key);
         if ($isHit($value)) {
             return $value;
         }
