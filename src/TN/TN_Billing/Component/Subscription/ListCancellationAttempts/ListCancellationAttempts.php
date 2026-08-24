@@ -33,15 +33,59 @@ class ListCancellationAttempts extends HTMLComponent
     public array $reasonOptions;
     /** @var array<string, string> */
     public array $outcomeOptions;
+    /** @var array<int, array{code: string, label: string, count: int}> */
+    public array $reasonCounts = [];
 
     public function prepare(): void
     {
         $this->reasonOptions = CancellationAttempt::getReasonOptions();
         $this->outcomeOptions = CancellationAttempt::getOutcomeLabels();
 
+        $conditions = $this->getSearchConditions(true);
+        $search = new SearchArguments(
+            conditions: $conditions,
+            sorters: new SearchSorter('createdTs', SearchSorterDirection::DESC)
+        );
+
+        $count = CancellationAttempt::count($search);
+        $this->pagination = new Pagination([
+            'itemCount' => $count,
+            'itemsPerPage' => 50,
+            'search' => $search,
+        ]);
+        $this->pagination->prepare();
+
+        $this->reasonCounts = $this->getReasonCounts();
+
+        $offerTypeLabels = CancellationAttempt::getOfferTypeLabels();
+        $attempts = CancellationAttempt::search($search);
+        foreach ($attempts as $attempt) {
+            $plan = Plan::getInstanceByKey($attempt->planKeyAtAttempt);
+            $this->rows[] = [
+                'attempt' => $attempt,
+                'user' => User::readFromId($attempt->userId),
+                'planName' => $plan instanceof Plan ? $plan->name : $attempt->planKeyAtAttempt,
+                'reasonLabel' => $this->reasonOptions[$attempt->reasonCode] ?? $attempt->reasonCode,
+                'outcomeLabel' => $attempt->outcome !== ''
+                    ? ($this->outcomeOptions[$attempt->outcome] ?? $attempt->outcome)
+                    : '',
+                'offerLabel' => $offerTypeLabels[$attempt->offerType] ?? $attempt->offerType,
+            ];
+        }
+    }
+
+    /**
+     * @return array<int, SearchComparison>
+     */
+    private function getSearchConditions(bool $includeReason): array
+    {
         $conditions = [];
 
-        if (!empty($this->reasonCode) && array_key_exists($this->reasonCode, $this->reasonOptions)) {
+        if (
+            $includeReason
+            && !empty($this->reasonCode)
+            && array_key_exists($this->reasonCode, $this->reasonOptions)
+        ) {
             $conditions[] = new SearchComparison('`reasonCode`', '=', $this->reasonCode);
         }
 
@@ -63,33 +107,39 @@ class ListCancellationAttempts extends HTMLComponent
             }
         }
 
-        $search = new SearchArguments(
-            conditions: $conditions,
-            sorters: new SearchSorter('createdTs', SearchSorterDirection::DESC)
+        return $conditions;
+    }
+
+    /**
+     * Reason totals for the current outcome/date filters (reason filter excluded
+     * so every reason still shows a count).
+     *
+     * @return array<int, array{code: string, label: string, count: int}>
+     */
+    private function getReasonCounts(): array
+    {
+        $grouped = CancellationAttempt::countGrouped(
+            new SearchArguments(conditions: $this->getSearchConditions(false)),
+            ['reasonCode']
         );
+        $countsByCode = [];
+        foreach ($grouped as $row) {
+            $code = (string)($row['reasonCode'] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            $countsByCode[$code] = (int)($row['count'] ?? 0);
+        }
 
-        $count = CancellationAttempt::count($search);
-        $this->pagination = new Pagination([
-            'itemCount' => $count,
-            'itemsPerPage' => 50,
-            'search' => $search,
-        ]);
-        $this->pagination->prepare();
-
-        $offerTypeLabels = CancellationAttempt::getOfferTypeLabels();
-        $attempts = CancellationAttempt::search($search);
-        foreach ($attempts as $attempt) {
-            $plan = Plan::getInstanceByKey($attempt->planKeyAtAttempt);
-            $this->rows[] = [
-                'attempt' => $attempt,
-                'user' => User::readFromId($attempt->userId),
-                'planName' => $plan instanceof Plan ? $plan->name : $attempt->planKeyAtAttempt,
-                'reasonLabel' => $this->reasonOptions[$attempt->reasonCode] ?? $attempt->reasonCode,
-                'outcomeLabel' => $attempt->outcome !== ''
-                    ? ($this->outcomeOptions[$attempt->outcome] ?? $attempt->outcome)
-                    : '',
-                'offerLabel' => $offerTypeLabels[$attempt->offerType] ?? $attempt->offerType,
+        $reasonCounts = [];
+        foreach ($this->reasonOptions as $code => $label) {
+            $reasonCounts[] = [
+                'code' => $code,
+                'label' => $label,
+                'count' => $countsByCode[$code] ?? 0,
             ];
         }
+
+        return $reasonCounts;
     }
 }

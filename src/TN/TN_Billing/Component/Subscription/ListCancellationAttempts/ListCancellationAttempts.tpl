@@ -36,6 +36,18 @@
         </div>
     </form>
 
+    <div class="mb-4">
+        <div class="small text-muted mb-2">Reason counts for these filters</div>
+        <div class="d-flex flex-wrap gap-2">
+            {foreach $reasonCounts as $reasonCount}
+                <span class="badge border{if $reasonCode === $reasonCount.code} text-bg-primary{else} text-bg-light text-dark{/if}">
+                    {$reasonCount.label|escape}
+                    <span class="ms-1">{$reasonCount.count}</span>
+                </span>
+            {/foreach}
+        </div>
+    </div>
+
     <div class="cancellation-attempts-list">
         {foreach $rows as $row}
             {assign var="attempt" value=$row.attempt}

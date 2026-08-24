@@ -17,6 +17,7 @@ export default class ListCancellationAttempts extends HTMLComponent {
 
     protected onFilterFormSubmit(e: Event): void {
         e.preventDefault();
+        this.$element.find('.tn-tn_core-component-pagination-pagination').data('value', 1);
         this.reload();
     }
 
