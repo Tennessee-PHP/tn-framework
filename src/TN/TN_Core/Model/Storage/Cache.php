@@ -16,8 +16,8 @@ class Cache
 {
     use PerformanceRecorder;
 
-    /** @var string the redis key at which to store the set of cache keys */
-    private static string $keysKey = 'Cache::_keys';
+    private const string KEY_MATCH_SUFFIX = 'Cache:*';
+    private const int SCAN_COUNT = 200;
 
     /**
      * set some data in the cache
@@ -35,6 +35,7 @@ class Cache
      */
     public static function set(string $key, mixed $value, int $lifetime = 3600)
     {
+        self::dropLegacyKeyIndex();
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SET {$key}", ['lifetime' => $lifetime]);
 
@@ -47,7 +48,6 @@ class Cache
         }
 
         $client->set($key, serialize($value));
-        $client->sadd(self::$keysKey, [$key]);
         if ($lifetime) {
             $client->expire($key, $lifetime);
         }
@@ -143,12 +143,12 @@ class Cache
 
     public static function setAdd(string $key, string $value, int $lifespan): void
     {
+        self::dropLegacyKeyIndex();
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
 
         $client = Redis::getInstance();
         $client->sadd($key, [$value]);
-        $client->sadd(self::$keysKey, [$key]);
         $client->persist($key);
         $client->expire($key, $lifespan);
 
@@ -338,6 +338,66 @@ class Cache
     }
 
     /**
+     * Raw Redis integer for a generation key. Missing key is 1; does not write.
+     * @param string $key generation key (not serialized)
+     * @return int
+     */
+    public static function generation(string $key): int
+    {
+        $storageKey = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "GET INT {$storageKey}");
+
+        $value = Redis::getInstance()->get($storageKey);
+
+        $event?->end();
+        if ($value === null || $value === false || $value === '') {
+            return 1;
+        }
+        return max(1, (int) $value);
+    }
+
+    /**
+     * Increment a generation key. Missing key becomes 2.
+     * @param string $key generation key (not serialized)
+     * @return int the new generation
+     */
+    public static function bumpGeneration(string $key): int
+    {
+        $storageKey = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "INCR {$storageKey}");
+
+        $client = Redis::getInstance();
+        if ((int) $client->exists($storageKey) === 0) {
+            $client->set($storageKey, '2');
+            $event?->end();
+            return 2;
+        }
+        $next = (int) $client->incr($storageKey);
+
+        $event?->end();
+        return $next;
+    }
+
+    /**
+     * Remove a key without serialize. Safe for leftover Redis sets.
+     * @param string $key
+     */
+    public static function unlink(string $key): void
+    {
+        $storageKey = self::getStorageKey($key);
+        $event = (new self())->startPerformanceEvent('Redis', "UNLINK {$storageKey}");
+
+        $client = Redis::getInstance();
+        try {
+            $client->unlink($storageKey);
+        } catch (\Throwable) {
+            $client->del($storageKey);
+        }
+
+        $event?->end();
+    }
+
+    /**
      * deletes a key from the cache
      * @param string $key the key to remove
      * <code>
@@ -352,7 +412,6 @@ class Cache
         $client = Redis::getInstance();
         $client->set($key, false);
         $client->del($key);
-        $client->srem(self::$keysKey, [$key]);
 
         $event?->end();
     }
@@ -374,30 +433,95 @@ class Cache
         }
     }
 
-    /** @return int the number of items currently stored in the cache */
+    /**
+     * Live Cache:* keys currently stored in Redis (expired keys are not counted).
+     * @return int
+     */
     public static function getCacheKeysSize(): int
     {
-        $event = (new self())->startPerformanceEvent('Redis', "SCARD " . self::$keysKey);
+        self::dropLegacyKeyIndex();
+        $event = (new self())->startPerformanceEvent('Redis', 'SCAN COUNT Cache:*');
 
-        $client = Redis::getInstance();
-        $result = $client->scard(self::$keysKey);
+        $count = 0;
+        foreach (self::eachCacheStorageKey() as $_) {
+            $count++;
+        }
 
         $event?->end();
-        return $result;
+        return $count;
     }
 
-    /** delete everything in the cache WARNING: this should only be consumed by some kind of admin panel!! */
-    public static function deleteAll()
+    /**
+     * Delete every live Cache:* key. Staff cache-clear and test rollback only.
+     * Does not FLUSHALL / FLUSHDB, so sessions and other Redis keys are left alone.
+     */
+    public static function deleteAll(): void
     {
-        $event = (new self())->startPerformanceEvent('Redis', "FLUSHALL (deleteAll)");
+        self::dropLegacyKeyIndex();
+        $event = (new self())->startPerformanceEvent('Redis', 'SCAN DEL Cache:* (deleteAll)');
 
         $client = Redis::getInstance();
-        $keys = $client->smembers(self::$keysKey);
-        foreach ($keys as $key) {
-            $client->del($key);
+        $batch = [];
+        foreach (self::eachCacheStorageKey() as $storageKey) {
+            $batch[] = $storageKey;
+            if (count($batch) >= self::SCAN_COUNT) {
+                $client->del($batch);
+                $batch = [];
+            }
         }
-        $client->del(self::$keysKey);
+        if ($batch !== []) {
+            $client->del($batch);
+        }
 
         $event?->end();
+    }
+
+    /**
+     * @return \Generator<int, string> storage keys (no Predis REDIS_PREFIX)
+     */
+    private static function eachCacheStorageKey(): \Generator
+    {
+        $pattern = ($_ENV['REDIS_PREFIX'] ?? '') . self::KEY_MATCH_SUFFIX;
+        foreach (Redis::getInstance() as $nodeClient) {
+            $cursor = '0';
+            do {
+                $result = $nodeClient->scan($cursor, [
+                    'MATCH' => $pattern,
+                    'COUNT' => self::SCAN_COUNT,
+                ]);
+                $cursor = (string) ($result[0] ?? '0');
+                foreach ($result[1] ?? [] as $redisKey) {
+                    yield self::storageKeyFromRedisKey((string) $redisKey);
+                }
+            } while ($cursor !== '0');
+        }
+    }
+
+    private static function storageKeyFromRedisKey(string $redisKey): string
+    {
+        $prefix = $_ENV['REDIS_PREFIX'] ?? '';
+        if ($prefix !== '' && str_starts_with($redisKey, $prefix)) {
+            return substr($redisKey, strlen($prefix));
+        }
+        return $redisKey;
+    }
+
+    /**
+     * The old Cache::_keys set is no longer written. Unlink it so leftover
+     * members do not keep using Redis memory until a full cache clear.
+     */
+    private static function dropLegacyKeyIndex(): void
+    {
+        static $dropped = false;
+        if ($dropped) {
+            return;
+        }
+        $dropped = true;
+        $client = Redis::getInstance();
+        try {
+            $client->unlink('Cache::_keys');
+        } catch (\Throwable) {
+            $client->del('Cache::_keys');
+        }
     }
 }

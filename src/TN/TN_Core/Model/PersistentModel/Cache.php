@@ -82,14 +82,47 @@ trait Cache
             // If no cache class found, use static::class as fallback (shouldn't happen if cacheEnabled is checked)
             $cacheClass = static::class;
         }
-        return implode(':', [$cacheClass, static::getCacheVersion(), $type, $identifier]);
+        return implode(':', [$cacheClass, static::getCacheVersion(), (string) static::getCacheGeneration(), $type, $identifier]);
+    }
+
+    protected static function getCacheGenerationKey(): string
+    {
+        $cacheClass = static::getCacheClass();
+        if (!$cacheClass) {
+            $cacheClass = static::class;
+        }
+        return $cacheClass . ':cache-gen';
+    }
+
+    protected static function getCacheGeneration(): int
+    {
+        return CacheStorage::generation(static::getCacheGenerationKey());
+    }
+
+    /**
+     * Old tracking-set keys (no generation in the path). Used only to free leftover Redis memory.
+     */
+    protected static function getLegacyTrackingSetKey(string $set): string
+    {
+        $cacheClass = static::getCacheClass();
+        if (!$cacheClass) {
+            $cacheClass = static::class;
+        }
+        return implode(':', [$cacheClass, static::getCacheVersion(), 'set', $set]);
+    }
+
+    protected static function bumpCacheGeneration(): void
+    {
+        CacheStorage::bumpGeneration(static::getCacheGenerationKey());
+        foreach (['objects', 'searches', 'counts'] as $set) {
+            CacheStorage::unlink(static::getLegacyTrackingSetKey($set));
+        }
     }
 
     protected static function objectSetCache(string|int $id, mixed $object): void
     {
         $cacheKey = static::getCacheKey('object', $id);
         CacheStorage::set($cacheKey, $object, static::getCacheLifespan());
-        CacheStorage::setAdd(static::getCacheKey('set', 'objects'), $cacheKey, static::getCacheLifespan());
     }
 
     protected static function objectCache(string|int $id): mixed
@@ -162,7 +195,6 @@ trait Cache
         }
 
         CacheStorage::set($cacheKey, $ids, static::getCacheLifespan());
-        CacheStorage::setAdd(static::getCacheKey('set', 'searches'), $cacheKey, static::getCacheLifespan());
     }
 
     protected static function countCache(string $searchCacheIdentifier): ?int
@@ -180,20 +212,6 @@ trait Cache
         }
 
         CacheStorage::set(static::getCacheKey('count', $searchCacheIdentifier), $count, static::getCacheLifespan());
-        CacheStorage::setAdd(static::getCacheKey('set', 'counts'), static::getCacheKey('count', $searchCacheIdentifier), static::getCacheLifespan());
-    }
-
-    protected static function invalidateCacheSet(string $set): void
-    {
-        try {
-            foreach (CacheStorage::setMembers(static::getCacheKey('set', $set)) as $memberCacheKey) {
-                CacheStorage::delete($memberCacheKey);
-            }
-        } catch (\Exception $e) {
-            // do nothing
-        }
-
-        CacheStorage::delete(static::getCacheKey('set', $set));
     }
 
     protected static function invalidateClassCache(): void
@@ -201,9 +219,7 @@ trait Cache
         if (!static::cacheEnabled()) {
             return;
         }
-        static::invalidateCacheSet('objects');
-        static::invalidateCacheSet('searches');
-        static::invalidateCacheSet('counts');
+        static::bumpCacheGeneration();
     }
 
     protected function invalidateCache(): void
@@ -211,15 +227,7 @@ trait Cache
         if (!static::cacheEnabled()) {
             return;
         }
-
-        // Use getCacheKey() which now uses getCacheClass() to ensure consistent cache keys
-        // getCacheClass() always returns the parent class Cache attribute when available
-        CacheStorage::delete(static::getCacheKey('object', $this->id));
-        CacheStorage::setRemove(static::getCacheKey('set', 'objects'), static::getCacheKey('object', $this->id));
-
-        // Invalidate search/count caches using the cache class
-        static::invalidateCacheSet('searches');
-        static::invalidateCacheSet('counts');
+        static::bumpCacheGeneration();
     }
 
     /**
