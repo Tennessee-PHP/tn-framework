@@ -52,8 +52,8 @@ class CancellationAttempt implements Persistence
     public static function getOfferTypeLabels(): array
     {
         return [
-            self::OFFER_SWITCH_TO_ANNUAL_10PCT => 'Switch to annual + 10% off',
-            self::OFFER_RENEWAL_10PCT => '10% off next renewal',
+            self::OFFER_SWITCH_TO_ANNUAL_10PCT => 'Switch to annual + 50% off',
+            self::OFFER_RENEWAL_10PCT => '50% off next renewal',
             self::OFFER_NONE_INELIGIBLE => 'Offer not available',
         ];
     }

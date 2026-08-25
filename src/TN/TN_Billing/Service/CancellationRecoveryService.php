@@ -186,10 +186,11 @@ class CancellationRecoveryService
         }
 
         $amount = $voucher->applyToPrice($priceObj->price);
+        $pct = $voucher->discountPercentage;
 
         return [
             'amount' => $amount,
-            'label' => 'Switch to annual billing and save 10% — pay $' . number_format($amount, 2) . ' for your first annual renewal',
+            'label' => 'Switch to annual billing and save ' . $pct . '% — pay $' . number_format($amount, 2) . ' for your first annual renewal',
         ];
     }
 
@@ -201,10 +202,11 @@ class CancellationRecoveryService
     {
         $baseAmount = self::computeUpcomingRenewalAmount($subscription);
         $amount = $voucher->applyToPrice($baseAmount);
+        $pct = $voucher->discountPercentage;
 
         return [
             'amount' => $amount,
-            'label' => 'Get 10% off your next renewal — pay $' . number_format($amount, 2) . ' instead of $' . number_format($baseAmount, 2),
+            'label' => 'Get ' . $pct . '% off your next renewal — pay $' . number_format($amount, 2) . ' instead of $' . number_format($baseAmount, 2),
         ];
     }
 
@@ -335,7 +337,7 @@ class CancellationRecoveryService
 
             return [
                 'redirectUrl' => $_ENV['BASE_URL'] . 'checkout/plan/' . $subscription->planKey . '/annually',
-                'message' => 'Complete checkout to switch to annual billing with your 10% discount.',
+                'message' => 'Complete checkout to switch to annual billing with your ' . $voucher->discountPercentage . '% discount.',
             ];
         }
 
@@ -356,7 +358,7 @@ class CancellationRecoveryService
         ]);
 
         return [
-            'message' => 'Your 10% discount has been applied to your next renewal on '
+            'message' => 'Your ' . $voucher->discountPercentage . '% discount has been applied to your next renewal on '
                 . date('F j, Y', $subscription->nextTransactionTs)
                 . ' ($' . number_format($discountedAmount, 2) . ').',
         ];
