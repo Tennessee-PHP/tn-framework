@@ -57,7 +57,7 @@ trait Redis
             return unserialize($data);
         } catch (\Exception $e) {
             // Clean up corrupted key and return null
-            $client->del($key);
+            RedisDB::getInstance(true)->del($key);
             return null;
         }
     }
@@ -96,7 +96,7 @@ trait Redis
      */
     public function erase(): bool
     {
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $key = self::getObjectKey($this->id);
         $client->del($key);
         $this->erased = true;
@@ -120,7 +120,7 @@ trait Redis
     public function save(array $changedProperties = []): bool
     {
         $this->beforeSave($changedProperties);
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $key = self::getObjectKey($this->id);
         $client->set($key, serialize($this));
         $this->saveToSets();
@@ -134,7 +134,7 @@ trait Redis
     protected function afterSave(): void
     {
         // Set default expiration of 1 hour for Redis objects
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $key = self::getObjectKey($this->id);
         $client->expire($key, 3600);
     }
@@ -145,7 +145,7 @@ trait Redis
     private function eraseFromSets()
     {
         $sets = $this->getSets();
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         foreach ($sets as $set) {
             $key = self::getSetKey($set);
             $client->srem($key, $this->id);
@@ -158,7 +158,7 @@ trait Redis
     private function saveToSets()
     {
         $sets = $this->getSets();
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         foreach ($sets as $set) {
             $key = self::getSetKey($set);
             $client->sadd($key, [$this->id]);

@@ -26,7 +26,7 @@ class UserApiKeyRateLimitService
         $useTestClient = $redisClient !== null;
         if (!$useTestClient) {
             try {
-                $redisClient = Redis::getInstance();
+                $redisClient = Redis::getInstance(true);
             } catch (\Throwable $e) {
                 error_log('UserApiKeyRateLimitService: Redis unavailable, rate limit skipped: ' . $e->getMessage());
                 return;

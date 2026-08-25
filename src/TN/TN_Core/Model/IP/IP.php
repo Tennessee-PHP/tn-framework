@@ -32,7 +32,7 @@ class IP
      */
     protected function afterSave(): void
     {
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $key = self::getObjectKey($this->id);
         $client->expire($key, 86400);
     }

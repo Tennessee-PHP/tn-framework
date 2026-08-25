@@ -224,7 +224,7 @@ class TrackedVisitor implements Persistence
     /** clears all data */
     protected function clearRouteData(): void
     {
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $client->del(self::getKey($this->id));
     }
 
@@ -235,7 +235,7 @@ class TrackedVisitor implements Persistence
      */
     protected function setHash(string $hash, mixed $value): void
     {
-        $client = RedisDB::getInstance();
+        $client = RedisDB::getInstance(true);
         $client->hset(self::getKey($this->id), $hash, $value);
         $client->expire(self::getKey($this->id), 86400);
         $this->setCookie();

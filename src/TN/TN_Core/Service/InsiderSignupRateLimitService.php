@@ -19,7 +19,7 @@ class InsiderSignupRateLimitService
     public static function isAllowed(HTTPRequest $request): bool
     {
         try {
-            $redis = Redis::getInstance();
+            $redis = Redis::getInstance(true);
         } catch (\Throwable $e) {
             error_log('InsiderSignupRateLimit: Redis unavailable, allowing request: ' . $e->getMessage());
             return true;
