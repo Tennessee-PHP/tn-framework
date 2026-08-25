@@ -323,7 +323,6 @@
 
                 <div class="cancellation-wizard-step" data-step="save" style="display: none;">
                     <div class="modal-body">
-                        <p id="cancellation_reason_acknowledgement" class="mb-3"></p>
                         {if $scheduledDowngradeSummary}
                             <p class="alert alert-warning">
                                 Turning off auto-renew will also cancel your scheduled change to
@@ -331,24 +330,33 @@
                             </p>
                         {/if}
                         <div id="cancellation_offer_available">
-                            <div class="alert alert-info border mb-3">
-                                <p class="fw-semibold mb-0" id="cancellation_offer_label"></p>
-                            </div>
+                            <h5 class="mb-3">We'd love to keep you.</h5>
+                            <p class="mb-3">We understand that cost matters. If price is the reason you're leaving, we'd rather make this easier to keep than lose you altogether.</p>
+                            <p class="mb-3" id="cancellation_offer_stay_line"></p>
+                            <p class="mb-3">Keep all of it for <span class="cancellation-offer-pct">50</span>% off for the next year.</p>
+                            <p class="mb-1 fw-semibold">Your renewal price:</p>
+                            <p class="fs-4 mb-3">
+                                <span id="cancellation_offer_regular_price" class="text-decoration-line-through text-muted me-2"></span>
+                                <span id="cancellation_offer_discounted_price" class="fw-semibold"></span>
+                            </p>
+                            <p class="mb-4">After that year, your subscription will renew at the regular rate then in effect. We'll remind you before it renews.</p>
                         </div>
                         <div id="cancellation_existing_discount" style="display: none;">
                             <div class="alert alert-info border mb-3">
                                 <p class="fw-semibold mb-0" id="cancellation_existing_discount_label"></p>
                             </div>
                         </div>
-                        <p class="mb-2">You might also like:</p>
-                        <ul class="mb-4">
-                            <li><a href="{$BASE_URL}your-subscription">Learn how to get the most from your subscription</a></li>
-                            {if !$hasHighestPlan}
-                                <li><a href="{$BASE_URL}plans">Upgrade Plan</a></li>
-                            {/if}
-                        </ul>
-                        <button type="button" class="btn btn-lg btn-success w-100 mb-3" id="cancellation_accept_offer_btn">Accept Offer</button>
-                        <button type="button" class="btn btn-lg btn-danger w-100" id="cancellation_decline_offer_btn">Turn Off Auto-Renew</button>
+                        <div id="cancellation_fallback_links" style="display: none;">
+                            <p class="mb-2">You might also like:</p>
+                            <ul class="mb-4">
+                                <li><a href="{$BASE_URL}your-subscription">Learn how to get the most from your subscription</a></li>
+                                {if !$hasHighestPlan}
+                                    <li><a href="{$BASE_URL}plans">Upgrade Plan</a></li>
+                                {/if}
+                            </ul>
+                        </div>
+                        <button type="button" class="btn btn-lg btn-success w-100 mb-3" id="cancellation_accept_offer_btn" data-accept-label-prefix="Yes, Keep My Access for ">Yes, Keep My Access</button>
+                        <button type="button" class="btn btn-lg btn-outline-secondary w-100" id="cancellation_decline_offer_btn">No thanks, continue cancellation</button>
                     </div>
                 </div>
             </div>

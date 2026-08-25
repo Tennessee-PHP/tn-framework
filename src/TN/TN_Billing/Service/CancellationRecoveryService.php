@@ -119,38 +119,56 @@ class CancellationRecoveryService
     }
 
     /**
-     * @return array{amount: float, label: string, skipSaveStep: bool}
+     * @return array{amount: float, regularAmount: float, discountPercentage: int, switchToAnnual: bool, label: string, skipSaveStep: bool}
      */
     public static function getOfferPreview(CancellationAttempt $attempt, Subscription $subscription): array
     {
         if ($attempt->offerType === CancellationAttempt::OFFER_NONE_INELIGIBLE) {
-            return ['amount' => 0.0, 'label' => '', 'skipSaveStep' => true];
+            return self::emptyOfferPreview();
         }
 
         $plan = $subscription->getPlan();
         $voucher = self::findRetentionVoucher($plan instanceof Plan ? $plan : null);
         if (!$voucher instanceof VoucherCode) {
-            return ['amount' => 0.0, 'label' => '', 'skipSaveStep' => true];
+            return self::emptyOfferPreview();
         }
 
         try {
             $preview = match ($attempt->offerType) {
                 CancellationAttempt::OFFER_SWITCH_TO_ANNUAL_10PCT => self::getAnnualSwitchOfferPreview($subscription, $voucher),
                 CancellationAttempt::OFFER_RENEWAL_10PCT => self::getRenewalOfferPreview($subscription, $voucher),
-                default => ['amount' => 0.0, 'label' => ''],
+                default => ['amount' => 0.0, 'regularAmount' => 0.0, 'discountPercentage' => 0, 'switchToAnnual' => false, 'label' => ''],
             };
         } catch (ValidationException) {
-            return ['amount' => 0.0, 'label' => '', 'skipSaveStep' => true];
+            return self::emptyOfferPreview();
         }
 
         if ($preview['label'] === '') {
-            return ['amount' => 0.0, 'label' => '', 'skipSaveStep' => true];
+            return self::emptyOfferPreview();
         }
 
         return [
             'amount' => $preview['amount'],
+            'regularAmount' => $preview['regularAmount'],
+            'discountPercentage' => $preview['discountPercentage'],
+            'switchToAnnual' => $preview['switchToAnnual'],
             'label' => $preview['label'],
             'skipSaveStep' => false,
+        ];
+    }
+
+    /**
+     * @return array{amount: float, regularAmount: float, discountPercentage: int, switchToAnnual: bool, label: string, skipSaveStep: bool}
+     */
+    private static function emptyOfferPreview(): array
+    {
+        return [
+            'amount' => 0.0,
+            'regularAmount' => 0.0,
+            'discountPercentage' => 0,
+            'switchToAnnual' => false,
+            'label' => '',
+            'skipSaveStep' => true,
         ];
     }
 
@@ -169,7 +187,7 @@ class CancellationRecoveryService
     }
 
     /**
-     * @return array{amount: float, label: string}
+     * @return array{amount: float, regularAmount: float, discountPercentage: int, switchToAnnual: bool, label: string}
      * @throws ValidationException
      */
     private static function getAnnualSwitchOfferPreview(Subscription $subscription, VoucherCode $voucher): array
@@ -185,17 +203,21 @@ class CancellationRecoveryService
             throw new ValidationException('Annual billing is not available for this plan');
         }
 
-        $amount = $voucher->applyToPrice($priceObj->price);
+        $regularAmount = (float) $priceObj->price;
+        $amount = $voucher->applyToPrice($regularAmount);
         $pct = $voucher->discountPercentage;
 
         return [
             'amount' => $amount,
+            'regularAmount' => $regularAmount,
+            'discountPercentage' => $pct,
+            'switchToAnnual' => true,
             'label' => 'Switch to annual billing and save ' . $pct . '% — pay $' . number_format($amount, 2) . ' for your first annual renewal',
         ];
     }
 
     /**
-     * @return array{amount: float, label: string}
+     * @return array{amount: float, regularAmount: float, discountPercentage: int, switchToAnnual: bool, label: string}
      * @throws ValidationException
      */
     private static function getRenewalOfferPreview(Subscription $subscription, VoucherCode $voucher): array
@@ -206,6 +228,9 @@ class CancellationRecoveryService
 
         return [
             'amount' => $amount,
+            'regularAmount' => $baseAmount,
+            'discountPercentage' => $pct,
+            'switchToAnnual' => false,
             'label' => 'Get ' . $pct . '% off your next renewal — pay $' . number_format($amount, 2) . ' instead of $' . number_format($baseAmount, 2),
         ];
     }

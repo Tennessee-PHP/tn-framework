@@ -174,9 +174,38 @@ export default class BillingTab extends HTMLComponent {
         $('#cancellation_other_hint').hide();
         $('#cancellation_offer_available').show();
         $('#cancellation_existing_discount').hide();
+        $('#cancellation_fallback_links').hide();
         this.$cancelAcceptOfferBtn.show();
+        this.$cancelDeclineOfferBtn.text('No thanks, continue cancellation');
         this.showCancellationStep('survey');
         this.setCancellationWizardLoading(false);
+    }
+
+    private formatOfferUsd(amount: number): string {
+        return '$' + Number(amount).toFixed(2);
+    }
+
+    private fillCancellationOffer(data: {
+        offerAmount?: number;
+        offerRegularAmount?: number;
+        offerDiscountPercentage?: number;
+        switchToAnnual?: boolean;
+    }): void {
+        const pct = Number(data.offerDiscountPercentage || 0);
+        const regular = Number(data.offerRegularAmount || 0);
+        const discounted = Number(data.offerAmount || 0);
+        const stayLine = data.switchToAnnual
+            ? `Stay with us for another year on annual billing and we'll take ${pct}% off your first annual renewal.`
+            : `Stay with us for another year and we'll take ${pct}% off your next renewal.`;
+
+        $('#cancellation_offer_stay_line').text(stayLine);
+        $('.cancellation-offer-pct').text(String(pct));
+        $('#cancellation_offer_regular_price').text(this.formatOfferUsd(regular));
+        $('#cancellation_offer_discounted_price').text(this.formatOfferUsd(discounted));
+        const prefix =
+            (this.$cancelAcceptOfferBtn.data('accept-label-prefix') as string) ||
+            'Yes, Keep My Access for ';
+        this.$cancelAcceptOfferBtn.text(`${prefix}${this.formatOfferUsd(discounted)}`);
     }
 
     private onCancellationReasonChange(): void {
@@ -193,7 +222,7 @@ export default class BillingTab extends HTMLComponent {
 
         const titles: Record<string, string> = {
             survey: 'Turn Off Auto-Renew',
-            save: 'Before You Go…',
+            save: "We'd love to keep you.",
         };
         $('#cancelPlanModalTitle').text(titles[step] || 'Turn Off Auto-Renew');
     }
@@ -232,12 +261,13 @@ export default class BillingTab extends HTMLComponent {
                 }
 
                 this.cancellationAttemptId = response.data.attemptId;
-                $('#cancellation_reason_acknowledgement').text(response.data.reasonAcknowledgement || '');
 
                 const skipSave = !!response.data.skipSaveStep;
                 if (skipSave) {
                     $('#cancellation_offer_available').hide();
+                    $('#cancellation_fallback_links').show();
                     this.$cancelAcceptOfferBtn.hide();
+                    this.$cancelDeclineOfferBtn.text('Turn Off Auto-Renew');
 
                     const existingLabel = response.data.existingDiscountLabel || '';
                     if (existingLabel) {
@@ -248,9 +278,11 @@ export default class BillingTab extends HTMLComponent {
                     }
                 } else {
                     $('#cancellation_offer_available').show();
+                    $('#cancellation_fallback_links').hide();
                     $('#cancellation_existing_discount').hide();
-                    $('#cancellation_offer_label').text(response.data.offerLabel || '');
+                    this.fillCancellationOffer(response.data);
                     this.$cancelAcceptOfferBtn.show();
+                    this.$cancelDeclineOfferBtn.text('No thanks, continue cancellation');
                 }
 
                 this.showCancellationStep('save');
