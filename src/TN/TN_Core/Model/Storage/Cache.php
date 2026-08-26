@@ -18,6 +18,8 @@ class Cache
 
     private const string KEY_MATCH_SUFFIX = 'Cache:*';
     private const int SCAN_COUNT = 200;
+    /** Used when a caller passes 0 or a negative lifetime. Those must not persist under volatile-lru. */
+    private const int DEFAULT_LIFETIME_SECONDS = 3600;
 
     /** Logical-key fragments that also live on /dev/shm after the first Redis fill. */
     private const array NODE_SHM_PREFIXES = [
@@ -34,7 +36,8 @@ class Cache
      * handled by a prefix constant passed to the client at instantiation.
      * @param string $key the key to store it against
      * @param mixed $value the value to store - can be anything that can be run through php's serialize
-     * @param int $lifetime in seconds. Cache data on this key will expire after this time. Default of 3600 = 1 hour
+     * @param int $lifetime seconds until Redis drops the key. Default 3600. Zero or negative uses 3600
+     *     (not forever: this Redis uses volatile-lru, so a TTL-less key is never evicted).
      * @see https://www.php.net/manual/en/function.serialize.php
      * @example
      * <code>
@@ -43,6 +46,7 @@ class Cache
      */
     public static function set(string $key, mixed $value, int $lifetime = 3600)
     {
+        $lifetime = self::positiveLifetimeSeconds($lifetime);
         self::dropLegacyKeyIndex();
         $logicalKey = $key;
         $key = self::getStorageKey($key);
@@ -56,14 +60,11 @@ class Cache
             $client->del($key);
         }
 
-        $client->set($key, serialize($value));
-        if ($lifetime) {
-            $client->expire($key, $lifetime);
-        }
+        $client->set($key, serialize($value), 'EX', $lifetime);
 
         $event?->end();
 
-        if ($lifetime > 0 && self::usesNodeShm($logicalKey)) {
+        if (self::usesNodeShm($logicalKey)) {
             NodeShmCache::set($logicalKey, $value, $lifetime);
         }
     }
@@ -177,14 +178,16 @@ class Cache
 
     public static function setAdd(string $key, string $value, int $lifespan): void
     {
+        $lifespan = self::positiveLifetimeSeconds($lifespan);
         self::dropLegacyKeyIndex();
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "SADD {$key} {$value}", ['lifespan' => $lifespan]);
 
         $client = Redis::getInstance(true);
+        $client->multi();
         $client->sadd($key, [$value]);
-        $client->persist($key);
         $client->expire($key, $lifespan);
+        $client->exec();
 
         $event?->end();
     }
@@ -234,19 +237,20 @@ class Cache
      * @param string $key
      * @param string $field
      * @param mixed $value
-     * @param int $lifetime
+     * @param int $lifetime seconds until Redis drops the hash. Zero or negative uses 3600, not forever.
      * @return void
      */
     public static function hashSet(string $key, string $field, mixed $value, int $lifetime = 0): void
     {
+        $lifetime = self::positiveLifetimeSeconds($lifetime);
         $key = self::getStorageKey($key);
         $event = (new self())->startPerformanceEvent('Redis', "HSET {$key} {$field}", ['lifetime' => $lifetime]);
 
         $client = Redis::getInstance(true);
+        $client->multi();
         $client->hset($key, $field, serialize($value));
-        if ($lifetime) {
-            $client->expire($key, $lifetime);
-        }
+        $client->expire($key, $lifetime);
+        $client->exec();
 
         $event?->end();
     }
@@ -473,6 +477,15 @@ class Cache
             }
         }
         return false;
+    }
+
+    /**
+     * Redis TTL in seconds. Zero/negative is treated as DEFAULT_LIFETIME_SECONDS so
+     * volatile-lru can evict the key; a TTL-less write survives until manual delete.
+     */
+    private static function positiveLifetimeSeconds(int $lifetime): int
+    {
+        return $lifetime > 0 ? $lifetime : self::DEFAULT_LIFETIME_SECONDS;
     }
 
     /**
