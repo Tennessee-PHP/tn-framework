@@ -795,7 +795,7 @@ class Subscription implements Persistence
 
         $transaction = \TN\TN_Billing\Model\Transaction\Braintree\Transaction::getInstance();
         $user = $this->getUser();
-        $amount = round($price - $credit, 2);
+        $amount = max(0, round($price - $credit, 2));
         $renewalVoucherCode = null;
         if ($this->voucherCodeId > 0) {
             $candidateVoucher = VoucherCode::readFromId($this->voucherCodeId);
@@ -812,8 +812,9 @@ class Subscription implements Persistence
             'ip' => 'from-server'
         ]);
 
-        if ($isComplimentary) {
-            // Braintree cannot process a $0 sale — record a local successful renewal instead.
+        $skipGatewaySale = $isComplimentary || $amount <= 0;
+        if ($skipGatewaySale) {
+            // Braintree cannot process a $0 or negative sale — record a local successful renewal instead.
             $transaction->update([
                 'success' => true,
                 'ts' => Time::getNow(),
@@ -883,7 +884,7 @@ class Subscription implements Persistence
         try {
             $this->update($updateData);
         } catch (ValidationException $e) {
-            if (!$isComplimentary) {
+            if (!$skipGatewaySale) {
                 $transaction->refund();
             }
             throw new ValidationException('An error occurred while setting the subscription\'s next billing date');
@@ -893,7 +894,6 @@ class Subscription implements Persistence
             PlanChangeService::markDowngradeApplied($scheduledDowngrade, $transaction);
         }
 
-        // Record successful transaction FIRST before attempting to end creditable subscription
         $this->addSuccessfulTransaction($transaction);
 
         if ($creditableSubscription instanceof Subscription) {

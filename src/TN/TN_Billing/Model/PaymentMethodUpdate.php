@@ -87,6 +87,11 @@ class PaymentMethodUpdate
             $result = $subscription->recurBilling($nonce, $deviceData);
             // If transaction successful, the payment method should already be updated by Braintree
             if ($result && !is_array($result) && $result->success) {
+                // A fully credited renewal skips the Braintree sale, so the nonce has not been stored yet.
+                if ($result->amount <= 0) {
+                    return $this->updatePaymentMethodOnly($nonce);
+                }
+
                 // Update our local customer record from Braintree (without using the nonce again)
                 $customer = Customer::getFromUser($this->user);
                 if ($customer->validateOrRecreateInBraintree()) {
