@@ -777,7 +777,10 @@ class Subscription implements Persistence
                 $plan = $downgradeToPlan;
             }
         } elseif ($downgradeToPlan instanceof Plan) {
-            $price = PlanChangeService::computePlanRenewalAmount($this, $downgradeToPlan);
+            $price = $this->nextTransactionAmount;
+            if ($price == 0) {
+                $price = PlanChangeService::computePlanRenewalAmount($this, $downgradeToPlan);
+            }
             $plan = $downgradeToPlan;
         } else {
             $price = $this->nextTransactionAmount;
