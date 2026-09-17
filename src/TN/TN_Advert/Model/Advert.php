@@ -166,13 +166,43 @@ class Advert implements Persistence
             $adverts = SiteMessageView::ruleOutRecentlySeenAdverts($adverts);
         }
 
-        /* remove any adverts that have already been shown on this page view */
-        $adverts = array_filter($adverts, function ($advert) {
-            return !in_array($advert->id, self::$viewedAdvertIds);
-        });
+        $advert = self::pickAdvertFromPool($adverts);
+
+        if ($advert && $advertSpotKey === 'site_message') {
+            SiteMessageView::logView($advert);
+        }
+
+        return $advert;
+    }
+
+    /**
+     * Pick one advert from a pool by weight, skipping any already shown on this page.
+     * When every advert in the pool has already been shown, start a new round so
+     * remaining slots keep rotating instead of going blank.
+     *
+     * @param Advert[] $adverts
+     */
+    public static function pickAdvertFromPool(array $adverts): ?Advert
+    {
+        if (empty($adverts)) {
+            return null;
+        }
+
+        $unshownAdverts = array_values(array_filter($adverts, function ($advert) {
+            return !in_array($advert->id, self::$viewedAdvertIds, true);
+        }));
+
+        if (empty($unshownAdverts)) {
+            $poolIds = [];
+            foreach ($adverts as $advert) {
+                $poolIds[] = $advert->id;
+            }
+            self::$viewedAdvertIds = array_values(array_diff(self::$viewedAdvertIds, $poolIds));
+            $unshownAdverts = array_values($adverts);
+        }
 
         $weightedAdverts = [];
-        foreach ($adverts as $advert) {
+        foreach ($unshownAdverts as $advert) {
             for ($i = 0; $i < $advert->weight; $i++) {
                 $weightedAdverts[] = $advert;
             }
@@ -183,12 +213,6 @@ class Advert implements Persistence
         }
 
         $advert = $weightedAdverts[array_rand($weightedAdverts)];
-
-        if ($advertSpotKey === 'site_message') {
-            SiteMessageView::logView($advert);
-        }
-
-        /* add this advert's id into the array of adverts shown on this page */
         self::$viewedAdvertIds[] = $advert->id;
 
         return $advert;
