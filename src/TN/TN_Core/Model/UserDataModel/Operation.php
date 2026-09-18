@@ -172,9 +172,94 @@ class Operation implements Persistence
         }
     }
 
+    /**
+     * Keep the latest update op that lists each field. Delete an older update only when
+     * a newer update covers every field on it.
+     *
+     * @param list<array{id: int, originTs: int, prop: string}> $updateOps
+     * @return list<int>
+     */
+    public static function supersededUpdateOperationIds(array $updateOps): array
+    {
+        usort($updateOps, static function (array $a, array $b): int {
+            $originCmp = ((int)$a['originTs']) <=> ((int)$b['originTs']);
+            if ($originCmp !== 0) {
+                return $originCmp;
+            }
+            return ((int)$a['id']) <=> ((int)$b['id']);
+        });
+
+        $ids = [];
+        $latestIdByField = [];
+        foreach ($updateOps as $op) {
+            $id = (int)$op['id'];
+            $ids[] = $id;
+            foreach (self::parseOperationPropFields((string)($op['prop'] ?? '')) as $field) {
+                $latestIdByField[$field] = $id;
+            }
+        }
+
+        $keepIds = array_unique(array_values($latestIdByField));
+        $superseded = [];
+        foreach ($ids as $id) {
+            if (!in_array($id, $keepIds, true)) {
+                $superseded[] = $id;
+            }
+        }
+        return $superseded;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function parseOperationPropFields(string $prop): array
+    {
+        $fields = [];
+        foreach (explode(',', $prop) as $field) {
+            $field = trim($field);
+            if ($field !== '') {
+                $fields[] = $field;
+            }
+        }
+        return $fields;
+    }
+
     protected function reducePreviousOperations(): void
     {
         if ($this->method === self::CREATE) {
+            return;
+        }
+
+        if ($this->method === self::UPDATE) {
+            $ops = static::search(new SearchArguments(
+                conditions: [
+                    new SearchComparison('`userId`', '=', $this->userId),
+                    new SearchComparison('`recordId`', '=', $this->recordId),
+                    new SearchComparison('`model`', '=', $this->model),
+                    new SearchComparison('`method`', '=', self::UPDATE),
+                    new SearchComparison('`originTs`', '<=', $this->originTs),
+                ]
+            ));
+            $rows = [];
+            $opsById = [];
+            foreach ($ops as $op) {
+                $opsById[$op->id] = $op;
+                $rows[] = [
+                    'id' => $op->id,
+                    'originTs' => $op->originTs,
+                    'prop' => (string)($op->prop ?? ''),
+                ];
+            }
+            $toErase = [];
+            foreach (self::supersededUpdateOperationIds($rows) as $id) {
+                if ($id === $this->id || !isset($opsById[$id])) {
+                    continue;
+                }
+                $toErase[] = $opsById[$id];
+            }
+            if ($toErase !== []) {
+                static::batchErase($toErase);
+            }
             return;
         }
 
@@ -188,17 +273,6 @@ class Operation implements Persistence
             AND `model` = ?
             AND `id` != ?";
         $params = [$this->userId, $this->recordId, $this->model, $this->id];
-
-        if ($this->method === self::DELETE) {
-            // delete: remove EVERYTHING previous EXCEPT the delete we just added
-            // above query is great already!
-
-        } else if ($this->method === self::UPDATE) {
-            // update: remove any previous updates EXCEPT the update we just added
-            $query .= " AND `method` = ? AND `originTs` <= ?";
-            $params[] = self::UPDATE;
-            $params[] = $this->originTs;
-        }
 
         $db->prepare($query)->execute($params);
     }
