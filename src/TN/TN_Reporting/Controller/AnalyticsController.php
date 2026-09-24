@@ -49,58 +49,44 @@ class AnalyticsController extends Controller
     #[CommandName('reporting/analytics/update')]
     public function updateAnalytics(): ?string
     {
-        // One-time recalculation since July 4th, 2025 (uses Redis to ensure it only runs once)
-        $redisKey = 'analytics_recalc_july_2025_done';
-        if (!Cache::get($redisKey)) {
-            echo "Starting one-time recalculation from July 4, 2025...\n";
+        // Same lifetime as #[TimeLimit(5000)]. A dead process stops blocking after that.
+        $lockKey = 'reporting/analytics/update';
+        $lockToken = Cache::tryLock($lockKey, 5000);
+        if ($lockToken === false) {
+            echo "Analytics update already running; exiting.\n";
+            return null;
+        }
 
-            $startDate = strtotime('2025-07-04');
-            $endDate = Time::getTodayTs();
+        try {
+            $tses = [Time::getTodayTs()];
 
-            $currentTs = $startDate;
-            while ($currentTs <= $endDate) {
-                echo "Recalculating for " . date('Y-m-d', $currentTs) . "\n";
-
-                // Only recalculate the three specific report types
-                RevenueRecurringEntry::updateDayReports($currentTs);
-                RevenuePerSubscriptionEntry::updateDayReports($currentTs);
-                SubscriptionsLifetimeValueEntry::updateDayReports($currentTs);
-
-                $currentTs = strtotime('+1 day', $currentTs);
+            // if it's between 00:00:00 and 01:00:00, let's do yesterday too
+            if (date('H') < 1) {
+                $tses[] = strtotime('-1 day', Time::getTodayTs());
             }
 
-            // Mark as completed in Redis (expires in 30 days)
-            Cache::set($redisKey, true, 86400 * 30);
-            echo "One-time recalculation completed!\n";
-        }
-
-        // Regular daily analytics update
-        $tses = [Time::getTodayTs()];
-
-        // if it's between 00:00:00 and 01:00:00, let's do yesterday too
-        if (date('H') < 1) {
-            $tses[] = strtotime('-1 day', Time::getTodayTs());
-        }
-
-        foreach ($tses as $ts) {
-            RevenueDailyEntry::updateDayReports($ts);
-            SubscriptionsChurnEntry::updateDayReports($ts);
-            SubscriptionsActiveEntry::updateDayReports($ts);
-            RevenueRecurringEntry::updateDayReports($ts);
-            RevenuePerSubscriptionEntry::updateDayReports($ts);
-            SubscriptionsLifetimeValueEntry::updateDayReports($ts);
-            UsersRegistrationsEntry::updateDayReports($ts);
-            SubscriptionsNewEntry::updateDayReports($ts);
-            BraintreePaymentMethodsEntry::updateDayReports($ts);
-            SubscriptionsUpgradeEntry::updateDayReports($ts);
-            SubscriptionsDowngradeEntry::updateDayReports($ts);
-            SubscriptionsRenewalEntry::updateDayReports($ts);
-            SubscriptionsStalledEntry::updateDayReports($ts);
-            SubscriptionsEndedEntry::updateDayReports($ts);
-            SubscriptionsCancelEventsEntry::updateDayReports($ts);
-            ExpensesFeesEntry::updateDayReports($ts);
-            ExpensesRefundsEntry::updateDayReports($ts);
-            CampaignDailyEntry::updateDayReports($ts);
+            foreach ($tses as $ts) {
+                RevenueDailyEntry::updateDayReports($ts);
+                SubscriptionsChurnEntry::updateDayReports($ts);
+                SubscriptionsActiveEntry::updateDayReports($ts);
+                RevenueRecurringEntry::updateDayReports($ts);
+                RevenuePerSubscriptionEntry::updateDayReports($ts);
+                SubscriptionsLifetimeValueEntry::updateDayReports($ts);
+                UsersRegistrationsEntry::updateDayReports($ts);
+                SubscriptionsNewEntry::updateDayReports($ts);
+                BraintreePaymentMethodsEntry::updateDayReports($ts);
+                SubscriptionsUpgradeEntry::updateDayReports($ts);
+                SubscriptionsDowngradeEntry::updateDayReports($ts);
+                SubscriptionsRenewalEntry::updateDayReports($ts);
+                SubscriptionsStalledEntry::updateDayReports($ts);
+                SubscriptionsEndedEntry::updateDayReports($ts);
+                SubscriptionsCancelEventsEntry::updateDayReports($ts);
+                ExpensesFeesEntry::updateDayReports($ts);
+                ExpensesRefundsEntry::updateDayReports($ts);
+                CampaignDailyEntry::updateDayReports($ts);
+            }
+        } finally {
+            Cache::unlock($lockKey, $lockToken);
         }
 
         return null;
