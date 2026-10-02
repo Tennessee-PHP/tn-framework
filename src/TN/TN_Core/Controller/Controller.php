@@ -270,6 +270,74 @@ abstract class Controller
     }
 
     /**
+     * Role keys from SITE_ROLE_GATE_ROLES. Empty means the role gate is off.
+     * @return string[]
+     */
+    public static function getRoleGateRoleKeys(): array
+    {
+        $raw = isset($_ENV['SITE_ROLE_GATE_ROLES'])
+            ? trim((string) $_ENV['SITE_ROLE_GATE_ROLES'])
+            : '';
+        if ($raw === '') {
+            return [];
+        }
+
+        $keys = [];
+        foreach (explode(',', $raw) as $part) {
+            $key = trim($part);
+            if ($key !== '') {
+                $keys[] = $key;
+            }
+        }
+        return $keys;
+    }
+
+    public static function isRoleGateEnabled(): bool
+    {
+        return self::getRoleGateRoleKeys() !== [];
+    }
+
+    /**
+     * True when the role gate is off, or the active user has one listed role.
+     */
+    public static function userPassesRoleGate(): bool
+    {
+        $keys = self::getRoleGateRoleKeys();
+        if ($keys === []) {
+            return true;
+        }
+
+        $user = User::getActive();
+        if (!$user->loggedIn) {
+            return false;
+        }
+
+        foreach ($keys as $key) {
+            if ($user->hasRole($key)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function isRoleGateExemptPath(string $requestPath): bool
+    {
+        return in_array($requestPath, [
+            'health',
+            'maintenance-bypass',
+            'login',
+            'logout',
+            'refresh',
+            'auth/forgot-password',
+            'auth/reset-password',
+            'auth/discord/authorization-url',
+            'auth/discord/callback',
+            'auth/two-factor/verify',
+            'discord/interactions',
+        ], true);
+    }
+
+    /**
      * @param HTTPRequest $request
      * @return HTTPResponse|null
      */
@@ -292,6 +360,12 @@ abstract class Controller
                 $renderer->prepare();
                 return new HTTPResponse($renderer, 503);
             }
+        }
+
+        if (self::isRoleGateEnabled() && !self::isRoleGateExemptPath($requestPath) && !self::userPassesRoleGate()) {
+            $renderer = Stack::resolveClassName(Page::class)::maintenance();
+            $renderer->prepare();
+            return new HTTPResponse($renderer, 503);
         }
 
         // instantiate a reflection class for the current controller
