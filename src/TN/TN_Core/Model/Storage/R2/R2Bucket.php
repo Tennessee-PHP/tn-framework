@@ -356,6 +356,40 @@ abstract class R2Bucket
     }
 
     /**
+     * Build a short-lived signed GET URL so the browser downloads straight from R2.
+     *
+     * @param string $key Storage key
+     * @param string $contentDisposition Full Content-Disposition header value R2 should send
+     * @param string $contentType Content-Type header value R2 should send
+     * @param string $expires Relative expiry accepted by the AWS SDK (e.g. '+5 minutes')
+     * @throws ValidationException When signing fails
+     */
+    public function getPresignedDownloadUrl(
+        string $key,
+        string $contentDisposition,
+        string $contentType,
+        string $expires = '+5 minutes'
+    ): string {
+        try {
+            $event = self::startPerformanceEvent('R2', "PRESIGN GET {$key}", ['bucket' => $this->bucketName]);
+
+            $client = $this->getClient();
+            $command = $client->getCommand('GetObject', [
+                'Bucket' => $this->bucketName,
+                'Key' => $key,
+                'ResponseContentDisposition' => $contentDisposition,
+                'ResponseContentType' => $contentType,
+            ]);
+            $request = $client->createPresignedRequest($command, $expires);
+
+            $event?->end();
+            return (string) $request->getUri();
+        } catch (\Exception $e) {
+            throw new ValidationException('Failed to create download link: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Stream an object from R2 to a local file without loading the entire object into memory.
      *
      * @param string $key Storage key
