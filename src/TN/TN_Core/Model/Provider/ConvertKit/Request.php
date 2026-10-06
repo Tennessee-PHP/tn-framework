@@ -2,6 +2,7 @@
 
 namespace TN\TN_Core\Model\Provider\ConvertKit;
 
+use Curl\Curl;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Interface\Persistence;
@@ -30,11 +31,23 @@ class Request implements Persistence
     public int $requestTs = 0;
     public string $result = '';
 
-    /** @return Request|null gets the next request to make */
-    public static function getNextRequest(): ?Request
+    /**
+     * Next unattempted row, oldest first.
+     * $exceptIds are rows this process already put back after a failed lookup, so the rest of the queue can proceed.
+     *
+     * @param int[] $exceptIds
+     */
+    public static function getNextRequest(array $exceptIds = []): ?Request
     {
-        return static::searchOne(new SearchArguments(
+        $conditions = [
             new SearchComparison('`attempted`', '=', 0),
+        ];
+        if ($exceptIds !== []) {
+            $conditions[] = new SearchComparison('`id`', 'NOT IN', $exceptIds);
+        }
+
+        return static::searchOne(new SearchArguments(
+            $conditions,
             new SearchSorter('originTs', 'ASC')
         ));
     }
@@ -63,6 +76,18 @@ class Request implements Persistence
             } else {
                 $result = $api->$action(...unserialize($this->serializedArguments));
             }
+        } catch (SubscriberLookupFailed $e) {
+            $this->update([
+                'attempted' => false,
+                'completed' => false,
+                'requestTs' => 0,
+                'result' => serialize([
+                    'lookup_failed' => true,
+                    'message' => $e->getMessage(),
+                    'code' => $e->getCode(),
+                ])
+            ]);
+            return false;
         } catch (\Throwable $e) {
             if ($this->isRateLimitError($e)) {
                 $this->update([
@@ -119,12 +144,21 @@ class Request implements Persistence
     protected function requestUpdateSubscriberFields(\ConvertKit_API\ConvertKit_API $api): mixed
     {
         [$email, $fields] = unserialize($this->serializedArguments);
-        $subscriberId = $api->get_subscriber_id($email);
-        if ($subscriberId === false) {
+        $subscriber = $this->findKitSubscriber($email);
+
+        if ($subscriber === null) {
             $api->form_subscribe(Queue::USERS_FORM_ID, ['email' => $email]);
             $subscriberId = $api->get_subscriber_id($email);
+        } elseif (($subscriber->state ?? '') !== 'active') {
+            return ['skipped' => (string) ($subscriber->state ?? '')];
+        } else {
+            $subscriberId = (int) ($subscriber->id ?? 0);
+            if ($subscriberId <= 0) {
+                throw new SubscriberLookupFailed('Kit returned an active subscriber without an id');
+            }
         }
-        if ($subscriberId === false) {
+
+        if ($subscriberId === false || $subscriberId === 0) {
             return false;
         }
 
@@ -132,6 +166,61 @@ class Request implements Persistence
             'api_secret' => $_ENV['CONVERTKIT_SECRET'],
             'fields' => $fields
         ]);
+    }
+
+    /**
+     * Kit v4 list, including cancelled subscribers. Null means this email has never been on the account.
+     * A failed call throws. It is not the same as an empty list.
+     *
+     * @throws SubscriberLookupFailed
+     */
+    protected function findKitSubscriber(string $email): ?object
+    {
+        $apiKey = $_ENV['CONVERTKIT_V4_KEY'] ?? '';
+        if ($apiKey === '') {
+            throw new SubscriberLookupFailed('Kit v4 key is not set');
+        }
+
+        $curl = new Curl();
+        $curl->setOpt(CURLOPT_FOLLOWLOCATION, 1);
+        $curl->setOpt(CURLOPT_RETURNTRANSFER, true);
+        $curl->setOpt(CURLOPT_TIMEOUT, 20);
+        $curl->setHeader('X-Kit-Api-Key', $apiKey);
+        $curl->setHeader('Accept', 'application/json');
+
+        try {
+            $curl->get('https://api.kit.com/v4/subscribers', [
+                'email_address' => $email,
+                'status' => 'all',
+                'slim' => 'true',
+            ]);
+        } catch (\Throwable $e) {
+            throw new SubscriberLookupFailed($e->getMessage(), (int) $e->getCode(), $e);
+        }
+
+        $statusCode = (int) $curl->http_status_code;
+        if ($curl->error || $statusCode >= 400 || $statusCode === 0) {
+            $message = is_string($curl->error_message) && $curl->error_message !== ''
+                ? $curl->error_message
+                : 'Kit subscriber lookup failed';
+            throw new SubscriberLookupFailed($message, $statusCode);
+        }
+
+        $payload = json_decode((string) $curl->response);
+        if (!is_object($payload) || !isset($payload->subscribers) || !is_array($payload->subscribers)) {
+            throw new SubscriberLookupFailed('Kit subscriber lookup did not return a subscriber list');
+        }
+
+        if ($payload->subscribers === []) {
+            return null;
+        }
+
+        $subscriber = $payload->subscribers[0];
+        if (!is_object($subscriber)) {
+            throw new SubscriberLookupFailed('Kit subscriber lookup did not return a subscriber list');
+        }
+
+        return $subscriber;
     }
 
     public function failedDueToRateLimit(): bool
@@ -142,6 +231,16 @@ class Request implements Persistence
 
         $result = @unserialize($this->result);
         return is_array($result) && !empty($result['rate_limited']);
+    }
+
+    public function failedDueToLookup(): bool
+    {
+        if ($this->completed || $this->attempted) {
+            return false;
+        }
+
+        $result = @unserialize($this->result);
+        return is_array($result) && !empty($result['lookup_failed']);
     }
 
     protected function isRateLimitError(\Throwable $e): bool

@@ -26,9 +26,10 @@ class SendFromQueue extends CLI
             );
             $delayMicroseconds = (int) floor(60_000_000 / max(1, $maxItemsPerMinute));
             $deadline = time() + self::MAX_RUN_SECONDS;
+            $lookupFailedIds = [];
 
             while (time() < $deadline) {
-                $request = Request::getNextRequest();
+                $request = Request::getNextRequest($lookupFailedIds);
                 if (!$request) {
                     break;
                 }
@@ -39,7 +40,12 @@ class SendFromQueue extends CLI
                         $this->yellow('Kit rate limit hit; stopping this run so rows can retry');
                         break;
                     }
-                    $failed++;
+                    if ($request->failedDueToLookup()) {
+                        $lookupFailedIds[] = (int) $request->id;
+                        $this->yellow('Kit subscriber lookup failed; leaving this row for a later run');
+                    } else {
+                        $failed++;
+                    }
                 }
 
                 usleep($delayMicroseconds);
