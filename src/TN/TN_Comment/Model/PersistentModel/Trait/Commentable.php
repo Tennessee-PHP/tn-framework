@@ -81,7 +81,7 @@ trait Commentable
                 : Comment::class;
         }
         $comment = $commentClass::getInstance();
-        $commentDate = new DateTime();
+        $commentDate = new DateTime('now', new \DateTimeZone('UTC'));
         $row = [
             'contentType' => static::class,
             'contentId' => $this->id,
