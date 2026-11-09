@@ -30,7 +30,7 @@ interface Commentable
      * Add a new comment to this content
      *
      * @param int $userId User ID of the commenter
-     * @param string $content Raw body; meaning depends on contentFormat (see NE RichContentContract)
+     * @param string $content Raw body; meaning depends on contentFormat
      * @param int|null $parentId Optional parent comment ID for replies
      * @param string $contentFormat Persisted format key (e.g. markdown, html); implementations that do not store format may ignore
      * @param array|null $mentions Optional structured mention metadata; implementations without a mentions column may ignore

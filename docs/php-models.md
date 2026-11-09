@@ -18,8 +18,8 @@
 2. **Framework code MUST NEVER reference site-specific code**
    ```php
    // ❌ WRONG - Framework referencing site code
-   use NE\NE_Main\Model\Something;
-   Stack::resolveClassName('NE_Main\\Model\\Comment');
+   use Site\App\Model\Something;
+   Stack::resolveClassName('Site\\App\\Model\\Comment');
    
    // ✅ CORRECT - Framework stays generic
    use TN\TN_Core\Model\Something;

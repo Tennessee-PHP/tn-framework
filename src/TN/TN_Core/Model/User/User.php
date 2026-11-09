@@ -451,7 +451,7 @@ class User implements Persistence
 
     /**
      * Whether this account is under a timed suspension that blocks login/session.
-     * Site subclasses (e.g. NE User) override when they store a suspension end timestamp.
+     * Site subclasses override when they store a suspension end timestamp.
      */
     public function isSuspended(): bool
     {

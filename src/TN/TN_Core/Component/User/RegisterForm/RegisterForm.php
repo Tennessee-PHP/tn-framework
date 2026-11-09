@@ -10,8 +10,6 @@ use \TN\TN_Core\Attribute\Components\HTMLComponent\Page;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Breadcrumb;
 use \TN\TN_Core\Attribute\Components\HTMLComponent\Reloadable;
 use \TN\TN_Core\Attribute\Components\Route;
-use NE\NE_Main\Model\Auth\DisposableEmailBlocklist;
-use NE\NE_Main\Model\Auth\MailboxDomainAllowlist;
 use TN\TN_Core\Error\ValidationException;
 use TN\TN_Core\Model\IP\IP;
 use TN\TN_Core\Model\Provider\Cloudflare\Turnstile;
@@ -94,9 +92,6 @@ class RegisterForm extends HTMLComponent
                 throw new ValidationException('Unfortunately, we were unable to verify this request. Please try again!');
             }
         }
-
-        DisposableEmailBlocklist::assertAllowed($this->email);
-        MailboxDomainAllowlist::assertAllowed($this->email);
 
         $ip = IP::getInstance();
         $attemptsAllowed = 3;

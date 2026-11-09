@@ -36,10 +36,7 @@ trait Commentable
     {
         $commentClass = Stack::resolveClassName(Comment::class);
         if ($commentClass === false) {
-            // Try NE-specific Comment class first, fallback to framework
-            $commentClass = class_exists('\NE\TN_Comment\Model\Comment\Comment')
-                ? '\NE\TN_Comment\Model\Comment\Comment'
-                : Comment::class;
+            $commentClass = Comment::class;
         }
         return $commentClass::getForContent(static::class, $this->id, $start, $num);
     }
@@ -53,10 +50,7 @@ trait Commentable
     {
         $commentClass = Stack::resolveClassName(Comment::class);
         if ($commentClass === false) {
-            // Try NE-specific Comment class first, fallback to framework
-            $commentClass = class_exists('\NE\TN_Comment\Model\Comment\Comment')
-                ? '\NE\TN_Comment\Model\Comment\Comment'
-                : Comment::class;
+            $commentClass = Comment::class;
         }
         return $commentClass::getCountForContent(static::class, $this->id);
     }
@@ -75,10 +69,7 @@ trait Commentable
     {
         $commentClass = Stack::resolveClassName(Comment::class);
         if ($commentClass === false) {
-            // Try NE-specific Comment class first, fallback to framework
-            $commentClass = class_exists('\NE\TN_Comment\Model\Comment\Comment')
-                ? '\NE\TN_Comment\Model\Comment\Comment'
-                : Comment::class;
+            $commentClass = Comment::class;
         }
         $comment = $commentClass::getInstance();
         $commentDate = new DateTime('now', new \DateTimeZone('UTC'));
