@@ -1,0 +1,1 @@
+{include "./TypeReport.tpl" desc="<b>New leagues synced</b> is the number of synced leagues created that day. <b>New dynasty leagues synced</b> is the dynasty subset. <b>Unique users with a synced league</b> is how many people currently have at least one synced league."}

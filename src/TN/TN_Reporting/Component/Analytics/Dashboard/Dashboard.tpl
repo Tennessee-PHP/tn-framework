@@ -96,6 +96,10 @@
                 <a class="nav-link{if $report->reportKey === 'userRegistrations'} active{/if}" aria-current="page"
                    href="{$BASE_URL}staff/reporting/dashboard?reportkey=userRegistrations">Registrations</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link{if $report->reportKey === 'newLeaguesSynced'} active{/if}" aria-current="page"
+                   href="{$BASE_URL}staff/reporting/dashboard?reportkey=newLeaguesSynced">New Leagues Synced</a>
+            </li>
 
             {*<li><h3><i class="bi bi-graph-up-arrow"></i>
                     Page Views</h3></li>*}

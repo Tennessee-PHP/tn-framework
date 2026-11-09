@@ -28,6 +28,7 @@ use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsRenewalEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsCancelEventsEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsUpgradeEntry;
 use TN\TN_Reporting\Model\Analytics\Subscriptions\SubscriptionsStalledEntry;
+use TN\TN_Reporting\Model\Analytics\Users\NewLeaguesSyncedEntry;
 use TN\TN_Reporting\Model\Analytics\Users\UsersRegistrationsEntry;
 use TN\TN_Reporting\Service\NewSubscriptionCustomerTypeBackfillService;
 
@@ -73,6 +74,7 @@ class AnalyticsController extends Controller
                 RevenuePerSubscriptionEntry::updateDayReports($ts);
                 SubscriptionsLifetimeValueEntry::updateDayReports($ts);
                 UsersRegistrationsEntry::updateDayReports($ts);
+                NewLeaguesSyncedEntry::updateDayReports($ts);
                 SubscriptionsNewEntry::updateDayReports($ts);
                 BraintreePaymentMethodsEntry::updateDayReports($ts);
                 SubscriptionsUpgradeEntry::updateDayReports($ts);
