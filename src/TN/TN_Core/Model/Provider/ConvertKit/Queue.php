@@ -19,7 +19,8 @@ class Queue
         'users' => self::USERS_FORM_ID,
         'ratemyteam' => 3552612,
         'ratemyteam-roadblock' => 8408341,
-        'showdown-optimizer' => 8853662
+        'showdown-optimizer' => 8853662,
+        'draft-dominator' => 10167742
     ];
     private static $sequences = [
         'signup' => 1031995,
