@@ -47,6 +47,7 @@ class PageEntryListingCache
             'featured' => $featured,
             'contentClasses' => array_values($classes),
             'exclude' => $excludePageEntryId,
+            'shape' => 'ids',
         ], JSON_UNESCAPED_SLASHES);
         return self::KEY_PREFIX . $ver . ':' . hash('sha256', (string) $payload);
     }

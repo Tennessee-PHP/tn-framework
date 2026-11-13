@@ -7,6 +7,7 @@ use TN\TN_CMS\Model\Tag\Tag;
 use TN\TN_CMS\Model\Tag\TaggedContent;
 use TN\TN_Core\Attribute\Constraints\Strlen;
 use TN\TN_Core\Attribute\Impersistent;
+use TN\TN_Core\Attribute\NoCacheInvalidation;
 use TN\TN_Core\Attribute\MySQL\TableName;
 use TN\TN_Core\Component\Renderer\Page\Page;
 use TN\TN_Core\Error\ValidationException;
@@ -49,21 +50,24 @@ class PageEntry implements Persistence
     const string cacheSearchWordsFactor = 'wf';
     const string cacheFactor = 'f';
 
+    public const int SIDEBAR_LISTING_LIMIT = 48;
+    public const int FULL_LISTING_LIMIT = 1000;
+
     public string $key = '';
     public string $path = '';
-    public string $title = '';
-    public string $subtitle = '';
-    #[Strlen(0, 10000)] public string $description = '';
+    #[NoCacheInvalidation] public string $title = '';
+    #[NoCacheInvalidation] public string $subtitle = '';
+    #[Strlen(0, 10000)] #[NoCacheInvalidation] public string $description = '';
     public string $navigationParent = '';
-    public string $originalTitle = '';
-    public string $originalSubtitle = '';
-    public string $originalDescription = '';
+    #[NoCacheInvalidation] public string $originalTitle = '';
+    #[NoCacheInvalidation] public string $originalSubtitle = '';
+    #[NoCacheInvalidation] public string $originalDescription = '';
     public int $ts = 0;
     public bool $alwaysCurrent = false;
     public int $weight = 0;
     public bool $sitemap = false;
-    public string $thumbnailSrc = '';
-    public string $vThumbnailSrc = '';
+    #[NoCacheInvalidation] public string $thumbnailSrc = '';
+    #[NoCacheInvalidation] public string $vThumbnailSrc = '';
     public string $contentId = '';
     public string $contentClass = '';
     public ?int $creatorId = null;
@@ -187,9 +191,13 @@ class PageEntry implements Persistence
 
             // if we didn't get anything, try searching on titles
             if (empty($pageEntries)) {
-                $pageEntries = self::getPageEntriesQuery([
+                $titleFilters = [
                     'title' => $filters['search']
-                ]);
+                ];
+                if (isset($filters['queryLimit'])) {
+                    $titleFilters['queryLimit'] = $filters['queryLimit'];
+                }
+                $pageEntries = self::getPageEntriesQuery($titleFilters);
             }
         } else {
             $pageEntries = self::getPageEntriesQuery($filters);
@@ -227,13 +235,42 @@ class PageEntry implements Persistence
 
     public static function getPageEntries(array $filters, int $start, int $num): array
     {
+        $excludeId = !empty($filters['excludeId']) ? (int)$filters['excludeId'] : null;
+        unset($filters['excludeId']);
+
+        $end = $start + $num;
+        $filters['queryLimit'] = $end <= self::SIDEBAR_LISTING_LIMIT
+            ? self::SIDEBAR_LISTING_LIMIT
+            : self::FULL_LISTING_LIMIT;
+
         $searchCacheIdentifier = md5(serialize($filters));
-        $cacheKey = static::getCacheKey('search', $searchCacheIdentifier);
-        $results = CacheStorage::get($cacheKey);
-        if (!$results) {
-            $results = self::getPageEntriesResults($filters);
-            CacheStorage::set($cacheKey, $results, static::getCacheLifespan());
-            CacheStorage::setAdd(static::getCacheKey('set', 'searches'), $cacheKey, static::getCacheLifespan());
+        $generation = static::getCacheGeneration();
+        $cacheKey = static::getCacheKey('search', $searchCacheIdentifier, $generation);
+        $staleKey = $generation > 1
+            ? static::getCacheKey('search', $searchCacheIdentifier, $generation - 1)
+            : null;
+        $results = CacheStorage::getOrSetStale(
+            $cacheKey,
+            static::getCacheLifespan(),
+            function () use ($filters, $cacheKey): array {
+                $built = self::getPageEntriesResults($filters);
+                CacheStorage::setAdd(static::getCacheKey('set', 'searches'), $cacheKey, static::getCacheLifespan());
+                return $built;
+            },
+            $staleKey,
+            60,
+            15000,
+            static fn(mixed $value): bool => is_array($value) && $value !== []
+        );
+        if (!is_array($results)) {
+            $results = [];
+        }
+
+        if ($excludeId) {
+            $results = array_values(array_filter(
+                $results,
+                static fn(array $row): bool => (int)($row[self::cacheIndexId] ?? 0) !== $excludeId
+            ));
         }
 
         // now slice the results
@@ -388,12 +425,16 @@ class PageEntry implements Persistence
         $tables = implode(", ", $tables);
         $selects = implode(", ", $selects);
         $conditions = empty($conditions) ? '' : ('WHERE ' . implode(" AND ", $conditions));
+        $limit = self::FULL_LISTING_LIMIT;
+        if (isset($filters['queryLimit'])) {
+            $limit = max(1, min(self::FULL_LISTING_LIMIT, (int)$filters['queryLimit']));
+        }
         $query = "
             SELECT DISTINCT {$selects}
             FROM {$tables}
             {$conditions}
             ORDER BY p.alwaysCurrent DESC, p.ts DESC, p.weight DESC
-            LIMIT 0, 1000
+            LIMIT 0, {$limit}
             ";
 
         $event = self::startPerformanceEvent('MySQL', $query, ['params' => $params]);
@@ -526,11 +567,6 @@ class PageEntry implements Persistence
                 $updates[$oProp] = $page->$prop;
             }
 
-            if ($page->openGraphImage) {
-                $updates['thumbnailSrc'] = $page->openGraphImage;
-                $updates['vThumbnailSrc'] = $page->openGraphImage;
-            }
-
             // set values if none
             if (empty($pageEntry->$prop) && $page->$prop) {
                 $updates[$prop] = $page->$prop;
@@ -543,6 +579,16 @@ class PageEntry implements Persistence
             } else if (!empty($pageEntry->$prop)) {
                 // set the updated values on the page
                 $page->$prop = $pageEntry->$prop;
+            }
+        }
+
+        if (!empty($page->openGraphImage)) {
+            $image = trim(Strings::removeEmojis((string)$page->openGraphImage));
+            if ($image !== '' && $pageEntry->thumbnailSrc !== $image) {
+                $updates['thumbnailSrc'] = $image;
+            }
+            if ($image !== '' && $pageEntry->vThumbnailSrc !== $image) {
+                $updates['vThumbnailSrc'] = $image;
             }
         }
 
@@ -771,10 +817,6 @@ class PageEntry implements Persistence
 
     protected function afterSaveUpdate(array $changedProperties): void
     {
-        // Ensure cache is always invalidated when PageEntry is updated
-        // This is critical for homepage content ordering and search results
-        $this->invalidateCache();
-
         if ($this->updateFromContent) {
             return;
         }

@@ -332,6 +332,77 @@ class Cache
         return $value;
     }
 
+    /**
+     * Same as getOrSet(), except a request that does not win the lock never runs $producer.
+     *
+     * If $staleKey is set and holds a hit, that value is returned at once. Otherwise the
+     * waiter polls $key until $waitMs and then gives up. The lock holder is the only builder.
+     *
+     * @param callable(): mixed $producer
+     * @param callable(mixed): bool|null $isHit
+     */
+    public static function getOrSetStale(
+        string $key,
+        int $lifetimeSeconds,
+        callable $producer,
+        ?string $staleKey = null,
+        int $lockSeconds = 60,
+        int $waitMs = 15000,
+        ?callable $isHit = null
+    ): mixed {
+        $isHit = $isHit ?? [self::class, 'defaultIsHit'];
+        $lockSeconds = max(1, $lockSeconds);
+        $waitMs = max(0, $waitMs);
+
+        $value = self::get($key);
+        if ($isHit($value)) {
+            return $value;
+        }
+
+        $lockKey = $key . ':rebuild-lock';
+        $token = self::tryLock($lockKey, $lockSeconds);
+        if ($token !== false) {
+            try {
+                $value = self::get($key, true);
+                if ($isHit($value)) {
+                    return $value;
+                }
+                $value = $producer();
+                if ($isHit($value)) {
+                    self::set($key, $value, $lifetimeSeconds);
+                }
+                return $value;
+            } finally {
+                self::unlock($lockKey, $token);
+            }
+        }
+
+        if ($staleKey !== null && $staleKey !== '') {
+            $stale = self::get($staleKey, true);
+            if ($isHit($stale)) {
+                return $stale;
+            }
+        }
+
+        $attempts = (int) ceil($waitMs / 100);
+        for ($i = 0; $i < $attempts; $i++) {
+            usleep(100000);
+            $value = self::get($key, true);
+            if ($isHit($value)) {
+                return $value;
+            }
+        }
+
+        if ($staleKey !== null && $staleKey !== '') {
+            $stale = self::get($staleKey, true);
+            if ($isHit($stale)) {
+                return $stale;
+            }
+        }
+
+        return false;
+    }
+
     protected static function defaultIsHit(mixed $value): bool
     {
         return $value !== false && $value !== null;

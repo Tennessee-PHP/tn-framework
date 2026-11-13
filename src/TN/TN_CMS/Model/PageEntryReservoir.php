@@ -22,7 +22,7 @@ class PageEntryReservoir
     /** @var int|null */
     protected ?int $excludePageEntryId;
 
-    const PAGE_ENTRIES_PER_QUERY = 100;
+    const PAGE_ENTRIES_PER_QUERY = PageEntry::SIDEBAR_LISTING_LIMIT;
 
     public function __construct(?string $tag = null, ?array $contentClasses = null, ?int $excludePageEntryId = null)
     {

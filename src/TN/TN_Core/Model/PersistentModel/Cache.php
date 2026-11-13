@@ -75,14 +75,15 @@ trait Cache
         return $cacheAttributes[0]->newInstance()->version;
     }
 
-    protected static function getCacheKey(string $type, string $identifier): string
+    protected static function getCacheKey(string $type, string $identifier, ?int $generation = null): string
     {
         $cacheClass = static::getCacheClass();
         if (!$cacheClass) {
             // If no cache class found, use static::class as fallback (shouldn't happen if cacheEnabled is checked)
             $cacheClass = static::class;
         }
-        return implode(':', [$cacheClass, static::getCacheVersion(), (string) static::getCacheGeneration(), $type, $identifier]);
+        $generation ??= static::getCacheGeneration();
+        return implode(':', [$cacheClass, static::getCacheVersion(), (string) $generation, $type, $identifier]);
     }
 
     protected static function getCacheGenerationKey(): string

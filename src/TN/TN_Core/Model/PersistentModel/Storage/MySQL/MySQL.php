@@ -109,7 +109,7 @@ trait MySQL
     }
 
     /**
-     * insert multiple objects in one query
+     * insert multiple objects. Uses more than one query when one statement would exceed MySQL's placeholder limit.
      * @param array $objects
      * @param bool $useSetId set the record's id in the database to be its current value
      * @return void
@@ -143,40 +143,71 @@ trait MySQL
             }
         }
 
-        $idProp = self::getAutoIncrementProperty();
-
-        $properties = implode(', ', $props);
-        $query = "INSERT INTO {$table} ({$properties}) VALUES " .
-            implode(',', array_fill(0, count($objects), '(' . $placeHolders . ')'));
-        $event = self::startPerformanceEvent('MySQL', $query, ['params' => $values, 'objectCount' => count($objects)]);
-
-        if (MYSQL_DEBUG_MODE) {
-            echo $query . PHP_EOL;
+        $placeholdersPerRow = count($props);
+        if ($placeholdersPerRow < 1 || count($values) !== count($objects) * $placeholdersPerRow) {
+            throw new DBException(static::class . ': batch insert rows do not all have the same columns');
         }
 
-        $stmt = $db->prepare($query);
+        // MySQL error 1390: one prepared statement cannot hold more than 65535 placeholders.
+        $maxRowsPerStatement = intdiv(65535, $placeholdersPerRow);
+        $chunks = array_chunk($objects, $maxRowsPerStatement);
+        $columnList = implode(', ', $props);
+        $ownTransaction = count($chunks) > 1 && !$db->inTransaction();
+        if ($ownTransaction) {
+            $db->beginTransaction();
+        }
 
         try {
-            $stmt->execute($values);
-        } catch (\PDOException $e) {
-            if (DBDuplicateKeyException::isDuplicateKey($e)) {
-                throw new DBDuplicateKeyException(static::class . ': ' . $e->getMessage());
-            }
-            throw new DBException(static::class . ': ' . $e->getMessage());
-        }
+            $offset = 0;
+            $insertedChunks = [];
+            foreach ($chunks as $chunk) {
+                $chunkValueCount = count($chunk) * $placeholdersPerRow;
+                $chunkValues = array_slice($values, $offset, $chunkValueCount);
+                $offset += $chunkValueCount;
+                $query = "INSERT INTO {$table} ({$columnList}) VALUES " .
+                    implode(',', array_fill(0, count($chunk), '(' . $placeHolders . ')'));
+                $event = self::startPerformanceEvent('MySQL', $query, ['params' => $chunkValues, 'objectCount' => count($chunk)]);
 
-        $event?->end();
+                if (MYSQL_DEBUG_MODE) {
+                    echo $query . PHP_EOL;
+                }
 
-        // let's check the number
-        if ($stmt->rowCount() !== count($objects)) {
-            throw new DBException('Inserted row count does not match object size (' . $stmt->rowCount() . '/' . count($objects) . ')');
-        }
-        $insertedId = (int)$db->lastInsertId();
-        foreach ($objects as $object) {
-            if (!$useSetId || !isset($object->$idProp)) {
-                $object->$idProp = $insertedId;
+                $stmt = $db->prepare($query);
+
+                try {
+                    $stmt->execute($chunkValues);
+                } catch (\PDOException $e) {
+                    if (DBDuplicateKeyException::isDuplicateKey($e)) {
+                        throw new DBDuplicateKeyException(static::class . ': ' . $e->getMessage());
+                    }
+                    throw new DBException(static::class . ': ' . $e->getMessage());
+                }
+
+                $event?->end();
+
+                if ($stmt->rowCount() !== count($chunk)) {
+                    throw new DBException('Inserted row count does not match object size (' . $stmt->rowCount() . '/' . count($chunk) . ')');
+                }
+                $insertedChunks[] = [$chunk, (int)$db->lastInsertId()];
             }
-            $insertedId += 1;
+
+            foreach ($insertedChunks as [$chunk, $insertedId]) {
+                foreach ($chunk as $object) {
+                    if (!$useSetId || !isset($object->$idProp)) {
+                        $object->$idProp = $insertedId;
+                    }
+                    $insertedId += 1;
+                }
+            }
+
+            if ($ownTransaction) {
+                $db->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownTransaction && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
         }
     }
 
